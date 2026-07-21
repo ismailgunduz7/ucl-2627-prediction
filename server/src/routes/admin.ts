@@ -16,8 +16,11 @@ import {
   updateRules,
   recalculateAll,
   setMatchResult,
+  clearMatchOverride,
+  getMatchAudits,
   type MatchStatus,
 } from '../services/scoring-service.ts';
+import { runSync, listSyncRuns } from '../services/score-sync-service.ts';
 
 // All admin routes require a valid access token AND the admin role.
 export const adminRoutes = new Hono<{ Variables: AuthVariables }>();
@@ -179,8 +182,41 @@ adminRoutes.put('/matches/:id/result', async (c) => {
     body.data.homeScore,
     body.data.awayScore,
     body.data.status as MatchStatus,
+    c.get('auth').sub,
   );
   return c.json({ ok: true });
+});
+
+adminRoutes.post('/matches/:id/clear-override', async (c) => {
+  await clearMatchOverride(c.req.param('id'), c.get('auth').sub);
+  return c.json({ ok: true });
+});
+
+adminRoutes.get('/matches/:id/audits', async (c) => {
+  const audits = await getMatchAudits(c.req.param('id'));
+  return c.json({ audits });
+});
+
+// --- Provider sync (§5.2) -------------------------------------------------
+const SyncSchema = z.object({
+  provider: z.enum(['mock', 'football_data']).optional(),
+  // Mock-only: simulate the clock so seeded future fixtures can advance.
+  simulatedNow: z.string().datetime().optional(),
+});
+
+adminRoutes.post('/sync', async (c) => {
+  const body = SyncSchema.safeParse((await c.req.json().catch(() => null)) ?? {});
+  if (!body.success) throw ApiError.badRequest('Geçersiz sync isteği', 'invalid_body');
+  const summary = await runSync({
+    providerName: body.data.provider,
+    simulatedNow: body.data.simulatedNow ? new Date(body.data.simulatedNow) : undefined,
+  });
+  return c.json({ summary });
+});
+
+adminRoutes.get('/sync/runs', async (c) => {
+  const runs = await listSyncRuns();
+  return c.json({ runs });
 });
 
 // --- Full recalculate (§4.7) ----------------------------------------------

@@ -46,6 +46,7 @@ const routes: RouteRecordRaw[] = [
       { path: 'yarismalar', name: 'admin-competitions', component: () => import('@/views/admin/CompetitionsView.vue') },
       { path: 'kurallar', name: 'admin-rules', component: () => import('@/views/admin/RulesView.vue') },
       { path: 'maclar', name: 'admin-matches', component: () => import('@/views/admin/MatchesView.vue') },
+      { path: 'sync', name: 'admin-sync', component: () => import('@/views/admin/SyncView.vue') },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },

@@ -71,6 +71,16 @@ async function loadMatches() {
   }
 }
 
+async function clearOverride(m: MatchRow) {
+  try {
+    await api.post(`/api/admin/matches/${m.id}/clear-override`);
+    toast.add({ severity: 'success', summary: 'Override kaldırıldı', life: 2000 });
+    await loadMatches();
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Hata', detail: msg(e), life: 4000 });
+  }
+}
+
 async function saveResult(m: MatchRow) {
   savingId.value = m.id;
   try {
@@ -135,6 +145,15 @@ watch(selectedMw, loadMatches);
           <Select v-model="m.status" :options="statusOptions" option-label="label" option-value="value" style="min-width: 130px" />
           <Tag :severity="statusSeverity[m.status] ?? 'secondary'" :value="statusOptions.find((s) => s.value === m.status)?.label" />
           <Tag v-if="m.is_manual_override" severity="warn" value="override" />
+          <Button
+            v-if="m.is_manual_override"
+            icon="pi pi-times"
+            label="Override kaldır"
+            size="small"
+            severity="secondary"
+            text
+            @click="clearOverride(m)"
+          />
           <Button
             icon="pi pi-save"
             label="Kaydet"

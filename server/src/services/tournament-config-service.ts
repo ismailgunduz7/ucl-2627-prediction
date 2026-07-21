@@ -17,6 +17,7 @@ export const DEFAULT_CONFIG = {
   } as Record<'league_phase' | 'knockout', JokerInventoryDefaults>,
   deadline_drama_window_seconds: 7200,
   feature_flags: {} as Record<string, boolean>,
+  sync_provider: 'mock' as 'mock' | 'football_data',
 };
 
 export type ConfigKey = keyof typeof DEFAULT_CONFIG;

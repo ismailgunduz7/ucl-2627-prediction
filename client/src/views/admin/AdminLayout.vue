@@ -12,6 +12,7 @@ const nav = [
   { label: 'Yarışmalar', to: { name: 'admin-competitions' }, icon: 'pi pi-sitemap' },
   { label: 'Kurallar', to: { name: 'admin-rules' }, icon: 'pi pi-calculator' },
   { label: 'Maçlar', to: { name: 'admin-matches' }, icon: 'pi pi-flag' },
+  { label: 'Sync', to: { name: 'admin-sync' }, icon: 'pi pi-sync' },
 ];
 
 async function logout() {

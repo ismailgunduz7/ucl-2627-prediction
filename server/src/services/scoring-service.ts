@@ -4,6 +4,9 @@ import { ApiError } from '../lib/errors.ts';
 import { scoreMatchDraft, type TierRules } from '../domain/scoring.ts';
 import { checkRuleDirection } from '../domain/rules-direction.ts';
 import type { RuleDirection } from '../data/scoring-rules.ts';
+import type { MatchStatus } from '../domain/match.ts';
+
+export type { MatchStatus };
 
 // --- Rules matrix ---------------------------------------------------------
 
@@ -153,6 +156,29 @@ const FINISHED_MATCH_SELECT = `
   JOIN teams at ON at.id = m.away_team_id
   WHERE m.status = 'finished' AND m.home_score IS NOT NULL AND m.away_score IS NOT NULL`;
 
+/**
+ * Score one match by id inside an existing transaction, if it is finished with
+ * scores. Returns true if lines were (re)written. Used by the sync service on a
+ * transition to finished so it reuses the exact same engine as recalc.
+ */
+export async function scoreFinishedMatchInTx(
+  client: PoolClient,
+  matchId: string,
+): Promise<boolean> {
+  const { rows } = await client.query<FinishedMatchRow>(`${FINISHED_MATCH_SELECT} AND m.id = $1`, [
+    matchId,
+  ]);
+  if (!rows[0]) return false;
+  const rules = await loadTierRules(client);
+  await scoreOneMatch(client, rows[0], rules);
+  return true;
+}
+
+/** Remove a match's club lines inside a transaction (status left finished no more). */
+export async function clearMatchLinesInTx(client: PoolClient, matchId: string): Promise<void> {
+  await client.query('DELETE FROM team_point_entries WHERE match_id = $1', [matchId]);
+}
+
 /** Full club-layer rebuild for all finished matches (§4.7). */
 export async function recalculateAll(): Promise<{ matchesScored: number }> {
   return withTransaction(async (client) => {
@@ -167,41 +193,99 @@ export async function recalculateAll(): Promise<{ matchesScored: number }> {
 
 // --- Admin match-result editor (minimal slice of §5.3) --------------------
 
-export type MatchStatus = 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled';
-
 export async function setMatchResult(
   matchId: string,
   homeScore: number | null,
   awayScore: number | null,
   status: MatchStatus,
+  adminUserId: string,
 ): Promise<void> {
   const scored = status === 'finished' || status === 'live';
   if (scored && (homeScore === null || awayScore === null)) {
     throw ApiError.badRequest('Skor gerekli', 'score_required');
   }
   await withTransaction(async (client) => {
-    const upd = await client.query(
+    const before = await client.query<{
+      home_score: number | null;
+      away_score: number | null;
+      status: string;
+    }>('SELECT home_score, away_score, status FROM matches WHERE id = $1 FOR UPDATE', [matchId]);
+    if (before.rowCount === 0) throw ApiError.badRequest('Maç bulunamadı', 'match_not_found');
+    const prev = before.rows[0]!;
+
+    await client.query(
       `UPDATE matches
        SET home_score = $1, away_score = $2, status = $3, is_manual_override = true, updated_at = now()
        WHERE id = $4`,
       [homeScore, awayScore, status, matchId],
     );
-    if (upd.rowCount === 0) throw ApiError.badRequest('Maç bulunamadı', 'match_not_found');
+
+    // Audit the manual edit (§5.3): record only fields that actually changed.
+    const changed: Record<string, { from: unknown; to: unknown }> = {};
+    if (prev.home_score !== homeScore) changed.home_score = { from: prev.home_score, to: homeScore };
+    if (prev.away_score !== awayScore) changed.away_score = { from: prev.away_score, to: awayScore };
+    if (prev.status !== status) changed.status = { from: prev.status, to: status };
+    await client.query(
+      `INSERT INTO match_override_audits (match_id, admin_user_id, action, changed_fields)
+       VALUES ($1, $2, 'override', $3)`,
+      [matchId, adminUserId, JSON.stringify(changed)],
+    );
 
     if (status === 'finished') {
-      const { rows } = await client.query<FinishedMatchRow>(
-        `${FINISHED_MATCH_SELECT} AND m.id = $1`,
-        [matchId],
-      );
-      if (rows[0]) {
-        const rules = await loadTierRules(client);
-        await scoreOneMatch(client, rows[0], rules);
-      }
+      await scoreFinishedMatchInTx(client, matchId);
     } else {
       // Not finished → no definitive club points for this match.
-      await client.query('DELETE FROM team_point_entries WHERE match_id = $1', [matchId]);
+      await clearMatchLinesInTx(client, matchId);
     }
   });
+}
+
+/** Clear the manual-override flag so sync may update the match again (§5.3). */
+export async function clearMatchOverride(matchId: string, adminUserId: string): Promise<void> {
+  await withTransaction(async (client) => {
+    const res = await client.query(
+      `UPDATE matches SET is_manual_override = false, updated_at = now()
+       WHERE id = $1 AND is_manual_override = true`,
+      [matchId],
+    );
+    if (res.rowCount === 0) {
+      throw ApiError.badRequest('Override zaten yok veya maç bulunamadı', 'no_override');
+    }
+    await client.query(
+      `INSERT INTO match_override_audits (match_id, admin_user_id, action, changed_fields)
+       VALUES ($1, $2, 'clear_override', '{}'::jsonb)`,
+      [matchId, adminUserId],
+    );
+  });
+}
+
+export interface OverrideAudit {
+  id: string;
+  action: string;
+  changedFields: Record<string, { from: unknown; to: unknown }>;
+  adminUserId: string | null;
+  createdAt: string;
+}
+
+export async function getMatchAudits(matchId: string): Promise<OverrideAudit[]> {
+  const { rows } = await query<{
+    id: string;
+    action: string;
+    changed_fields: Record<string, { from: unknown; to: unknown }>;
+    admin_user_id: string | null;
+    created_at: Date;
+  }>(
+    `SELECT id, action, changed_fields, admin_user_id, created_at
+     FROM match_override_audits WHERE match_id = $1 ORDER BY created_at DESC`,
+    [matchId],
+  );
+  return rows.map((r) => ({
+    id: r.id,
+    action: r.action,
+    changedFields: r.changed_fields,
+    adminUserId: r.admin_user_id,
+    createdAt: new Date(r.created_at).toISOString(),
+  }));
 }
 
 // --- Team detail (team pages, §10.1 /takim/:id) ---------------------------

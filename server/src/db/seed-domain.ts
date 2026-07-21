@@ -116,6 +116,11 @@ async function main(): Promise<void> {
         [kickoff, mwId],
       );
     }
+    // Stable mock external ids so the mock provider (Phase 3) can map fixtures
+    // back through the same external_id path the real provider uses.
+    await client.query(`UPDATE teams SET external_id = 'mock:' || id::text WHERE external_id IS NULL`);
+    await client.query(`UPDATE matches SET external_id = 'mock:' || id::text WHERE external_id IS NULL`);
+
     console.log(`Seeded ${schedule.length} mock fixtures across ${LEAGUE_MATCHDAYS} matchweeks.`);
     console.log(`MW1 first kickoff (mock): ${firstKickoff.get('mw-1')?.toISOString()}`);
   });
