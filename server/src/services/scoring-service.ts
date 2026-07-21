@@ -1,0 +1,318 @@
+import type { PoolClient } from 'pg';
+import { query, withTransaction } from '../db/pool.ts';
+import { ApiError } from '../lib/errors.ts';
+import { scoreMatchDraft, type TierRules } from '../domain/scoring.ts';
+import { checkRuleDirection } from '../domain/rules-direction.ts';
+import type { RuleDirection } from '../data/scoring-rules.ts';
+
+// --- Rules matrix ---------------------------------------------------------
+
+export interface RuleMatrixRow {
+  code: string;
+  category: string;
+  label: string;
+  direction: RuleDirection;
+  sortOrder: number;
+  /** points by pot: { '1': n, '2': n, '3': n, '4': n } */
+  points: Record<number, number>;
+  /** null if the pot direction holds, else a warning string (§16). */
+  warning: string | null;
+}
+
+export async function getRulesMatrix(): Promise<RuleMatrixRow[]> {
+  const [types, values] = await Promise.all([
+    query<{ code: string; category: string; label: string; direction: RuleDirection; sort_order: number }>(
+      `SELECT code, category, label, direction, sort_order FROM scoring_rule_types
+       WHERE is_active ORDER BY sort_order`,
+    ),
+    query<{ tier_id: number; rule_code: string; points: number }>(
+      `SELECT tier_id, rule_code, points FROM tier_scoring_rules`,
+    ),
+  ]);
+
+  const byRule = new Map<string, Record<number, number>>();
+  for (const v of values.rows) {
+    const rec = byRule.get(v.rule_code) ?? {};
+    rec[v.tier_id] = v.points;
+    byRule.set(v.rule_code, rec);
+  }
+
+  return types.rows.map((t) => {
+    const points = byRule.get(t.code) ?? {};
+    const potValues = [1, 2, 3, 4].map((p) => points[p] ?? 0);
+    return {
+      code: t.code,
+      category: t.category,
+      label: t.label,
+      direction: t.direction,
+      sortOrder: t.sort_order,
+      points,
+      warning: checkRuleDirection(t.direction, potValues),
+    };
+  });
+}
+
+export interface RuleUpdate {
+  ruleCode: string;
+  tierId: number;
+  points: number;
+}
+
+/** Bulk-update per-pot rule values. Integers only; direction is warned, not blocked. */
+export async function updateRules(updates: RuleUpdate[]): Promise<RuleMatrixRow[]> {
+  for (const u of updates) {
+    if (!Number.isInteger(u.points)) {
+      throw ApiError.badRequest('Puanlar tam sayı olmalı', 'non_integer_points');
+    }
+    if (u.tierId < 1 || u.tierId > 4) {
+      throw ApiError.badRequest('Geçersiz pot', 'invalid_tier');
+    }
+  }
+  await withTransaction(async (client) => {
+    for (const u of updates) {
+      const res = await client.query(
+        `UPDATE tier_scoring_rules SET points = $1, updated_at = now()
+         WHERE tier_id = $2 AND rule_code = $3`,
+        [u.points, u.tierId, u.ruleCode],
+      );
+      if (res.rowCount === 0) {
+        throw ApiError.badRequest('Bilinmeyen kural/pot', 'unknown_rule');
+      }
+    }
+  });
+  return getRulesMatrix();
+}
+
+// --- Club-layer scoring engine (§4.2) -------------------------------------
+
+async function loadTierRules(db: Pick<PoolClient, 'query'>): Promise<TierRules> {
+  const { rows } = await db.query<{ tier_id: number; rule_code: string; points: number }>(
+    `SELECT tier_id, rule_code, points FROM tier_scoring_rules`,
+  );
+  const map: TierRules = new Map();
+  for (const r of rows) {
+    if (!map.has(r.tier_id)) map.set(r.tier_id, new Map());
+    map.get(r.tier_id)!.set(r.rule_code, r.points);
+  }
+  return map;
+}
+
+interface FinishedMatchRow {
+  id: string;
+  matchweek_id: string;
+  home_team_id: string;
+  away_team_id: string;
+  home_tier_id: number;
+  away_tier_id: number;
+  home_score: number;
+  away_score: number;
+}
+
+/** Replace one finished match's club lines (delete + insert, idempotent). */
+async function scoreOneMatch(
+  client: PoolClient,
+  match: FinishedMatchRow,
+  rules: TierRules,
+): Promise<void> {
+  await client.query('DELETE FROM team_point_entries WHERE match_id = $1', [match.id]);
+  const lines = scoreMatchDraft(
+    {
+      homeTeamId: match.home_team_id,
+      awayTeamId: match.away_team_id,
+      homeTierId: match.home_tier_id,
+      awayTierId: match.away_tier_id,
+      homeScore: match.home_score,
+      awayScore: match.away_score,
+    },
+    rules,
+  );
+  for (const line of lines) {
+    await client.query(
+      `INSERT INTO team_point_entries (team_id, match_id, matchweek_id, rule_code, points, source_key, metadata)
+       VALUES ($1, $2, $3, $4, $5, $6, $7)
+       ON CONFLICT (source_key) DO UPDATE SET points = EXCLUDED.points, metadata = EXCLUDED.metadata`,
+      [
+        line.teamId,
+        match.id,
+        match.matchweek_id,
+        line.ruleCode,
+        line.points,
+        `match:${match.id}:${line.teamId}:${line.ruleCode}`,
+        JSON.stringify(line.metadata),
+      ],
+    );
+  }
+}
+
+const FINISHED_MATCH_SELECT = `
+  SELECT m.id, m.matchweek_id, m.home_team_id, m.away_team_id,
+         ht.tier_id AS home_tier_id, at.tier_id AS away_tier_id,
+         m.home_score, m.away_score
+  FROM matches m
+  JOIN teams ht ON ht.id = m.home_team_id
+  JOIN teams at ON at.id = m.away_team_id
+  WHERE m.status = 'finished' AND m.home_score IS NOT NULL AND m.away_score IS NOT NULL`;
+
+/** Full club-layer rebuild for all finished matches (§4.7). */
+export async function recalculateAll(): Promise<{ matchesScored: number }> {
+  return withTransaction(async (client) => {
+    // Clear all match-based lines (Phase 2 has no bonus lines yet).
+    await client.query('DELETE FROM team_point_entries WHERE match_id IS NOT NULL');
+    const rules = await loadTierRules(client);
+    const { rows } = await client.query<FinishedMatchRow>(FINISHED_MATCH_SELECT);
+    for (const match of rows) await scoreOneMatch(client, match, rules);
+    return { matchesScored: rows.length };
+  });
+}
+
+// --- Admin match-result editor (minimal slice of §5.3) --------------------
+
+export type MatchStatus = 'scheduled' | 'live' | 'finished' | 'postponed' | 'cancelled';
+
+export async function setMatchResult(
+  matchId: string,
+  homeScore: number | null,
+  awayScore: number | null,
+  status: MatchStatus,
+): Promise<void> {
+  const scored = status === 'finished' || status === 'live';
+  if (scored && (homeScore === null || awayScore === null)) {
+    throw ApiError.badRequest('Skor gerekli', 'score_required');
+  }
+  await withTransaction(async (client) => {
+    const upd = await client.query(
+      `UPDATE matches
+       SET home_score = $1, away_score = $2, status = $3, is_manual_override = true, updated_at = now()
+       WHERE id = $4`,
+      [homeScore, awayScore, status, matchId],
+    );
+    if (upd.rowCount === 0) throw ApiError.badRequest('Maç bulunamadı', 'match_not_found');
+
+    if (status === 'finished') {
+      const { rows } = await client.query<FinishedMatchRow>(
+        `${FINISHED_MATCH_SELECT} AND m.id = $1`,
+        [matchId],
+      );
+      if (rows[0]) {
+        const rules = await loadTierRules(client);
+        await scoreOneMatch(client, rows[0], rules);
+      }
+    } else {
+      // Not finished → no definitive club points for this match.
+      await client.query('DELETE FROM team_point_entries WHERE match_id = $1', [matchId]);
+    }
+  });
+}
+
+// --- Team detail (team pages, §10.1 /takim/:id) ---------------------------
+
+export interface TeamDetail {
+  team: {
+    id: string;
+    name: string;
+    shortName: string;
+    tierId: number;
+    tierName: string;
+    country: string | null;
+    crestUrl: string | null;
+    eliminated: boolean;
+  };
+  totalPoints: number;
+  matches: {
+    matchId: string;
+    matchweekId: string;
+    matchweekLabel: string;
+    kickoffAt: string;
+    status: string;
+    isHome: boolean;
+    opponentName: string;
+    teamScore: number | null;
+    opponentScore: number | null;
+    points: number | null;
+  }[];
+}
+
+export async function getTeamDetail(teamId: string): Promise<TeamDetail> {
+  const teamRes = await query<{
+    id: string;
+    name: string;
+    short_name: string;
+    tier_id: number;
+    tier_name: string;
+    country: string | null;
+    crest_url: string | null;
+    eliminated_at: Date | null;
+  }>(
+    `SELECT t.id, t.name, t.short_name, t.tier_id, ti.name AS tier_name,
+            t.country, t.crest_url, t.eliminated_at
+     FROM teams t JOIN tiers ti ON ti.id = t.tier_id WHERE t.id = $1`,
+    [teamId],
+  );
+  const team = teamRes.rows[0];
+  if (!team) throw ApiError.badRequest('Takım bulunamadı', 'team_not_found');
+
+  const [matchesRes, pointsRes, totalRes] = await Promise.all([
+    query<{
+      match_id: string;
+      matchweek_id: string;
+      matchweek_label: string;
+      kickoff_at: Date;
+      status: string;
+      is_home: boolean;
+      opponent_name: string;
+      team_score: number | null;
+      opponent_score: number | null;
+    }>(
+      `SELECT m.id AS match_id, m.matchweek_id, mw.label AS matchweek_label,
+              m.kickoff_at, m.status,
+              (m.home_team_id = $1) AS is_home,
+              CASE WHEN m.home_team_id = $1 THEN at.name ELSE ht.name END AS opponent_name,
+              CASE WHEN m.home_team_id = $1 THEN m.home_score ELSE m.away_score END AS team_score,
+              CASE WHEN m.home_team_id = $1 THEN m.away_score ELSE m.home_score END AS opponent_score
+       FROM matches m
+       JOIN matchweeks mw ON mw.id = m.matchweek_id
+       JOIN teams ht ON ht.id = m.home_team_id
+       JOIN teams at ON at.id = m.away_team_id
+       WHERE m.home_team_id = $1 OR m.away_team_id = $1
+       ORDER BY m.kickoff_at`,
+      [teamId],
+    ),
+    query<{ match_id: string | null; points: number }>(
+      `SELECT match_id, sum(points)::int AS points FROM team_point_entries
+       WHERE team_id = $1 GROUP BY match_id`,
+      [teamId],
+    ),
+    query<{ total: string | null }>(
+      `SELECT sum(points)::text AS total FROM team_point_entries WHERE team_id = $1`,
+      [teamId],
+    ),
+  ]);
+
+  const pointsByMatch = new Map(pointsRes.rows.map((r) => [r.match_id, r.points]));
+
+  return {
+    team: {
+      id: team.id,
+      name: team.name,
+      shortName: team.short_name,
+      tierId: team.tier_id,
+      tierName: team.tier_name,
+      country: team.country,
+      crestUrl: team.crest_url,
+      eliminated: team.eliminated_at !== null,
+    },
+    totalPoints: Number(totalRes.rows[0]?.total ?? 0),
+    matches: matchesRes.rows.map((m) => ({
+      matchId: m.match_id,
+      matchweekId: m.matchweek_id,
+      matchweekLabel: m.matchweek_label,
+      kickoffAt: new Date(m.kickoff_at).toISOString(),
+      status: m.status,
+      isHome: m.is_home,
+      opponentName: m.opponent_name,
+      teamScore: m.team_score,
+      opponentScore: m.opponent_score,
+      points: m.status === 'finished' ? (pointsByMatch.get(m.match_id) ?? 0) : null,
+    })),
+  };
+}

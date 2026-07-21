@@ -10,6 +10,8 @@ const nav = [
   { label: 'Panel', to: { name: 'admin-dashboard' }, icon: 'pi pi-home' },
   { label: 'Kullanıcılar', to: { name: 'admin-users' }, icon: 'pi pi-users' },
   { label: 'Yarışmalar', to: { name: 'admin-competitions' }, icon: 'pi pi-sitemap' },
+  { label: 'Kurallar', to: { name: 'admin-rules' }, icon: 'pi pi-calculator' },
+  { label: 'Maçlar', to: { name: 'admin-matches' }, icon: 'pi pi-flag' },
 ];
 
 async function logout() {

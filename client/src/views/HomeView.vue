@@ -34,6 +34,7 @@ async function logout() {
     <div style="display: flex; justify-content: space-between; align-items: center">
       <h1 style="margin: 0">Merhaba, {{ auth.user?.displayName }}</h1>
       <div style="display: flex; gap: 0.5rem">
+        <Button label="Kurallar" icon="pi pi-book" severity="secondary" text @click="router.push('/kurallar')" />
         <Button
           v-if="auth.isAdmin"
           label="Yönetim"
@@ -59,10 +60,15 @@ async function logout() {
         <div v-if="loading">Yükleniyor…</div>
         <template v-else>
           <div v-if="squadComplete" class="crest-row">
-            <div v-for="s in store.squad" :key="s.teamId" class="mini-crest">
+            <RouterLink
+              v-for="s in store.squad"
+              :key="s.teamId"
+              :to="`/takim/${s.teamId}`"
+              class="mini-crest"
+            >
               <span class="crest">{{ s.shortName }}</span>
               <small>{{ s.name }}</small>
-            </div>
+            </RouterLink>
           </div>
           <p v-else style="margin: 0 0 0.75rem">
             Henüz kalıcı kadronu seçmedin. Her pottan bir kulüp seç.
@@ -108,6 +114,11 @@ async function logout() {
   gap: 0.3rem;
   width: 80px;
   text-align: center;
+  text-decoration: none;
+  color: inherit;
+}
+.mini-crest:hover .crest {
+  outline: 2px solid var(--brand-accent);
 }
 .mini-crest small {
   font-size: 0.72rem;

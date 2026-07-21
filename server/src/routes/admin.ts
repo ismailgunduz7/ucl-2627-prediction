@@ -11,6 +11,13 @@ import {
   setConfigValue,
   type ConfigKey,
 } from '../services/tournament-config-service.ts';
+import {
+  getRulesMatrix,
+  updateRules,
+  recalculateAll,
+  setMatchResult,
+  type MatchStatus,
+} from '../services/scoring-service.ts';
 
 // All admin routes require a valid access token AND the admin role.
 export const adminRoutes = new Hono<{ Variables: AuthVariables }>();
@@ -105,4 +112,79 @@ adminRoutes.put('/config', async (c) => {
   await setConfigValue(body.data.key as ConfigKey, body.data.value);
   const config = await getAllConfig();
   return c.json({ config });
+});
+
+// --- Scoring rules editor (§4.2, §16) -------------------------------------
+adminRoutes.get('/scoring-rules', async (c) => {
+  const rules = await getRulesMatrix();
+  return c.json({ rules });
+});
+
+const UpdateRulesSchema = z.object({
+  updates: z
+    .array(
+      z.object({
+        ruleCode: z.string(),
+        tierId: z.number().int().min(1).max(4),
+        points: z.number().int(),
+      }),
+    )
+    .min(1),
+});
+
+adminRoutes.put('/scoring-rules', async (c) => {
+  const body = UpdateRulesSchema.safeParse(await c.req.json().catch(() => null));
+  if (!body.success) throw ApiError.badRequest('Geçersiz kural güncellemesi', 'invalid_body');
+  const rules = await updateRules(body.data.updates);
+  return c.json({ rules });
+});
+
+// --- Matches list + manual result (minimal slice of §5.3) -----------------
+adminRoutes.get('/matches', async (c) => {
+  const matchweekId = c.req.query('matchweek');
+  const params: unknown[] = [];
+  let where = '';
+  if (matchweekId) {
+    params.push(matchweekId);
+    where = 'WHERE m.matchweek_id = $1';
+  }
+  const { rows } = await query(
+    `SELECT m.id, m.matchweek_id, mw.label AS matchweek_label, m.kickoff_at, m.status,
+            m.home_team_id, ht.name AS home_name, ht.short_name AS home_short,
+            m.away_team_id, at.name AS away_name, at.short_name AS away_short,
+            m.home_score, m.away_score, m.is_manual_override
+     FROM matches m
+     JOIN matchweeks mw ON mw.id = m.matchweek_id
+     JOIN teams ht ON ht.id = m.home_team_id
+     JOIN teams at ON at.id = m.away_team_id
+     ${where}
+     ORDER BY m.kickoff_at
+     LIMIT 500`,
+    params,
+  );
+  return c.json({ matches: rows });
+});
+
+const MatchResultSchema = z.object({
+  homeScore: z.number().int().min(0).nullable(),
+  awayScore: z.number().int().min(0).nullable(),
+  status: z.enum(['scheduled', 'live', 'finished', 'postponed', 'cancelled']),
+});
+
+adminRoutes.put('/matches/:id/result', async (c) => {
+  const body = MatchResultSchema.safeParse(await c.req.json().catch(() => null));
+  if (!body.success) throw ApiError.badRequest('Geçersiz maç sonucu', 'invalid_body');
+  await setMatchResult(
+    c.req.param('id'),
+    body.data.homeScore,
+    body.data.awayScore,
+    body.data.status as MatchStatus,
+  );
+  return c.json({ ok: true });
+});
+
+// --- Full recalculate (§4.7) ----------------------------------------------
+adminRoutes.post('/recalculate', async (c) => {
+  const result = await recalculateAll();
+  return c.json(result);
 });

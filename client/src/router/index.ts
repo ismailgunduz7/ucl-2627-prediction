@@ -25,6 +25,18 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/kurallar',
+    name: 'kurallar',
+    component: () => import('@/views/RulesView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/takim/:id',
+    name: 'takim',
+    component: () => import('@/views/TeamView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: ADMIN_BASE,
     component: () => import('@/views/admin/AdminLayout.vue'),
     meta: { requiresAuth: true, requiresAdmin: true },
@@ -32,6 +44,8 @@ const routes: RouteRecordRaw[] = [
       { path: '', name: 'admin-dashboard', component: () => import('@/views/admin/DashboardView.vue') },
       { path: 'kullanicilar', name: 'admin-users', component: () => import('@/views/admin/UsersView.vue') },
       { path: 'yarismalar', name: 'admin-competitions', component: () => import('@/views/admin/CompetitionsView.vue') },
+      { path: 'kurallar', name: 'admin-rules', component: () => import('@/views/admin/RulesView.vue') },
+      { path: 'maclar', name: 'admin-matches', component: () => import('@/views/admin/MatchesView.vue') },
     ],
   },
   { path: '/:pathMatch(.*)*', redirect: '/' },

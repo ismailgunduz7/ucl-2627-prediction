@@ -11,6 +11,7 @@ import {
   type MatchweekRow,
 } from '../services/matchweek-lifecycle-service.ts';
 import { getConfigValue } from '../services/tournament-config-service.ts';
+import { getRulesMatrix, getTeamDetail } from '../services/scoring-service.ts';
 import { query } from '../db/pool.ts';
 import { SQUAD_SIZE } from '../domain/constants.ts';
 
@@ -36,6 +37,18 @@ participantRoutes.get('/teams', async (c) => {
       })),
     })),
   });
+});
+
+// --- Team detail (club page) ---------------------------------------------
+participantRoutes.get('/teams/:id', async (c) => {
+  const detail = await getTeamDetail(c.req.param('id'));
+  return c.json(detail);
+});
+
+// --- Scoring rules matrix (read-only) ------------------------------------
+participantRoutes.get('/scoring-rules', async (c) => {
+  const rules = await getRulesMatrix();
+  return c.json({ rules });
 });
 
 // --- Tournament status ----------------------------------------------------

@@ -13,6 +13,7 @@ import { withTransaction, query, closePool } from './pool.ts';
 import { MOCK_POTS, POT_NAMES } from '../data/mock-teams.ts';
 import { generateLeagueSchedule } from '../domain/schedule.ts';
 import { DEFAULT_CONFIG } from '../services/tournament-config-service.ts';
+import { seedScoringRules } from './seed-rules.ts';
 
 const LEAGUE_MATCHDAYS = 8;
 // Mock MW1 first kickoff (UTC). Future-dated so the mock selection window is open.
@@ -76,6 +77,9 @@ async function main(): Promise<void> {
         [key, JSON.stringify(value)],
       );
     }
+
+    // 3b. Scoring rule types + per-pot values (§4.2, §16)
+    await seedScoringRules(client);
 
     // 4. League matchweeks MW1..8
     for (let round = 1; round <= LEAGUE_MATCHDAYS; round++) {
