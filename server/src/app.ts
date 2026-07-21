@@ -5,6 +5,7 @@ import { getEnv, isProd } from './config/env.ts';
 import { ApiError } from './lib/errors.ts';
 import { authRoutes } from './routes/auth.ts';
 import { adminRoutes } from './routes/admin.ts';
+import { participantRoutes } from './routes/participant.ts';
 import { healthRoutes } from './routes/health.ts';
 import type { AuthVariables } from './middleware/auth.ts';
 
@@ -26,6 +27,7 @@ export function createApp() {
   app.route('/health', healthRoutes);
   app.route('/api/auth', authRoutes);
   app.route('/api/admin', adminRoutes);
+  app.route('/api', participantRoutes);
 
   // Centralised error handling → consistent { error: { code, message } } shape.
   app.onError((err, c) => {

@@ -19,6 +19,12 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/kadro',
+    name: 'kadro',
+    component: () => import('@/views/SquadView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: ADMIN_BASE,
     component: () => import('@/views/admin/AdminLayout.vue'),
     meta: { requiresAuth: true, requiresAdmin: true },

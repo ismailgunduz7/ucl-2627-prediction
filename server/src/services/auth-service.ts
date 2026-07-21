@@ -207,3 +207,54 @@ export async function createUser(input: CreateUserInput): Promise<PublicUser> {
     throw err;
   }
 }
+
+/**
+ * Admin resets a user's password. Also revokes all of that user's refresh
+ * tokens so existing sessions can no longer silently refresh (forces re-login).
+ */
+export async function setUserPassword(userId: string, newPassword: string): Promise<void> {
+  const passwordHash = await hashPassword(newPassword);
+  await withTransaction(async (client) => {
+    const res = await client.query('UPDATE users SET password_hash = $1 WHERE id = $2', [
+      passwordHash,
+      userId,
+    ]);
+    if (res.rowCount === 0) {
+      throw ApiError.badRequest('Kullanıcı bulunamadı', 'user_not_found');
+    }
+    await client.query(
+      `UPDATE refresh_tokens SET revoked_at = now()
+       WHERE user_id = $1 AND revoked_at IS NULL`,
+      [userId],
+    );
+  });
+}
+
+/**
+ * Admin deletes a user. Guards against removing yourself (avoids mid-session
+ * lockout) and against deleting the last remaining admin. team_selections and
+ * refresh_tokens cascade via FK ON DELETE CASCADE.
+ */
+export async function deleteUser(userId: string, actingAdminId: string): Promise<void> {
+  if (userId === actingAdminId) {
+    throw ApiError.badRequest('Kendi hesabınızı silemezsiniz', 'cannot_delete_self');
+  }
+  await withTransaction(async (client) => {
+    const target = await client.query<{ is_admin: boolean }>(
+      'SELECT is_admin FROM users WHERE id = $1',
+      [userId],
+    );
+    if (target.rowCount === 0) {
+      throw ApiError.badRequest('Kullanıcı bulunamadı', 'user_not_found');
+    }
+    if (target.rows[0]!.is_admin) {
+      const admins = await client.query<{ count: string }>(
+        'SELECT count(*)::text AS count FROM users WHERE is_admin',
+      );
+      if (Number(admins.rows[0]!.count) <= 1) {
+        throw ApiError.badRequest('Son yönetici silinemez', 'cannot_delete_last_admin');
+      }
+    }
+    await client.query('DELETE FROM users WHERE id = $1', [userId]);
+  });
+}

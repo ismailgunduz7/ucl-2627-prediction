@@ -9,7 +9,9 @@ import Button from 'primevue/button';
 import Checkbox from 'primevue/checkbox';
 import Select from 'primevue/select';
 import Tag from 'primevue/tag';
+import Dialog from 'primevue/dialog';
 import { api, ApiRequestError } from '@/lib/api';
+import { useAuthStore } from '@/stores/auth';
 
 interface User {
   id: string;
@@ -25,10 +27,62 @@ interface Competition {
 }
 
 const toast = useToast();
+const auth = useAuthStore();
 const users = ref<User[]>([]);
 const competitions = ref<Competition[]>([]);
 const loading = ref(false);
 const saving = ref(false);
+
+// Password reset dialog
+const pwDialog = ref(false);
+const pwTarget = ref<User | null>(null);
+const pwValue = ref('');
+const pwSaving = ref(false);
+
+// Delete confirm dialog
+const delDialog = ref(false);
+const delTarget = ref<User | null>(null);
+const delSaving = ref(false);
+
+function openPassword(u: User) {
+  pwTarget.value = u;
+  pwValue.value = '';
+  pwDialog.value = true;
+}
+
+async function submitPassword() {
+  if (!pwTarget.value || pwValue.value.length < 8) return;
+  pwSaving.value = true;
+  try {
+    await api.put(`/api/admin/users/${pwTarget.value.id}/password`, { password: pwValue.value });
+    toast.add({ severity: 'success', summary: 'Şifre güncellendi', life: 2500 });
+    pwDialog.value = false;
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Hata', detail: msg(e), life: 4000 });
+  } finally {
+    pwSaving.value = false;
+  }
+}
+
+function openDelete(u: User) {
+  delTarget.value = u;
+  delDialog.value = true;
+}
+
+async function submitDelete() {
+  if (!delTarget.value) return;
+  delSaving.value = true;
+  try {
+    await api.del(`/api/admin/users/${delTarget.value.id}`);
+    toast.add({ severity: 'success', summary: 'Kullanıcı silindi', life: 2500 });
+    delDialog.value = false;
+    await load();
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Silinemedi', detail: msg(e), life: 4000 });
+  } finally {
+    delSaving.value = false;
+  }
+}
 
 const form = ref({
   username: '',
@@ -143,6 +197,68 @@ onMounted(load);
       <Column header="Yarışma">
         <template #body="{ data }">{{ compName(data.competition_id) }}</template>
       </Column>
+      <Column header="İşlemler">
+        <template #body="{ data }">
+          <div style="display: flex; gap: 0.35rem">
+            <Button
+              icon="pi pi-key"
+              severity="secondary"
+              text
+              rounded
+              title="Şifre değiştir"
+              @click="openPassword(data)"
+            />
+            <Button
+              icon="pi pi-trash"
+              severity="danger"
+              text
+              rounded
+              title="Sil"
+              :disabled="data.id === auth.user?.id"
+              @click="openDelete(data)"
+            />
+          </div>
+        </template>
+      </Column>
     </DataTable>
+
+    <!-- Password reset dialog -->
+    <Dialog v-model:visible="pwDialog" modal header="Şifre değiştir" :style="{ width: '360px' }">
+      <p style="margin: 0 0 0.75rem">
+        <strong>{{ pwTarget?.display_name }}</strong> ({{ pwTarget?.username }}) için yeni şifre.
+        Mevcut oturumları kapatılır.
+      </p>
+      <Password
+        v-model="pwValue"
+        :feedback="false"
+        toggle-mask
+        autocomplete="new-password"
+        placeholder="Yeni şifre (min 8)"
+        :style="{ width: '100%' }"
+        :input-style="{ width: '100%' }"
+      />
+      <template #footer>
+        <Button label="Vazgeç" text @click="pwDialog = false" />
+        <Button
+          label="Kaydet"
+          icon="pi pi-check"
+          :disabled="pwValue.length < 8"
+          :loading="pwSaving"
+          @click="submitPassword"
+        />
+      </template>
+    </Dialog>
+
+    <!-- Delete confirm dialog -->
+    <Dialog v-model:visible="delDialog" modal header="Kullanıcıyı sil" :style="{ width: '360px' }">
+      <p style="margin: 0">
+        <strong>{{ delTarget?.display_name }}</strong> ({{ delTarget?.username }}) kalıcı olarak
+        silinsin mi? Kadro seçimleri de silinir. Bu işlem geri alınamaz.
+      </p>
+      <template #footer>
+        <Button label="Vazgeç" text @click="delDialog = false" />
+        <Button label="Sil" icon="pi pi-trash" severity="danger" :loading="delSaving" @click="submitDelete" />
+      </template>
+    </Dialog>
   </div>
 </template>

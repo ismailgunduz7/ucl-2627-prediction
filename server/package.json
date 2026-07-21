@@ -11,6 +11,7 @@
     "migrate": "tsx src/db/migrate.ts up",
     "migrate:status": "tsx src/db/migrate.ts status",
     "seed": "tsx src/db/seed.ts",
+    "seed:domain": "tsx src/db/seed-domain.ts",
     "test": "node --import tsx --test 'src/**/*.test.ts'",
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },

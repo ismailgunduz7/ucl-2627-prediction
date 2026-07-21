@@ -36,7 +36,15 @@ npm run migrate
 
 # 4. Seed the first admin account (there is no public self-registration)
 npm run seed --workspace server
+
+# 5. Seed the domain mockup: pots, 36 placeholder clubs, config, and 8 league
+#    matchweeks with a mock fixture list (re-run with SEED_FORCE=1 to reset)
+npm run seed:domain --workspace server
 ```
+
+> The 2026–27 participants aren't known yet (qualifying is ongoing), so the
+> domain seed uses a **placeholder** 36-club field from last season, split into
+> four pots. Reseed after UEFA publishes the official draw (PLAN.md §2.3).
 
 The seed creates an admin (default `admin` / `changeme123` — override with
 `SEED_ADMIN_USERNAME` / `SEED_ADMIN_PASSWORD`) and a default competition. **Change
@@ -66,6 +74,7 @@ npm run dev:client   # http://localhost:5173
 | `npm run migrate`                | Apply pending SQL migrations             |
 | `npm run migrate:status -w server` | Show applied/pending migrations        |
 | `npm run seed --workspace server` | Seed first admin + default competition  |
+| `npm run seed:domain --workspace server` | Seed pots, mock clubs, matchweeks + fixtures |
 | `npm run test`                   | Run server unit tests (node:test)        |
 
 ## Environment variables

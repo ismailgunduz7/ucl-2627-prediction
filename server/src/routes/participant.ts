@@ -1,0 +1,103 @@
+import { Hono } from 'hono';
+import { z } from 'zod';
+import { ApiError } from '../lib/errors.ts';
+import { requireAuth, type AuthVariables } from '../middleware/auth.ts';
+import { listTeamsByPot } from '../services/team-service.ts';
+import { getSquad, setSquad } from '../services/selection-service.ts';
+import {
+  getFirstLeagueMatchweek,
+  getSelectionLockState,
+  lockStateFor,
+  type MatchweekRow,
+} from '../services/matchweek-lifecycle-service.ts';
+import { getConfigValue } from '../services/tournament-config-service.ts';
+import { query } from '../db/pool.ts';
+import { SQUAD_SIZE } from '../domain/constants.ts';
+
+export const participantRoutes = new Hono<{ Variables: AuthVariables }>();
+participantRoutes.use('*', requireAuth);
+
+// --- Teams (pots + clubs) -------------------------------------------------
+participantRoutes.get('/teams', async (c) => {
+  const pots = await listTeamsByPot();
+  return c.json({
+    pots: pots.map(({ tier, teams }) => ({
+      tierId: tier.id,
+      tierName: tier.name,
+      sortOrder: tier.sort_order,
+      teams: teams.map((t) => ({
+        id: t.id,
+        name: t.name,
+        shortName: t.short_name,
+        crestUrl: t.crest_url,
+        country: t.country,
+        isActive: t.is_active,
+        eliminated: t.eliminated_at !== null,
+      })),
+    })),
+  });
+});
+
+// --- Tournament status ----------------------------------------------------
+participantRoutes.get('/tournament/status', async (c) => {
+  const now = new Date();
+  const [currentAct, mw1, selectionLock, mwRows] = await Promise.all([
+    getConfigValue('current_act'),
+    getFirstLeagueMatchweek(),
+    getSelectionLockState(now),
+    query<MatchweekRow>(
+      `SELECT id, act, sort_order, label, status, first_kickoff_at, completed_at
+       FROM matchweeks ORDER BY act, sort_order`,
+    ),
+  ]);
+
+  return c.json({
+    serverTime: now.toISOString(),
+    currentAct,
+    squadSize: SQUAD_SIZE,
+    selectionLock: {
+      firstKickoffAt: selectionLock.firstKickoffAt?.toISOString() ?? null,
+      lockAt: selectionLock.lockAt?.toISOString() ?? null,
+      locked: selectionLock.locked,
+    },
+    matchweeks: mwRows.rows.map((mw) => {
+      const ls = lockStateFor(mw, now);
+      return {
+        id: mw.id,
+        act: mw.act,
+        sortOrder: mw.sort_order,
+        label: mw.label,
+        status: mw.status,
+        firstKickoffAt: mw.first_kickoff_at ? new Date(mw.first_kickoff_at).toISOString() : null,
+        lockAt: ls.lockAt?.toISOString() ?? null,
+        locked: ls.locked,
+      };
+    }),
+    mw1Id: mw1?.id ?? null,
+  });
+});
+
+// --- Permanent squad ------------------------------------------------------
+participantRoutes.get('/squad', async (c) => {
+  const auth = c.get('auth');
+  const [squad, lock] = await Promise.all([getSquad(auth.sub), getSelectionLockState()]);
+  return c.json({
+    squad: squad.map((s) => ({ ...s, eliminated: s.eliminatedAt !== null })),
+    locked: lock.locked,
+    lockAt: lock.lockAt?.toISOString() ?? null,
+  });
+});
+
+const PutSquadSchema = z.object({
+  teamIds: z.array(z.string().uuid()).length(SQUAD_SIZE),
+});
+
+participantRoutes.put('/squad', async (c) => {
+  const auth = c.get('auth');
+  const body = PutSquadSchema.safeParse(await c.req.json().catch(() => null));
+  if (!body.success) {
+    throw ApiError.badRequest(`Tam olarak ${SQUAD_SIZE} kulüp gönderilmeli`, 'invalid_body');
+  }
+  const squad = await setSquad(auth.sub, body.data.teamIds);
+  return c.json({ squad: squad.map((s) => ({ ...s, eliminated: s.eliminatedAt !== null })) });
+});
