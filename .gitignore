@@ -1,0 +1,32 @@
+# =============================================================================
+# Files and directories that should not be tracked by Git
+# =============================================================================
+
+# npm dependencies (server + client workspaces)
+node_modules/
+
+# TypeScript / Vite build output
+dist/
+
+# Environment variables — secrets, database URLs, etc.
+# See .env.example for the template
+.env
+.env.local
+
+# Application and tooling log files
+*.log
+
+# macOS system files created automatically
+.DS_Store
+
+# Test coverage reports
+coverage/
+
+# Vite dev server cache
+.vite/
+
+# Claude local settings and session data
+.claude/
+
+# TypeScript incremental build info
+*.tsbuildinfo
