@@ -136,17 +136,6 @@ a:hover {
   0% { opacity: 0; transform: scale(0.9); }
   100% { opacity: 1; transform: scale(1); }
 }
-@keyframes spin { to { transform: rotate(360deg); } }
-@keyframes ball-bounce {
-  0%, 100% { transform: translateY(0) scale(1, 1); }
-  45% { transform: translateY(-26px) scale(0.96, 1.04); }
-  55% { transform: translateY(-26px) scale(0.96, 1.04); }
-  90% { transform: translateY(0) scale(1.06, 0.94); }
-}
-@keyframes shadow-pulse {
-  0%, 100% { transform: scaleX(1); opacity: 0.45; }
-  50% { transform: scaleX(0.6); opacity: 0.2; }
-}
 @keyframes pulse-soft {
   0%, 100% { opacity: 1; }
   50% { opacity: 0.55; }
@@ -426,38 +415,6 @@ a:hover {
   font-weight: 800;
   letter-spacing: 0.02em;
   box-shadow: var(--shadow-sm);
-}
-
-/* ---- Football loader ---- */
-.ball-loader {
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 1.4rem;
-  padding: 3.5rem 1rem;
-  color: var(--color-text-muted);
-}
-.ball {
-  width: 38px;
-  height: 38px;
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 32% 30%, #ffffff 0 32%, transparent 33%),
-    radial-gradient(circle at 70% 68%, #0f172a 0 20%, transparent 21%),
-    radial-gradient(circle at 22% 74%, #0f172a 0 16%, transparent 17%),
-    radial-gradient(circle at 78% 26%, #0f172a 0 14%, transparent 15%),
-    #e8eefc;
-  box-shadow: inset -3px -4px 8px rgba(15, 23, 42, 0.35);
-  animation: ball-bounce 0.85s cubic-bezier(0.3, 0.1, 0.4, 1) infinite, spin 1.7s linear infinite;
-}
-.ball-shadow {
-  width: 34px;
-  height: 7px;
-  border-radius: 50%;
-  background: rgba(0, 0, 0, 0.5);
-  filter: blur(3px);
-  margin-top: -0.9rem;
-  animation: shadow-pulse 0.85s cubic-bezier(0.3, 0.1, 0.4, 1) infinite;
 }
 
 /* ---- PrimeVue overrides ---- */
