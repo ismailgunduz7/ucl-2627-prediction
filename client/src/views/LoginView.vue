@@ -6,6 +6,7 @@ import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
 import Button from 'primevue/button';
 import Message from 'primevue/message';
+import StarBall from '@/components/StarBall.vue';
 import { useAuthStore } from '@/stores/auth';
 import { ApiRequestError } from '@/lib/api';
 
@@ -37,7 +38,7 @@ async function submit() {
   <div class="login-page">
     <div class="login-card">
       <div class="login-brand">
-        <span class="emoji">⭐️</span>
+        <StarBall class="login-mark" />
         <h1 style="margin: 0; color: #fff; font-size: 1.5rem">Şampiyonlar Ligi Fantazi</h1>
         <p style="margin: 0.35rem 0 0; color: #c7d2fe">2026/27 sezonu · giriş yap</p>
       </div>

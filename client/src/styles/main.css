@@ -194,14 +194,10 @@ a:hover {
 }
 .brand:hover { text-decoration: none; }
 .brand-badge {
-  width: 32px;
-  height: 32px;
-  border-radius: 10px;
-  display: grid;
-  place-items: center;
-  color: #fff;
-  background: linear-gradient(135deg, var(--color-primary-strong), var(--color-accent));
-  box-shadow: var(--glow);
+  width: 27px;
+  height: 27px;
+  color: var(--color-text);
+  flex-shrink: 0;
 }
 
 .main-nav {
@@ -468,6 +464,7 @@ a:hover {
 }
 .login-card { width: 100%; max-width: 400px; animation: pop-in 0.4s ease both; }
 .login-brand { text-align: center; margin-bottom: 1rem; }
+.login-mark { width: 56px; height: 56px; color: #fff; margin-bottom: 0.6rem; }
 
 /* ---- Responsive ---- */
 @media (max-width: 900px) {

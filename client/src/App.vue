@@ -6,6 +6,7 @@ import Toast from 'primevue/toast';
 import { Home, Users, CalendarDays, Trophy, BookOpen, LayoutGrid, Network, Calculator, Flag, RefreshCw, Menu, X, LogOut } from '@lucide/vue';
 import { useAuthStore } from '@/stores/auth';
 import AppCursor from '@/components/AppCursor.vue';
+import StarBall from '@/components/StarBall.vue';
 
 const auth = useAuthStore();
 const route = useRoute();
@@ -54,7 +55,7 @@ async function logout() {
     <header class="app-header">
       <div class="app-header-inner">
         <RouterLink :to="homeHref" class="brand">
-          <span class="brand-badge">⚽</span>
+          <StarBall class="brand-badge" />
           <span>ŞL Fantazi</span>
         </RouterLink>
 
