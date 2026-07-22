@@ -42,6 +42,24 @@ export async function getPermanentSquad(userId: string): Promise<EffectiveClub[]
   }));
 }
 
+interface RawJoker {
+  code: string;
+  payload: { fromTeamId?: string; toTeamId?: string; teamId?: string };
+}
+
+/**
+ * The active joker for a matchweek, read directly (keeps this module free of a
+ * circular dependency on the joker service).
+ */
+export async function getActiveJokerRaw(userId: string, mwId: string): Promise<RawJoker | null> {
+  const { rows } = await query<{ joker_type_code: string; payload: RawJoker['payload'] }>(
+    `SELECT joker_type_code, payload FROM joker_activations
+     WHERE user_id = $1 AND matchweek_id = $2 AND cancelled_at IS NULL`,
+    [userId, mwId],
+  );
+  return rows[0] ? { code: rows[0].joker_type_code, payload: rows[0].payload } : null;
+}
+
 /** The active (non-cancelled) weekly_swap for a matchweek, if any (§3.6). */
 export async function getActiveWeeklySwap(
   userId: string,
@@ -108,7 +126,13 @@ async function getStoredLineup(userId: string, mwId: string): Promise<StoredLine
   return rows[0] ?? null;
 }
 
-/** The predecessor matchweek's lineup, used to carry bench/captain forward (§3.5). */
+/**
+ * The predecessor matchweek's lineup, used to carry bench/captain forward (§3.5).
+ *
+ * Roles are mapped back off that week's weekly_swap: a club that only played
+ * last week on loan is gone this week, so a role held by the swapped-in club
+ * returns to the permanent club it replaced.
+ */
 async function getPreviousLineup(
   userId: string,
   mwId: string,
@@ -116,7 +140,17 @@ async function getPreviousLineup(
 ): Promise<StoredLineup | null> {
   const idx = ordered.findIndex((m) => m.id === mwId);
   if (idx <= 0) return null;
-  return getStoredLineup(userId, ordered[idx - 1]!.id);
+  const prevId = ordered[idx - 1]!.id;
+  const stored = await getStoredLineup(userId, prevId);
+  if (!stored) return null;
+
+  const prevSwap = await getActiveWeeklySwap(userId, prevId);
+  if (!prevSwap) return stored;
+  const back = (teamId: string) => (teamId === prevSwap.toTeamId ? prevSwap.fromTeamId : teamId);
+  return {
+    bench_team_id: back(stored.bench_team_id),
+    captain_team_id: back(stored.captain_team_id),
+  };
 }
 
 export interface ResolvedLineupCore {
@@ -139,13 +173,15 @@ export async function resolveLineup(
   if (squad.length === 0) return null;
   const squadClubs: SquadClub[] = squad.map((s) => ({ teamId: s.teamId, tierId: s.tierId }));
   const swap = await getActiveWeeklySwap(userId, mwId);
+  const active = await getActiveJokerRaw(userId, mwId);
+  const benchBoost = active?.code === 'bench_boost';
 
   const stored = await getStoredLineup(userId, mwId);
   if (stored) {
     // A stored role on the swapped-out club moves to the incoming club (§3.6).
     const benchTeamId = remapRole(stored.bench_team_id, swap);
     const captainTeamId = remapRole(stored.captain_team_id, swap);
-    if (validateLineup(squadClubs, benchTeamId, captainTeamId).ok) {
+    if (validateLineup(squadClubs, benchTeamId, captainTeamId, benchBoost).ok) {
       return { squad, benchTeamId, captainTeamId, saved: true };
     }
     // Fall through to default if remapped roles are no longer valid.
@@ -192,10 +228,27 @@ export async function setLineup(
     throw ApiError.forbidden('Bu hafta kilitlendi', 'matchweek_locked');
   }
 
+  const active = await getActiveJokerRaw(userId, mwId);
   const squadClubs: SquadClub[] = squad.map((s) => ({ teamId: s.teamId, tierId: s.tierId }));
-  const validation = validateLineup(squadClubs, benchTeamId, captainTeamId);
+
+  // Bench boost makes all four score, so the designated bench club may captain.
+  const benchBoost = active?.code === 'bench_boost';
+  const validation = validateLineup(squadClubs, benchTeamId, captainTeamId, benchBoost);
   if (!validation.ok) {
     throw ApiError.badRequest(validation.error.message, validation.error.code);
+  }
+
+  // A club swapped in for this week is here to play — it cannot be benched.
+  if (active?.code === 'weekly_swap' && benchTeamId === active.payload.toTeamId) {
+    throw ApiError.badRequest(
+      'Bu hafta takasla gelen kulüp yedeğe çekilemez',
+      'swap_club_cannot_bench',
+    );
+  }
+
+  // Benching a shielded club cancels the joker — the client confirms first.
+  if (active?.code === 'clean_sheet_shield' && benchTeamId === active.payload.teamId) {
+    throw new ApiError(409, 'joker_bench_conflict', 'Kalkan kullandığın kulübü yedeğe çekiyorsun');
   }
 
   // Benching a club that holds an active clean_sheet_shield would cancel the
