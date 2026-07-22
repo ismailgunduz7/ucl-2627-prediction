@@ -106,34 +106,46 @@ onMounted(load);
 
 <template>
   <div class="page-stack">
-    <PageHeader title="Kullanıcılar" subtitle="Hesapları sen oluşturuyorsun; kendi kendine kayıt yok." />
+    <PageHeader title="Kullanıcılar" />
 
     <section class="surface-card card-pad">
       <div class="section-title">Yeni kullanıcı</div>
-      <form class="form-grid" @submit.prevent="create">
-        <div class="form-field">
-          <label>Kullanıcı adı</label>
-          <InputText v-model="form.username" autocomplete="off" />
+      <form @submit.prevent="create">
+        <div class="form-grid">
+          <div class="form-field">
+            <label>Kullanıcı adı</label>
+            <InputText v-model="form.username" autocomplete="off" />
+          </div>
+          <div class="form-field">
+            <label>Görünen ad</label>
+            <InputText v-model="form.displayName" />
+          </div>
+          <div class="form-field">
+            <label>Şifre</label>
+            <Password v-model="form.password" :feedback="false" toggle-mask autocomplete="new-password" />
+          </div>
+          <!-- Always rendered (disabled for admins) so the grid never reflows. -->
+          <div class="form-field">
+            <label>Yarışma</label>
+            <Select
+              v-model="form.competitionId"
+              :options="competitions"
+              option-label="name"
+              option-value="id"
+              placeholder="Seç"
+              :disabled="form.isAdmin"
+            />
+          </div>
+          <div class="form-field">
+            <label>Rol</label>
+            <label class="check-control">
+              <Checkbox v-model="form.isAdmin" :binary="true" input-id="isAdmin" />
+              <span>Yönetici</span>
+            </label>
+          </div>
         </div>
-        <div class="form-field">
-          <label>Görünen ad</label>
-          <InputText v-model="form.displayName" />
-        </div>
-        <div class="form-field">
-          <label>Şifre</label>
-          <Password v-model="form.password" :feedback="false" toggle-mask autocomplete="new-password" />
-        </div>
-        <div v-if="!form.isAdmin" class="form-field">
-          <label>Yarışma</label>
-          <Select v-model="form.competitionId" :options="competitions" option-label="name" option-value="id" placeholder="Seç" />
-        </div>
-        <div class="form-field" style="justify-content: flex-end">
-          <label style="display: flex; align-items: center; gap: 0.5rem; cursor: pointer">
-            <Checkbox v-model="form.isAdmin" :binary="true" /> Yönetici
-          </label>
-        </div>
-        <div class="form-field" style="justify-content: flex-end">
-          <Button type="submit" label="Oluştur" icon="pi pi-user-plus" :disabled="!canSubmit" :loading="saving" />
+        <div class="form-actions">
+          <Button type="submit" label="Oluştur" :disabled="!canSubmit" :loading="saving" />
         </div>
       </form>
     </section>
@@ -182,3 +194,25 @@ onMounted(load);
     </Dialog>
   </div>
 </template>
+
+<style scoped>
+/* Checkbox sits in a control box the same height as the inputs beside it. */
+.check-control {
+  display: flex;
+  align-items: center;
+  gap: 0.55rem;
+  min-height: 42px;
+  padding: 0 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-sm);
+  background: var(--color-bg-subtle);
+  cursor: pointer;
+  font-size: 0.9rem;
+  font-weight: 600;
+}
+.form-actions {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 1rem;
+}
+</style>

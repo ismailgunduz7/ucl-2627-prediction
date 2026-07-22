@@ -4,7 +4,7 @@ import { useRoute, useRouter } from 'vue-router';
 import Button from 'primevue/button';
 import Tag from 'primevue/tag';
 import { api, ApiRequestError } from '@/lib/api';
-import LoadingState from '@/components/LoadingState.vue';
+import BallLoader from '@/components/BallLoader.vue';
 
 interface TeamDetail {
   team: { id: string; name: string; shortName: string; tierName: string; country: string | null; eliminated: boolean };
@@ -47,7 +47,7 @@ watch(() => route.params.id, (id) => id && load(id as string));
   <div class="page-stack">
     <Button label="Geri" icon="pi pi-arrow-left" text style="align-self: flex-start" @click="router.back()" />
 
-    <LoadingState v-if="loading" />
+    <BallLoader v-if="loading" />
     <p v-else-if="error" class="empty-state">{{ error }}</p>
 
     <template v-else-if="detail">

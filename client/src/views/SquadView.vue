@@ -8,7 +8,7 @@ import { useToast } from 'primevue/usetoast';
 import { useTournamentStore } from '@/stores/tournament';
 import { ApiRequestError } from '@/lib/api';
 import PageHeader from '@/components/PageHeader.vue';
-import LoadingState from '@/components/LoadingState.vue';
+import BallLoader from '@/components/BallLoader.vue';
 
 const store = useTournamentStore();
 const toast = useToast();
@@ -94,7 +94,7 @@ onUnmounted(() => window.clearInterval(timer));
       Seçim penceresi kapandı, kadron sabit. Haftalık değişim jokeriyle geçici takas yapabilirsin.
     </Message>
 
-    <LoadingState v-if="loading" />
+    <BallLoader v-if="loading" />
 
     <template v-else>
       <div class="tier-grid">

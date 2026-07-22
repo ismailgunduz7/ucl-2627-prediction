@@ -5,7 +5,7 @@ import InputNumber from 'primevue/inputnumber';
 import Button from 'primevue/button';
 import { api, ApiRequestError } from '@/lib/api';
 import PageHeader from '@/components/PageHeader.vue';
-import LoadingState from '@/components/LoadingState.vue';
+import BallLoader from '@/components/BallLoader.vue';
 
 interface RuleRow { code: string; category: string; label: string; points: Record<number, number> }
 
@@ -67,7 +67,7 @@ onMounted(load);
       </template>
     </PageHeader>
 
-    <LoadingState v-if="loading" />
+    <BallLoader v-if="loading" />
 
     <section v-else class="surface-card" style="overflow-x: auto">
       <table class="rules">

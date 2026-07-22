@@ -6,7 +6,7 @@ import Tag from 'primevue/tag';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import PageHeader from '@/components/PageHeader.vue';
-import LoadingState from '@/components/LoadingState.vue';
+import BallLoader from '@/components/BallLoader.vue';
 
 interface SquadEntry { teamId: string; shortName: string; name: string; eliminated: boolean }
 interface Mw { id: string; label: string; status: string }
@@ -57,7 +57,7 @@ onMounted(async () => {
   <div class="page-stack">
     <PageHeader :title="`Selam ${auth.user?.displayName} 👋`" subtitle="Haftalık kararların ve kulüplerin burada." />
 
-    <LoadingState v-if="loading" />
+    <BallLoader v-if="loading" />
 
     <div v-else class="dash-grid">
       <!-- Squad -->

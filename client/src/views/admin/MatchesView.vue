@@ -7,7 +7,7 @@ import Button from 'primevue/button';
 import Tag from 'primevue/tag';
 import { api, ApiRequestError } from '@/lib/api';
 import PageHeader from '@/components/PageHeader.vue';
-import LoadingState from '@/components/LoadingState.vue';
+import BallLoader from '@/components/BallLoader.vue';
 
 interface MatchRow {
   id: string; matchweek_id: string; status: string;
@@ -27,7 +27,6 @@ const statusOptions = [
   { label: 'Planlandı', value: 'scheduled' }, { label: 'Canlı', value: 'live' },
   { label: 'Bitti', value: 'finished' }, { label: 'Ertelendi', value: 'postponed' }, { label: 'İptal', value: 'cancelled' },
 ];
-const statusSeverity: Record<string, string> = { scheduled: 'secondary', live: 'info', finished: 'success', postponed: 'warn', cancelled: 'danger' };
 
 async function loadMatchweeks() {
   const res = await api.get<{ matchweeks: { id: string; label: string }[] }>('/api/tournament/status');
@@ -80,7 +79,7 @@ watch(selectedMw, loadMatches);
       </template>
     </PageHeader>
 
-    <LoadingState v-if="loading" />
+    <BallLoader v-if="loading" />
 
     <div v-else class="page-stack" style="gap: 0.75rem">
       <div v-for="m in matches" :key="m.id" class="surface-card match-row">
@@ -94,11 +93,10 @@ watch(selectedMw, loadMatches);
           <span class="side away">{{ m.away_name }}</span>
         </div>
         <div class="controls">
-          <Select v-model="m.status" :options="statusOptions" option-label="label" option-value="value" style="min-width: 130px" />
-          <Tag :severity="statusSeverity[m.status] ?? 'secondary'" :value="statusOptions.find((s) => s.value === m.status)?.label" />
-          <Tag v-if="m.is_manual_override" severity="warn" value="override" />
-          <Button v-if="m.is_manual_override" icon="pi pi-times" label="Override kaldır" size="small" severity="secondary" text @click="clearOverride(m)" />
-          <Button icon="pi pi-save" label="Kaydet" size="small" :loading="savingId === m.id" @click="saveResult(m)" />
+          <Select v-model="m.status" :options="statusOptions" option-label="label" option-value="value" class="status-select" />
+          <Tag v-if="m.is_manual_override" severity="warn" value="elle girildi" />
+          <Button v-if="m.is_manual_override" label="Geri al" size="small" severity="secondary" text @click="clearOverride(m)" />
+          <Button label="Kaydet" size="small" :loading="savingId === m.id" @click="saveResult(m)" />
         </div>
       </div>
       <p v-if="!matches.length" class="empty-state">Bu hafta için maç yok.</p>
@@ -107,10 +105,11 @@ watch(selectedMw, loadMatches);
 </template>
 
 <style scoped>
-.match-row { padding: 0.75rem 1rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.match-row { padding: 0.85rem 1.1rem; display: flex; justify-content: space-between; align-items: center; gap: 1rem; flex-wrap: wrap; }
+.status-select { min-width: 140px; }
 .teams { display: flex; align-items: center; gap: 0.75rem; }
 .side { min-width: 140px; font-size: 0.92rem; font-weight: 600; }
 .side.home { text-align: right; }
 .score { display: flex; align-items: center; gap: 0.4rem; }
-.controls { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; }
+.controls { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
 </style>

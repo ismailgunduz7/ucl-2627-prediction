@@ -4,7 +4,7 @@ import Tag from 'primevue/tag';
 import Message from 'primevue/message';
 import { api } from '@/lib/api';
 import PageHeader from '@/components/PageHeader.vue';
-import LoadingState from '@/components/LoadingState.vue';
+import BallLoader from '@/components/BallLoader.vue';
 
 interface Entry {
   userId: string;
@@ -35,7 +35,7 @@ onMounted(async () => {
   <div class="page-stack">
     <PageHeader title="Puan durumu" subtitle="Yarışmandaki herkes burada." />
 
-    <LoadingState v-if="loading" />
+    <BallLoader v-if="loading" />
     <Message v-else-if="!rows.length" severity="secondary" :closable="false">Bu yarışmada henüz sıralama oluşmadı.</Message>
 
     <template v-else>

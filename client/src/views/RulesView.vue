@@ -1,8 +1,9 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { Zap, Shield, Repeat, Armchair } from '@lucide/vue';
 import { api } from '@/lib/api';
 import PageHeader from '@/components/PageHeader.vue';
-import LoadingState from '@/components/LoadingState.vue';
+import BallLoader from '@/components/BallLoader.vue';
 
 interface RuleRow { code: string; category: string; label: string; points: Record<number, number> }
 interface Pot { tierId: number; tierName: string; teams: { id: string; name: string }[] }
@@ -12,6 +13,13 @@ const pots = ref<Pot[]>([]);
 const loading = ref(true);
 
 const categoryLabel: Record<string, string> = { match: 'Maç', league: 'Lig', knockout: 'Eleme' };
+
+const jokers = [
+  { name: 'Üçlü kaptan', icon: Zap, desc: 'Kaptanının puanı o hafta iki yerine üç katına çıkar.' },
+  { name: 'Bench boost', icon: Armchair, desc: 'O hafta yedeğin de puan yazar; dört kulübün birden sayılır.' },
+  { name: 'Gol yememe kalkanı', icon: Shield, desc: 'Seçtiğin kulüp tek gol yerse gol yememiş sayılır. İki ve üzeri golde kalkan kırılır.' },
+  { name: 'Haftalık değişim', icon: Repeat, desc: 'Bir kulübünü aynı pottan başkasıyla o haftalığına değiştirirsin. Hafta bitince kadron eski haline döner.' },
+];
 
 onMounted(async () => {
   try {
@@ -31,7 +39,7 @@ onMounted(async () => {
   <div class="page-stack">
     <PageHeader title="Nasıl puan kazanılır" subtitle="Kulüplerin sahadaki sonuçları senin puanına dönüşür." />
 
-    <LoadingState v-if="loading" />
+    <BallLoader v-if="loading" />
 
     <template v-else>
       <section class="surface-card card-pad">
@@ -63,6 +71,22 @@ onMounted(async () => {
       </section>
 
       <section class="surface-card card-pad">
+        <div class="section-title">Jokerler</div>
+        <p class="text-muted" style="margin: 0 0 1rem">
+          Her hafta en fazla bir joker oynayabilirsin. Hafta kilitlenmeden vazgeçersen hakkın geri gelir.
+        </p>
+        <div class="joker-grid">
+          <div v-for="j in jokers" :key="j.name" class="joker-card">
+            <div class="joker-head">
+              <component :is="j.icon" :size="18" />
+              <b>{{ j.name }}</b>
+            </div>
+            <p class="text-muted" style="margin: 0; font-size: 0.86rem">{{ j.desc }}</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="surface-card card-pad">
         <div class="section-title">Potlar ve kulüpler</div>
         <div class="pot-grid">
           <div v-for="p in pots" :key="p.tierId" class="pot-box">
@@ -82,6 +106,10 @@ onMounted(async () => {
 .rules th, .rules td { padding: 0.6rem 0.75rem; text-align: center; border-bottom: 1px solid var(--color-border); }
 .rules thead th { background: var(--color-bg-subtle); font-size: 0.82rem; font-weight: 700; color: var(--color-text-secondary); }
 .rules tbody tr:last-child td { border-bottom: none; }
+.joker-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.9rem; }
+.joker-card { background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0.9rem; display: flex; flex-direction: column; gap: 0.45rem; }
+.joker-head { display: flex; align-items: center; gap: 0.5rem; color: var(--color-primary); }
+.joker-head b { color: var(--color-text); }
 .pot-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1rem; }
 .pot-box { background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0.85rem; }
 .pot-box-head { font-weight: 700; margin-bottom: 0.6rem; }
