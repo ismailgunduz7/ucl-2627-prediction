@@ -1,7 +1,25 @@
 <script setup lang="ts">
+import { computed } from 'vue';
 import StarBall from '@/components/StarBall.vue';
 
-withDefaults(defineProps<{ message?: string }>(), { message: 'Saha hazırlanıyor…' });
+const props = defineProps<{ message?: string }>();
+
+const MESSAGES = [
+  'Saha hazırlanıyor…',
+  'Çimler biçiliyor…',
+  'Isınma turları atılıyor…',
+  'Kadrolar açıklanıyor…',
+  'Tribünler doluyor…',
+  'Taktik tahtası kuruluyor…',
+  'Formalar giyiliyor…',
+  'Top orta yuvarlakta…',
+  'Hakem düdüğünü bekliyor…',
+  'Yedek kulübesi kuruluyor…',
+];
+
+// Picked once per mount so the text doesn't shuffle on every re-render.
+const fallback = MESSAGES[Math.floor(Math.random() * MESSAGES.length)]!;
+const text = computed(() => props.message ?? fallback);
 </script>
 
 <template>
@@ -14,7 +32,7 @@ withDefaults(defineProps<{ message?: string }>(), { message: 'Saha hazırlanıyo
       </div>
       <div class="ball-shadow" />
     </div>
-    <p class="ball-text">{{ message }}</p>
+    <p class="ball-text">{{ text }}</p>
   </div>
 </template>
 
