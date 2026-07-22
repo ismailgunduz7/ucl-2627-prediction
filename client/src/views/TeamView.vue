@@ -5,6 +5,7 @@ import Button from 'primevue/button';
 import Tag from 'primevue/tag';
 import { api, ApiRequestError } from '@/lib/api';
 import BallLoader from '@/components/BallLoader.vue';
+import FixtureLine from '@/components/FixtureLine.vue';
 
 interface TeamDetail {
   team: { id: string; name: string; shortName: string; tierName: string; country: string | null; eliminated: boolean };
@@ -72,7 +73,7 @@ watch(() => route.params.id, (id) => id && load(id as string));
       <section class="surface-card" style="overflow: hidden">
         <table class="matches">
           <thead>
-            <tr><th style="text-align: left">Hafta</th><th style="text-align: left">Rakip</th><th>Skor</th><th>Durum</th><th>Puan</th></tr>
+            <tr><th style="text-align: left">Hafta</th><th style="text-align: left">Maç</th><th>Durum</th><th>Puan</th></tr>
           </thead>
           <tbody>
             <template v-for="m in detail.matches" :key="m.matchId">
@@ -82,13 +83,13 @@ watch(() => route.params.id, (id) => id && load(id as string));
             >
               <td style="text-align: left">{{ m.matchweekLabel }}</td>
               <td style="text-align: left">
-                {{ m.opponentName }} <span class="text-muted" style="font-size: 0.78rem">{{ m.isHome ? '(ev)' : '(dep)' }}</span>
-              </td>
-              <td>
-                <template v-if="m.teamScore !== null && m.opponentScore !== null">
-                  {{ m.isHome ? m.teamScore : m.opponentScore }}–{{ m.isHome ? m.opponentScore : m.teamScore }}
-                </template>
-                <span v-else class="text-muted">—</span>
+                <FixtureLine
+                  :team-name="detail.team.name"
+                  :opponent-name="m.opponentName"
+                  :home="m.isHome"
+                  :team-score="m.teamScore"
+                  :opponent-score="m.opponentScore"
+                />
               </td>
               <td class="text-muted" style="font-size: 0.85rem">{{ statusLabel[m.status] ?? m.status }}</td>
               <td>
@@ -99,7 +100,7 @@ watch(() => route.params.id, (id) => id && load(id as string));
               </td>
             </tr>
             <tr v-if="openMatch === m.matchId" class="entry-row">
-              <td colspan="5">
+              <td colspan="4">
                 <ul class="entries">
                   <li v-for="(e, i) in m.entries" :key="i">
                     <span>{{ e.ruleLabel }}</span>

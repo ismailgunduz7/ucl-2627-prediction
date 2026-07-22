@@ -11,11 +11,19 @@ import AccordionContent from 'primevue/accordioncontent';
 import { api, ApiRequestError } from '@/lib/api';
 import PageHeader from '@/components/PageHeader.vue';
 import BallLoader from '@/components/BallLoader.vue';
+import JokerIcon from '@/components/JokerIcon.vue';
+import CaptainBadge from '@/components/CaptainBadge.vue';
+import FixtureLine from '@/components/FixtureLine.vue';
 
-interface RuleEntry { ruleCode: string; ruleLabel: string; points: number; matchLabel: string | null }
+interface RuleEntry { ruleCode: string; ruleLabel: string; points: number }
+interface ClubFixture {
+  opponentName: string; home: boolean; status: string;
+  teamScore: number | null; opponentScore: number | null;
+}
 interface ClubBreakdown {
   teamId: string; name: string; shortName: string; basePoints: number;
-  benched: boolean; captain: boolean; multiplier: number; contributed: number; entries: RuleEntry[];
+  benched: boolean; captain: boolean; multiplier: number; contributed: number;
+  fixtures: ClubFixture[]; entries: RuleEntry[];
 }
 interface WeekBreakdown {
   matchweekId: string; label: string; status: string; final: boolean;
@@ -26,11 +34,6 @@ interface PlayerPoints {
   weeks: WeekBreakdown[];
 }
 
-const JOKER_NAMES: Record<string, string> = {
-  weekly_swap: 'Haftalık değişim', triple_boost: 'Üçlü kaptan',
-  clean_sheet_shield: 'Gol yememe kalkanı', bench_boost: 'Bench boost',
-};
-
 const route = useRoute();
 const router = useRouter();
 const data = ref<PlayerPoints | null>(null);
@@ -38,12 +41,15 @@ const loading = ref(true);
 const error = ref<string | null>(null);
 const open = ref<string[]>([]);
 
-// Weeks that actually produced something are the interesting ones.
-const playedWeeks = computed(() => data.value?.weeks.filter((w) => w.status !== 'upcoming') ?? []);
+const weeks = computed(() => data.value?.weeks ?? []);
+/** A week counts as played once any club actually scored something in it. */
+function isPlayed(w: WeekBreakdown) {
+  return w.clubs.some((c) => c.entries.length > 0);
+}
+const playedWeeks = computed(() => weeks.value.filter(isPlayed));
 const bestWeek = computed(() => {
-  const played = playedWeeks.value.filter((w) => w.final);
-  if (!played.length) return null;
-  return played.reduce((a, b) => (b.total > a.total ? b : a));
+  const done = playedWeeks.value;
+  return done.length ? done.reduce((a, b) => (b.total > a.total ? b : a)) : null;
 });
 
 function initials(name: string) {
@@ -58,8 +64,8 @@ async function load(id: string) {
   error.value = null;
   try {
     data.value = await api.get<PlayerPoints>(`/api/players/${id}/points`);
-    // Open the most recent week that has been played.
-    const last = [...(data.value?.weeks ?? [])].reverse().find((w) => w.status !== 'upcoming');
+    // Open the most recent week that actually has results, not merely the last.
+    const last = [...weeks.value].reverse().find(isPlayed);
     open.value = last ? [last.matchweekId] : [];
   } catch (e) {
     error.value = e instanceof ApiRequestError ? e.message : 'Yüklenemedi';
@@ -94,18 +100,22 @@ watch(() => route.params.id, (id) => id && load(id as string));
         </div>
       </div>
 
-      <Message v-if="!playedWeeks.length" severity="secondary" :closable="false">
-        Henüz oynanmış bir hafta yok.
-      </Message>
-
-      <Accordion v-else v-model:value="open" multiple>
-        <AccordionPanel v-for="w in playedWeeks" :key="w.matchweekId" :value="w.matchweekId">
+      <Accordion v-model:value="open" multiple>
+        <AccordionPanel v-for="w in weeks" :key="w.matchweekId" :value="w.matchweekId">
           <AccordionHeader>
             <div class="week-head">
               <span class="week-label">{{ w.label }}</span>
-              <Tag v-if="w.jokerCode" severity="warn" :value="JOKER_NAMES[w.jokerCode] ?? w.jokerCode" />
-              <Tag v-if="!w.final" severity="info" value="anlık" />
-              <span class="week-total" :class="w.total >= 0 ? 'text-positive' : 'text-negative'">{{ signed(w.total) }}</span>
+              <JokerIcon v-if="w.jokerCode" :code="w.jokerCode" :size="16" />
+              <Tag
+                v-if="isPlayed(w) && !w.final"
+                severity="info"
+                value="kesinleşmedi"
+                title="Hafta bitmedi; puanlar değişebilir"
+              />
+              <Tag v-else-if="!isPlayed(w)" severity="secondary" value="oynanmadı" />
+              <span v-if="isPlayed(w)" class="week-total" :class="w.total >= 0 ? 'text-positive' : 'text-negative'">
+                {{ signed(w.total) }}
+              </span>
             </div>
           </AccordionHeader>
           <AccordionContent>
@@ -119,30 +129,41 @@ watch(() => route.params.id, (id) => id && load(id as string));
                 <div class="club-top">
                   <RouterLink :to="`/takim/${c.teamId}`" class="club-id">
                     <span class="crest crest-xs">{{ initials(c.name) }}</span>
-                    <span>{{ c.name }}</span>
                   </RouterLink>
-                  <div class="tag-row">
-                    <Tag v-if="c.captain" severity="warn" :value="`Kaptan ×${c.multiplier}`" />
-                    <Tag v-else-if="c.benched" severity="secondary" value="Yedek" />
+
+                  <div class="club-mid">
+                    <FixtureLine
+                      v-for="(f, i) in c.fixtures"
+                      :key="i"
+                      :team-name="c.name"
+                      :opponent-name="f.opponentName"
+                      :home="f.home"
+                      :team-score="f.teamScore"
+                      :opponent-score="f.opponentScore"
+                    />
+                    <span v-if="!c.fixtures.length" class="text-muted no-fixture">
+                      {{ c.name }} · bu hafta maçı yok
+                    </span>
                   </div>
-                  <span class="club-pts" :class="c.contributed >= 0 ? 'text-positive' : 'text-negative'">
-                    {{ signed(c.contributed) }}
+
+                  <CaptainBadge v-if="c.captain" :multiplier="c.multiplier" :joker-code="w.jokerCode" :size="26" />
+                  <Tag v-else-if="c.benched" severity="secondary" value="Yedek" />
+
+                  <span class="club-pts">
+                    <template v-if="c.captain && c.multiplier > 1">
+                      <span class="text-muted base">{{ c.basePoints }} × {{ c.multiplier }}</span>
+                      <strong :class="c.contributed >= 0 ? 'text-positive' : 'text-negative'">{{ signed(c.contributed) }}</strong>
+                    </template>
+                    <strong v-else :class="c.contributed >= 0 ? 'text-positive' : 'text-negative'">{{ signed(c.contributed) }}</strong>
                   </span>
                 </div>
 
                 <ul v-if="c.entries.length" class="entries">
                   <li v-for="(e, i) in c.entries" :key="i">
                     <span>{{ e.ruleLabel }}</span>
-                    <span v-if="e.matchLabel" class="text-muted match-label">{{ e.matchLabel }}</span>
                     <span :class="e.points >= 0 ? 'text-positive' : 'text-negative'">{{ signed(e.points) }}</span>
                   </li>
-                  <li v-if="c.captain && c.multiplier > 1" class="mult">
-                    <span>Kaptan çarpanı</span>
-                    <span class="text-muted match-label">{{ c.basePoints }} × {{ c.multiplier }}</span>
-                    <span class="text-positive">{{ signed(c.contributed - c.basePoints) }}</span>
-                  </li>
                 </ul>
-                <p v-else class="text-muted no-entry">bu hafta puan getirmedi</p>
               </div>
             </div>
           </AccordionContent>
@@ -162,15 +183,14 @@ watch(() => route.params.id, (id) => id && load(id as string));
 .club-list { display: flex; flex-direction: column; gap: 0.65rem; }
 .club-row { background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0.7rem 0.85rem; }
 .club-row.muted { opacity: 0.6; }
-.club-top { display: flex; align-items: center; gap: 0.65rem; }
-.club-id { display: flex; align-items: center; gap: 0.5rem; font-weight: 700; color: var(--color-text); text-decoration: none; }
-.club-id:hover { color: var(--color-primary); text-decoration: none; }
-.crest-xs { width: 26px; height: 26px; font-size: 0.58rem; }
-.club-pts { margin-left: auto; font-weight: 800; }
+.club-top { display: flex; align-items: center; gap: 0.7rem; }
+.club-id { display: inline-flex; text-decoration: none; }
+.crest-xs { width: 28px; height: 28px; font-size: 0.58rem; }
+.club-mid { flex: 1; display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; font-size: 0.88rem; }
+.no-fixture { font-size: 0.85rem; }
+.club-pts { display: flex; align-items: baseline; gap: 0.45rem; margin-left: auto; font-weight: 800; white-space: nowrap; }
+.club-pts .base { font-size: 0.78rem; font-weight: 600; }
 .entries { list-style: none; margin: 0.55rem 0 0; padding: 0.55rem 0 0; border-top: 1px dashed var(--color-border); display: flex; flex-direction: column; gap: 0.3rem; }
 .entries li { display: flex; align-items: center; gap: 0.6rem; font-size: 0.85rem; }
 .entries li > span:last-child { margin-left: auto; font-weight: 700; }
-.match-label { font-size: 0.76rem; }
-.entries li.mult { border-top: 1px dashed var(--color-border); padding-top: 0.35rem; }
-.no-entry { margin: 0.5rem 0 0; font-size: 0.82rem; }
 </style>

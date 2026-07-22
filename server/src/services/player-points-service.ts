@@ -6,7 +6,15 @@ export interface RuleEntry {
   ruleCode: string;
   ruleLabel: string;
   points: number;
-  matchLabel: string | null;
+}
+
+/** One fixture the club plays that matchweek (may be unplayed). */
+export interface ClubFixture {
+  opponentName: string;
+  home: boolean;
+  status: string;
+  teamScore: number | null;
+  opponentScore: number | null;
 }
 
 export interface ClubBreakdown {
@@ -18,6 +26,7 @@ export interface ClubBreakdown {
   captain: boolean;
   multiplier: number;
   contributed: number;
+  fixtures: ClubFixture[];
   entries: RuleEntry[];
 }
 
@@ -73,7 +82,9 @@ export async function getPlayerPoints(
   // Fetch every rule line for the weeks/teams involved in one go.
   const mwIds = scored.map((s) => s.mw.id);
   const teamIds = [...new Set(scored.flatMap((s) => s.score.lines.map((l) => l.teamId)))];
-  const entryRows = mwIds.length && teamIds.length
+  const hasScope = mwIds.length > 0 && teamIds.length > 0;
+
+  const entryRows = hasScope
     ? (
         await query<{
           matchweek_id: string;
@@ -81,19 +92,12 @@ export async function getPlayerPoints(
           rule_code: string;
           rule_label: string;
           points: number;
-          home_name: string | null;
-          away_name: string | null;
-          home_score: number | null;
-          away_score: number | null;
         }>(
-          `SELECT e.matchweek_id, e.team_id, e.rule_code, rt.label AS rule_label, e.points,
-                  ht.name AS home_name, at.name AS away_name, m.home_score, m.away_score
+          `SELECT e.matchweek_id, e.team_id, e.rule_code, rt.label AS rule_label, e.points
            FROM team_point_entries e
            JOIN scoring_rule_types rt ON rt.code = e.rule_code
-           LEFT JOIN matches m ON m.id = e.match_id
-           LEFT JOIN teams ht ON ht.id = m.home_team_id
-           LEFT JOIN teams at ON at.id = m.away_team_id
-           WHERE e.matchweek_id = ANY($1::text[]) AND e.team_id = ANY($2::uuid[])`,
+           WHERE e.matchweek_id = ANY($1::text[]) AND e.team_id = ANY($2::uuid[])
+           ORDER BY rt.sort_order`,
           [mwIds, teamIds],
         )
       ).rows
@@ -102,13 +106,55 @@ export async function getPlayerPoints(
   const entriesByKey = new Map<string, RuleEntry[]>();
   for (const r of entryRows) {
     const key = `${r.matchweek_id}|${r.team_id}`;
-    const matchLabel =
-      r.home_name && r.away_name
-        ? `${r.home_name} ${r.home_score ?? '-'}–${r.away_score ?? '-'} ${r.away_name}`
-        : null;
     const list = entriesByKey.get(key) ?? [];
-    list.push({ ruleCode: r.rule_code, ruleLabel: r.rule_label, points: r.points, matchLabel });
+    list.push({ ruleCode: r.rule_code, ruleLabel: r.rule_label, points: r.points });
     entriesByKey.set(key, list);
+  }
+
+  // Fixtures for the same weeks, including ones not played yet, so future weeks
+  // still show who the club is up against.
+  const fixtureRows = hasScope
+    ? (
+        await query<{
+          matchweek_id: string;
+          status: string;
+          home_team_id: string;
+          away_team_id: string;
+          home_name: string;
+          away_name: string;
+          home_score: number | null;
+          away_score: number | null;
+        }>(
+          `SELECT m.matchweek_id, m.status, m.home_team_id, m.away_team_id,
+                  ht.name AS home_name, at.name AS away_name, m.home_score, m.away_score
+           FROM matches m
+           JOIN teams ht ON ht.id = m.home_team_id
+           JOIN teams at ON at.id = m.away_team_id
+           WHERE m.matchweek_id = ANY($1::text[])
+             AND (m.home_team_id = ANY($2::uuid[]) OR m.away_team_id = ANY($2::uuid[]))
+           ORDER BY m.kickoff_at`,
+          [mwIds, teamIds],
+        )
+      ).rows
+    : [];
+
+  const teamSet = new Set(teamIds);
+  const fixturesByKey = new Map<string, ClubFixture[]>();
+  for (const r of fixtureRows) {
+    for (const side of ['home', 'away'] as const) {
+      const teamId = side === 'home' ? r.home_team_id : r.away_team_id;
+      if (!teamSet.has(teamId)) continue;
+      const key = `${r.matchweek_id}|${teamId}`;
+      const list = fixturesByKey.get(key) ?? [];
+      list.push({
+        opponentName: side === 'home' ? r.away_name : r.home_name,
+        home: side === 'home',
+        status: r.status,
+        teamScore: side === 'home' ? r.home_score : r.away_score,
+        opponentScore: side === 'home' ? r.away_score : r.home_score,
+      });
+      fixturesByKey.set(key, list);
+    }
   }
 
   const weeks: WeekBreakdown[] = scored.map(({ mw, score }) => ({
@@ -127,6 +173,7 @@ export async function getPlayerPoints(
       captain: l.captain,
       multiplier: l.multiplier,
       contributed: l.contributed,
+      fixtures: fixturesByKey.get(`${mw.id}|${l.teamId}`) ?? [],
       entries: entriesByKey.get(`${mw.id}|${l.teamId}`) ?? [],
     })),
   }));
