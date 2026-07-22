@@ -6,13 +6,9 @@ import Column from 'primevue/column';
 import InputText from 'primevue/inputtext';
 import Button from 'primevue/button';
 import { api, ApiRequestError } from '@/lib/api';
+import PageHeader from '@/components/PageHeader.vue';
 
-interface Competition {
-  id: string;
-  name: string;
-  participant_count: number;
-  created_at: string;
-}
+interface Competition { id: string; name: string; participant_count: number; created_at: string }
 
 const toast = useToast();
 const competitions = ref<Competition[]>([]);
@@ -31,14 +27,13 @@ async function load() {
     loading.value = false;
   }
 }
-
 async function create() {
   if (!newName.value.trim()) return;
   saving.value = true;
   try {
     await api.post('/api/admin/competitions', { name: newName.value.trim() });
     newName.value = '';
-    toast.add({ severity: 'success', summary: 'Oluşturuldu', life: 2500 });
+    toast.add({ severity: 'success', summary: 'Yarışma eklendi', life: 2500 });
     await load();
   } catch (e) {
     toast.add({ severity: 'error', summary: 'Hata', detail: msg(e), life: 4000 });
@@ -46,27 +41,29 @@ async function create() {
     saving.value = false;
   }
 }
-
-function msg(e: unknown) {
-  return e instanceof ApiRequestError ? e.message : 'Beklenmeyen hata';
-}
-
+function msg(e: unknown) { return e instanceof ApiRequestError ? e.message : 'Beklenmeyen hata'; }
 onMounted(load);
 </script>
 
 <template>
-  <div class="stack">
-    <h1 style="margin: 0">Yarışmalar</h1>
-    <form style="display: flex; gap: 0.5rem" @submit.prevent="create">
-      <InputText v-model="newName" placeholder="Yeni yarışma adı" />
-      <Button type="submit" label="Ekle" icon="pi pi-plus" :loading="saving" />
-    </form>
-    <DataTable :value="competitions" :loading="loading" data-key="id">
-      <Column field="name" header="Ad" />
-      <Column field="participant_count" header="Katılımcı" />
-      <Column header="Oluşturulma">
-        <template #body="{ data }">{{ new Date(data.created_at).toLocaleDateString('tr-TR') }}</template>
-      </Column>
-    </DataTable>
+  <div class="page-stack">
+    <PageHeader title="Yarışmalar" subtitle="Yarışmalar sadece kimin kiminle göründüğünü belirler; kurallar herkes için ortaktır." />
+
+    <section class="surface-card card-pad">
+      <form style="display: flex; gap: 0.6rem; flex-wrap: wrap" @submit.prevent="create">
+        <InputText v-model="newName" placeholder="Yeni yarışma adı" style="flex: 1; min-width: 200px" />
+        <Button type="submit" label="Ekle" icon="pi pi-plus" :loading="saving" />
+      </form>
+    </section>
+
+    <section class="surface-card" style="overflow: hidden">
+      <DataTable :value="competitions" :loading="loading" data-key="id">
+        <Column field="name" header="Ad" />
+        <Column field="participant_count" header="Katılımcı" />
+        <Column header="Oluşturuldu">
+          <template #body="{ data }">{{ new Date(data.created_at).toLocaleDateString('tr-TR') }}</template>
+        </Column>
+      </DataTable>
+    </section>
   </div>
 </template>

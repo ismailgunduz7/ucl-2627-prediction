@@ -6,30 +6,14 @@ import Button from 'primevue/button';
 import Message from 'primevue/message';
 import Tag from 'primevue/tag';
 import { api, ApiRequestError } from '@/lib/api';
+import PageHeader from '@/components/PageHeader.vue';
 
-interface SyncSummary {
-  provider: string;
-  fixturesSeen: number;
-  matchesUpserted: number;
-  matchesFinished: number;
-  skippedOverride: number;
-  unmapped: number;
-}
-interface SyncRun {
-  id: string;
-  provider: string;
-  status: string;
-  started_at: string;
-  finished_at: string;
-  fixtures_seen: number;
-  matches_upserted: number;
-  matches_finished: number;
-  error: string | null;
-}
+interface SyncSummary { provider: string; fixturesSeen: number; matchesUpserted: number; matchesFinished: number; skippedOverride: number; unmapped: number }
+interface SyncRun { id: string; provider: string; status: string; finished_at: string; fixtures_seen: number; matches_upserted: number; matches_finished: number }
 
 const toast = useToast();
 const provider = ref<'mock' | 'football_data'>('mock');
-const simulatedNow = ref<string>(''); // datetime-local value
+const simulatedNow = ref<string>('');
 const running = ref(false);
 const lastSummary = ref<SyncSummary | null>(null);
 const runs = ref<SyncRun[]>([]);
@@ -43,22 +27,14 @@ async function loadRuns() {
   const res = await api.get<{ runs: SyncRun[] }>('/api/admin/sync/runs');
   runs.value = res.runs;
 }
-
 async function runSync() {
   running.value = true;
   try {
     const body: Record<string, unknown> = { provider: provider.value };
-    if (provider.value === 'mock' && simulatedNow.value) {
-      body.simulatedNow = new Date(simulatedNow.value).toISOString();
-    }
+    if (provider.value === 'mock' && simulatedNow.value) body.simulatedNow = new Date(simulatedNow.value).toISOString();
     const res = await api.post<{ summary: SyncSummary }>('/api/admin/sync', body);
     lastSummary.value = res.summary;
-    toast.add({
-      severity: 'success',
-      summary: 'Sync tamamlandı',
-      detail: `${res.summary.matchesFinished} maç bitti, ${res.summary.matchesUpserted} güncellendi`,
-      life: 3500,
-    });
+    toast.add({ severity: 'success', summary: 'Sync tamam', detail: `${res.summary.matchesFinished} maç bitti`, life: 3500 });
     await loadRuns();
   } catch (e) {
     toast.add({ severity: 'error', summary: 'Sync hatası', detail: msg(e), life: 5000 });
@@ -66,136 +42,72 @@ async function runSync() {
     running.value = false;
   }
 }
-
-function msg(e: unknown) {
-  return e instanceof ApiRequestError ? e.message : 'Beklenmeyen hata';
-}
-function fmt(iso: string) {
-  return new Date(iso).toLocaleString('tr-TR');
-}
-
+function msg(e: unknown) { return e instanceof ApiRequestError ? e.message : 'Beklenmeyen hata'; }
+function fmt(iso: string) { return new Date(iso).toLocaleString('tr-TR'); }
 onMounted(loadRuns);
 </script>
 
 <template>
-  <div class="stack">
-    <h1 style="margin: 0">Provider sync</h1>
+  <div class="page-stack">
+    <PageHeader title="Veri senkronizasyonu" subtitle="Skorları sağlayıcıdan buradan çekiyorsun. Katılımcı sayfaları hep veritabanından okur." />
 
     <Message severity="info" :closable="false">
-      Sadece bu sunucu sağlayıcıyı çağırır; katılımcı okumaları hep DB'den gelir (§5.6). Mock
-      sağlayıcı, ileri tarihli mock fikstürleri simüle saatle ilerletir — gerçek 2026–27 verisi
-      gelene kadar hattı test etmek için. Manuel override'lı maçlar sync'te atlanır (§5.3).
+      Mock sağlayıcı, ileri tarihli fikstürleri simüle saatle ilerletir — gerçek 2026/27 verisi
+      gelene kadar akışı denemek için. Elle sonuç girdiğin maçlar sync'te atlanır.
     </Message>
 
-    <div class="controls">
-      <div class="field">
-        <label>Sağlayıcı</label>
-        <Select v-model="provider" :options="providerOptions" option-label="label" option-value="value" style="min-width: 200px" />
+    <section class="surface-card card-pad">
+      <div class="controls">
+        <div class="form-field">
+          <label>Sağlayıcı</label>
+          <Select v-model="provider" :options="providerOptions" option-label="label" option-value="value" style="min-width: 200px" />
+        </div>
+        <div v-if="provider === 'mock'" class="form-field">
+          <label>Simüle saat (opsiyonel)</label>
+          <input v-model="simulatedNow" type="datetime-local" class="dt" />
+        </div>
+        <Button label="Sync çalıştır" icon="pi pi-sync" :loading="running" @click="runSync" />
       </div>
-      <div v-if="provider === 'mock'" class="field">
-        <label>Simüle saat (opsiyonel)</label>
-        <input v-model="simulatedNow" type="datetime-local" class="dt" />
-        <small style="color: #889">Boş = şu an. MW1 ilk maçı: 2026-09-15 16:45 UTC</small>
-      </div>
-      <Button label="Sync çalıştır" icon="pi pi-sync" :loading="running" @click="runSync" style="align-self: flex-end" />
-    </div>
+    </section>
 
     <div v-if="lastSummary" class="summary">
-      <div class="stat"><b>{{ lastSummary.fixturesSeen }}</b><small>fikstür</small></div>
-      <div class="stat"><b>{{ lastSummary.matchesUpserted }}</b><small>güncellendi</small></div>
-      <div class="stat"><b>{{ lastSummary.matchesFinished }}</b><small>bitti</small></div>
-      <div class="stat"><b>{{ lastSummary.skippedOverride }}</b><small>override atlandı</small></div>
-      <div class="stat"><b>{{ lastSummary.unmapped }}</b><small>eşleşmeyen</small></div>
+      <div class="surface-card card-pad stat"><b>{{ lastSummary.fixturesSeen }}</b><small class="text-muted">fikstür</small></div>
+      <div class="surface-card card-pad stat"><b>{{ lastSummary.matchesUpserted }}</b><small class="text-muted">güncellendi</small></div>
+      <div class="surface-card card-pad stat"><b>{{ lastSummary.matchesFinished }}</b><small class="text-muted">bitti</small></div>
+      <div class="surface-card card-pad stat"><b>{{ lastSummary.skippedOverride }}</b><small class="text-muted">override atlandı</small></div>
+      <div class="surface-card card-pad stat"><b>{{ lastSummary.unmapped }}</b><small class="text-muted">eşleşmeyen</small></div>
     </div>
 
-    <h3 style="margin: 0.5rem 0 0">Son çalışmalar</h3>
-    <table class="runs-table">
-      <thead>
-        <tr>
-          <th>Zaman</th>
-          <th>Sağlayıcı</th>
-          <th>Durum</th>
-          <th>Fikstür</th>
-          <th>Güncel.</th>
-          <th>Bitti</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="r in runs" :key="r.id">
-          <td>{{ fmt(r.finished_at) }}</td>
-          <td>{{ r.provider }}</td>
-          <td><Tag :severity="r.status === 'success' ? 'success' : 'danger'" :value="r.status" /></td>
-          <td>{{ r.fixtures_seen }}</td>
-          <td>{{ r.matches_upserted }}</td>
-          <td>{{ r.matches_finished }}</td>
-        </tr>
-        <tr v-if="!runs.length"><td colspan="6" style="color: #889">Henüz sync çalışmadı.</td></tr>
-      </tbody>
-    </table>
+    <section class="surface-card" style="overflow: hidden">
+      <div class="card-pad section-title" style="margin: 0; border-bottom: 1px solid var(--color-border)">Son çalışmalar</div>
+      <table class="runs">
+        <thead>
+          <tr><th>Zaman</th><th>Sağlayıcı</th><th>Durum</th><th>Fikstür</th><th>Güncel.</th><th>Bitti</th></tr>
+        </thead>
+        <tbody>
+          <tr v-for="r in runs" :key="r.id">
+            <td>{{ fmt(r.finished_at) }}</td>
+            <td>{{ r.provider }}</td>
+            <td><Tag :severity="r.status === 'success' ? 'success' : 'danger'" :value="r.status" /></td>
+            <td>{{ r.fixtures_seen }}</td>
+            <td>{{ r.matches_upserted }}</td>
+            <td>{{ r.matches_finished }}</td>
+          </tr>
+          <tr v-if="!runs.length"><td colspan="6" class="empty-state">Henüz sync çalışmadı.</td></tr>
+        </tbody>
+      </table>
+    </section>
   </div>
 </template>
 
 <style scoped>
-.controls {
-  display: flex;
-  gap: 1rem;
-  align-items: flex-end;
-  flex-wrap: wrap;
-  background: #fff;
-  padding: 1rem;
-  border-radius: 8px;
-}
-.field {
-  display: flex;
-  flex-direction: column;
-  gap: 0.3rem;
-}
-.field label {
-  font-size: 0.8rem;
-  font-weight: 600;
-}
-.dt {
-  padding: 0.5rem;
-  border: 1px solid #cdd6e6;
-  border-radius: 6px;
-  font: inherit;
-}
-.summary {
-  display: flex;
-  gap: 1rem;
-  flex-wrap: wrap;
-}
-.stat {
-  background: #fff;
-  border-radius: 8px;
-  padding: 0.75rem 1.25rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  min-width: 90px;
-}
-.stat b {
-  font-size: 1.5rem;
-  color: var(--brand);
-}
-.stat small {
-  color: #667;
-}
-.runs-table {
-  border-collapse: collapse;
-  background: #fff;
-  border-radius: 8px;
-  overflow: hidden;
-  width: 100%;
-}
-.runs-table th,
-.runs-table td {
-  padding: 0.5rem 0.7rem;
-  text-align: center;
-  border-bottom: 1px solid #eef;
-  font-size: 0.88rem;
-}
-.runs-table thead th {
-  background: #f4f6fb;
-}
+.controls { display: flex; gap: 1rem; align-items: flex-end; flex-wrap: wrap; }
+.dt { padding: 0.6rem 0.7rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm); font: inherit; background: var(--color-surface); color: var(--color-text); }
+.summary { display: flex; gap: 1rem; flex-wrap: wrap; }
+.stat { display: flex; flex-direction: column; align-items: center; min-width: 96px; }
+.stat b { font-size: 1.5rem; color: var(--color-primary); }
+.runs { width: 100%; border-collapse: collapse; }
+.runs th, .runs td { padding: 0.55rem 0.7rem; text-align: center; border-bottom: 1px solid var(--color-border); font-size: 0.88rem; }
+.runs thead th { background: var(--color-bg-subtle); font-weight: 700; color: var(--color-text-secondary); }
+.runs tbody tr:last-child td { border-bottom: none; }
 </style>
