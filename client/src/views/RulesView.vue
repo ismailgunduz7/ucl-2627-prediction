@@ -1,26 +1,26 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { useRouter } from 'vue-router';
-import Button from 'primevue/button';
 import { api } from '@/lib/api';
+import PageHeader from '@/components/PageHeader.vue';
+import LoadingState from '@/components/LoadingState.vue';
 
-interface RuleRow {
-  code: string;
-  category: string;
-  label: string;
-  points: Record<number, number>;
-}
+interface RuleRow { code: string; category: string; label: string; points: Record<number, number> }
+interface Pot { tierId: number; tierName: string; teams: { id: string; name: string }[] }
 
-const router = useRouter();
 const rules = ref<RuleRow[]>([]);
+const pots = ref<Pot[]>([]);
 const loading = ref(true);
 
 const categoryLabel: Record<string, string> = { match: 'Maç', league: 'Lig', knockout: 'Eleme' };
 
 onMounted(async () => {
   try {
-    const res = await api.get<{ rules: RuleRow[] }>('/api/scoring-rules');
-    rules.value = res.rules;
+    const [r, t] = await Promise.all([
+      api.get<{ rules: RuleRow[] }>('/api/scoring-rules'),
+      api.get<{ pots: Pot[] }>('/api/teams'),
+    ]);
+    rules.value = r.rules;
+    pots.value = t.pots;
   } finally {
     loading.value = false;
   }
@@ -28,55 +28,68 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="page stack">
-    <div style="display: flex; justify-content: space-between; align-items: center">
-      <h1 style="margin: 0">Puanlama kuralları</h1>
-      <Button label="Geri" icon="pi pi-arrow-left" text @click="router.push('/')" />
-    </div>
-    <p style="color: #556; margin: 0">
-      Puanlar takımın potuna göre değişir: zayıf potlar ödülü daha yüksek, güçlü potlar cezayı daha
-      ağır alır. Tüm puanlar tam sayıdır.
-    </p>
+  <div class="page-stack">
+    <PageHeader title="Nasıl puan kazanılır" subtitle="Kulüplerin sahadaki sonuçları senin puanına dönüşür." />
 
-    <div v-if="loading">Yükleniyor…</div>
-    <table v-else class="rules-table">
-      <thead>
-        <tr>
-          <th style="text-align: left">Kural</th>
-          <th>Kategori</th>
-          <th>Pot 1</th>
-          <th>Pot 2</th>
-          <th>Pot 3</th>
-          <th>Pot 4</th>
-        </tr>
-      </thead>
-      <tbody>
-        <tr v-for="r in rules" :key="r.code">
-          <td style="text-align: left"><strong>{{ r.label }}</strong></td>
-          <td>{{ categoryLabel[r.category] ?? r.category }}</td>
-          <td v-for="p in [1, 2, 3, 4]" :key="p">{{ r.points[p] ?? 0 }}</td>
-        </tr>
-      </tbody>
-    </table>
+    <LoadingState v-if="loading" />
+
+    <template v-else>
+      <section class="surface-card card-pad">
+        <p style="margin: 0 0 0.75rem">
+          Aynı sonuç, zayıf pottaki bir kulüp için daha değerlidir; güçlü bir kulübün kötü sonucu ise
+          daha çok cezalandırılır. Kaptanın puanı iki katına çıkar (üçlü kaptan jokeriyle üçe).
+        </p>
+        <div style="overflow-x: auto">
+          <table class="rules">
+            <thead>
+              <tr>
+                <th style="text-align: left">Kural</th>
+                <th v-for="p in pots" :key="p.tierId">{{ p.tierName }}</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr v-for="r in rules" :key="r.code">
+                <td style="text-align: left">
+                  <strong>{{ r.label }}</strong>
+                  <span class="text-muted" style="font-size: 0.75rem; display: block">{{ categoryLabel[r.category] ?? r.category }}</span>
+                </td>
+                <td v-for="p in pots" :key="p.tierId" :class="(r.points[p.tierId] ?? 0) < 0 ? 'text-negative' : ''">
+                  {{ r.points[p.tierId] ?? 0 }}
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </section>
+
+      <section class="surface-card card-pad">
+        <div class="section-title">Potlar ve kulüpler</div>
+        <div class="pot-grid">
+          <div v-for="p in pots" :key="p.tierId" class="pot-box">
+            <div class="pot-box-head">{{ p.tierName }}</div>
+            <div class="chip-wrap">
+              <RouterLink v-for="t in p.teams" :key="t.id" :to="`/takim/${t.id}`" class="team-chip">{{ t.name }}</RouterLink>
+            </div>
+          </div>
+        </div>
+      </section>
+    </template>
   </div>
 </template>
 
 <style scoped>
-.rules-table {
-  border-collapse: collapse;
-  background: #fff;
-  border-radius: 8px;
-  overflow: hidden;
-  width: 100%;
+.rules { width: 100%; border-collapse: collapse; min-width: 480px; }
+.rules th, .rules td { padding: 0.6rem 0.75rem; text-align: center; border-bottom: 1px solid var(--color-border); }
+.rules thead th { background: var(--color-bg-subtle); font-size: 0.82rem; font-weight: 700; color: var(--color-text-secondary); }
+.rules tbody tr:last-child td { border-bottom: none; }
+.pot-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1rem; }
+.pot-box { background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0.85rem; }
+.pot-box-head { font-weight: 700; margin-bottom: 0.6rem; }
+.chip-wrap { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.team-chip {
+  display: inline-block; padding: 0.3rem 0.65rem; border-radius: 999px;
+  background: var(--color-surface); border: 1px solid var(--color-border);
+  font-size: 0.8rem; color: var(--color-text); text-decoration: none;
 }
-.rules-table th,
-.rules-table td {
-  padding: 0.55rem 0.7rem;
-  text-align: center;
-  border-bottom: 1px solid #eef;
-}
-.rules-table thead th {
-  background: #f4f6fb;
-  font-size: 0.85rem;
-}
+.team-chip:hover { border-color: var(--color-primary); color: var(--color-primary); text-decoration: none; }
 </style>

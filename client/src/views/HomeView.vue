@@ -1,140 +1,214 @@
 <script setup lang="ts">
-import { onMounted, ref, computed } from 'vue';
-import { useRouter } from 'vue-router';
+import { ref, computed, onMounted } from 'vue';
+import { RouterLink } from 'vue-router';
 import Button from 'primevue/button';
-import Card from 'primevue/card';
 import Tag from 'primevue/tag';
+import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
-import { useTournamentStore } from '@/stores/tournament';
-import { ADMIN_BASE } from '@/router';
+import PageHeader from '@/components/PageHeader.vue';
+import LoadingState from '@/components/LoadingState.vue';
+
+interface SquadEntry { teamId: string; shortName: string; name: string; eliminated: boolean }
+interface Mw { id: string; label: string; status: string }
+interface LbEntry { userId: string; displayName: string; total: number; rank: number }
 
 const auth = useAuthStore();
-const store = useTournamentStore();
-const router = useRouter();
 const loading = ref(true);
+const squad = ref<SquadEntry[]>([]);
+const squadLocked = ref(false);
+const currentMw = ref<Mw | null>(null);
+const weekTotal = ref<number | null>(null);
+const weekFinal = ref(false);
+const leaderboard = ref<LbEntry[]>([]);
 
-const squadComplete = computed(() => store.squad.length === (store.status?.squadSize ?? 4));
+const squadComplete = computed(() => squad.value.length === 4);
+const myRank = computed(() => leaderboard.value.find((e) => e.userId === auth.user?.id) ?? null);
+const topThree = computed(() => leaderboard.value.slice(0, 3));
+
+function initials(name: string) {
+  return name.split(' ').map((w) => w[0]).slice(0, 3).join('').toUpperCase();
+}
 
 onMounted(async () => {
   try {
-    await Promise.all([store.loadStatus(), store.loadSquad()]);
+    const [status, sq, lb] = await Promise.all([
+      api.get<{ matchweeks: Mw[]; currentMatchweekId: string | null }>('/api/tournament/status'),
+      api.get<{ squad: SquadEntry[]; locked: boolean }>('/api/squad'),
+      api.get<{ leaderboard: LbEntry[] }>('/api/leaderboard'),
+    ]);
+    squad.value = sq.squad;
+    squadLocked.value = sq.locked;
+    leaderboard.value = lb.leaderboard;
+    currentMw.value = status.matchweeks.find((m) => m.id === status.currentMatchweekId) ?? null;
+    if (currentMw.value) {
+      const sc = await api.get<{ score: { total: number; final: boolean } | null }>(
+        `/api/matchweeks/${currentMw.value.id}/score`,
+      );
+      weekTotal.value = sc.score?.total ?? null;
+      weekFinal.value = sc.score?.final ?? false;
+    }
   } finally {
     loading.value = false;
   }
 });
-
-async function logout() {
-  await auth.logout();
-  await router.replace('/login');
-}
 </script>
 
 <template>
-  <div class="page stack">
-    <div style="display: flex; justify-content: space-between; align-items: center">
-      <h1 style="margin: 0">Merhaba, {{ auth.user?.displayName }}</h1>
-      <div style="display: flex; gap: 0.5rem">
-        <Button label="Hafta" icon="pi pi-calendar" severity="secondary" text @click="router.push('/hafta')" />
-        <Button label="Puan durumu" icon="pi pi-list" severity="secondary" text @click="router.push('/puan-durumu')" />
-        <Button label="Kurallar" icon="pi pi-book" severity="secondary" text @click="router.push('/kurallar')" />
-        <Button
-          v-if="auth.isAdmin"
-          label="Yönetim"
-          icon="pi pi-cog"
-          severity="secondary"
-          @click="router.push(ADMIN_BASE)"
-        />
-        <Button label="Çıkış" icon="pi pi-sign-out" severity="secondary" text @click="logout" />
-      </div>
-    </div>
+  <div class="page-stack">
+    <PageHeader :title="`Selam ${auth.user?.displayName} 👋`" subtitle="Haftalık kararların ve kulüplerin burada." />
 
-    <Card>
-      <template #title>
-        Kadron
-        <Tag
-          v-if="!loading"
-          :severity="squadComplete ? 'success' : 'warn'"
-          :value="squadComplete ? 'Tamam' : 'Eksik'"
-          style="margin-left: 0.5rem"
-        />
-      </template>
-      <template #content>
-        <div v-if="loading">Yükleniyor…</div>
-        <template v-else>
-          <div v-if="squadComplete" class="crest-row">
-            <RouterLink
-              v-for="s in store.squad"
-              :key="s.teamId"
-              :to="`/takim/${s.teamId}`"
-              class="mini-crest"
-            >
-              <span class="crest">{{ s.shortName }}</span>
+    <LoadingState v-if="loading" />
+
+    <div v-else class="dash-grid">
+      <!-- Squad -->
+      <section class="surface-card card-pad">
+        <div class="card-top">
+          <h2 class="section-title" style="margin: 0">Kadrom</h2>
+          <Tag :severity="squadComplete ? 'success' : 'warn'" :value="squadComplete ? 'Hazır' : 'Eksik'" />
+        </div>
+        <template v-if="squadComplete">
+          <div class="crest-row">
+            <RouterLink v-for="s in squad" :key="s.teamId" :to="`/takim/${s.teamId}`" class="crest-mini">
+              <span class="crest" :class="{ elim: s.eliminated }">{{ s.shortName }}</span>
               <small>{{ s.name }}</small>
             </RouterLink>
           </div>
-          <p v-else style="margin: 0 0 0.75rem">
-            Henüz kalıcı kadronu seçmedin. Her pottan bir kulüp seç.
-          </p>
-          <Button
-            :label="squadComplete ? 'Kadroyu düzenle' : 'Kadro seç'"
-            icon="pi pi-users"
-            :severity="store.squadLocked ? 'secondary' : 'primary'"
-            @click="router.push('/kadro')"
-          />
-          <span v-if="store.squadLocked" style="margin-left: 0.6rem; color: #a55">Kilitli</span>
+          <RouterLink to="/kadro">
+            <Button :label="squadLocked ? 'Kadroyu gör' : 'Kadroyu düzenle'" icon="pi pi-users" outlined size="small" />
+          </RouterLink>
         </template>
-      </template>
-    </Card>
+        <template v-else>
+          <p class="text-muted" style="margin: 0 0 1rem">Her pottan bir kulüp seçerek başla.</p>
+          <RouterLink to="/kadro"><Button label="Kadroyu kur" icon="pi pi-plus" /></RouterLink>
+        </template>
+      </section>
 
-    <Card>
-      <template #title>Faz 1 — Domain iskeleti</template>
-      <template #content>
-        <p>
-          Potlar, 36 mock kulüp, matchweek registry, maçlar ve config yüklendi. Kadro seçimi ve
-          seçim kilidi aktif. Haftalık dizi, jokerler ve puanlama sonraki fazlarda.
-        </p>
-        <p style="color: #889; font-size: 0.85rem; margin: 0">
-          Not: kulüpler geçen sezonun katılımcılarından placeholder’dır; resmi 2026–27 kurası
-          açıklanınca güncellenecek.
-        </p>
-      </template>
-    </Card>
+      <!-- This week -->
+      <section class="surface-card card-pad">
+        <h2 class="section-title" style="margin: 0 0 0.75rem">{{ currentMw?.label ?? 'Hafta' }}</h2>
+        <template v-if="currentMw">
+          <div class="week-score">
+            <span class="big-num">{{ weekTotal ?? '—' }}</span>
+            <span class="text-muted">{{ weekFinal ? 'kesin puan' : 'anlık puan' }}</span>
+          </div>
+          <RouterLink to="/hafta">
+            <Button label="Dizini ayarla" icon="pi pi-calendar" size="small" />
+          </RouterLink>
+        </template>
+        <p v-else class="text-muted" style="margin: 0">Sezon henüz başlamadı.</p>
+      </section>
+
+      <!-- Standings -->
+      <section class="surface-card card-pad">
+        <div class="card-top">
+          <h2 class="section-title" style="margin: 0">Sıralama</h2>
+          <Tag v-if="myRank" :value="`${myRank.rank}.`" severity="info" />
+        </div>
+        <ol v-if="topThree.length" class="mini-lb">
+          <li v-for="e in topThree" :key="e.userId" :class="{ me: e.userId === auth.user?.id }">
+            <span class="lb-rank">{{ e.rank }}</span>
+            <span class="lb-name">{{ e.displayName }}</span>
+            <span class="lb-pts">{{ e.total }}</span>
+          </li>
+        </ol>
+        <p v-else class="text-muted" style="margin: 0">Henüz sıralama yok.</p>
+        <RouterLink to="/puan-durumu"><Button label="Tüm sıralama" icon="pi pi-chart-bar" text size="small" /></RouterLink>
+      </section>
+    </div>
   </div>
 </template>
 
 <style scoped>
+.dash-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+  gap: 1.25rem;
+}
+.card-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 1rem;
+}
 .crest-row {
   display: flex;
   gap: 1rem;
   flex-wrap: wrap;
-  margin-bottom: 1rem;
+  margin-bottom: 1.1rem;
 }
-.mini-crest {
+.crest-mini {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: 0.3rem;
-  width: 80px;
+  gap: 0.35rem;
+  width: 74px;
   text-align: center;
   text-decoration: none;
-  color: inherit;
+  color: var(--color-text);
 }
-.mini-crest:hover .crest {
-  outline: 2px solid var(--brand-accent);
-}
-.mini-crest small {
+.crest-mini small {
   font-size: 0.72rem;
-  line-height: 1.1;
+  line-height: 1.15;
 }
 .crest {
-  width: 44px;
-  height: 44px;
+  width: 46px;
+  height: 46px;
   border-radius: 50%;
-  background: var(--brand);
+  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
   color: #fff;
   display: grid;
   place-items: center;
-  font-size: 0.75rem;
+  font-size: 0.72rem;
+  font-weight: 800;
+  box-shadow: var(--shadow-sm);
+}
+.crest.elim {
+  filter: grayscale(1);
+  opacity: 0.6;
+}
+.crest-mini:hover .crest {
+  outline: 2px solid var(--color-primary);
+  outline-offset: 2px;
+}
+.week-score {
+  display: flex;
+  align-items: baseline;
+  gap: 0.5rem;
+  margin-bottom: 1rem;
+}
+.big-num {
+  font-size: 2.4rem;
+  font-weight: 800;
+  color: var(--color-primary);
+  line-height: 1;
+}
+.mini-lb {
+  list-style: none;
+  margin: 0 0 0.75rem;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.4rem;
+}
+.mini-lb li {
+  display: flex;
+  align-items: center;
+  gap: 0.6rem;
+  padding: 0.35rem 0.5rem;
+  border-radius: var(--radius-sm);
+}
+.mini-lb li.me {
+  background: var(--color-primary-soft);
+}
+.lb-rank {
+  font-weight: 800;
+  color: var(--color-primary);
+  width: 1.2rem;
+}
+.lb-name {
+  flex: 1;
+}
+.lb-pts {
   font-weight: 700;
 }
 </style>

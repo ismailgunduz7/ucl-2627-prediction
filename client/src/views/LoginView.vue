@@ -26,7 +26,7 @@ async function submit() {
     const redirect = (route.query.redirect as string) || (auth.isAdmin ? '/yonetim' : '/');
     await router.replace(redirect);
   } catch (e) {
-    error.value = e instanceof ApiRequestError ? e.message : 'Giriş başarısız';
+    error.value = e instanceof ApiRequestError ? e.message : 'Giriş yapılamadı, tekrar dene';
   } finally {
     loading.value = false;
   }
@@ -34,32 +34,36 @@ async function submit() {
 </script>
 
 <template>
-  <div class="center-screen">
-    <Card class="card-narrow">
-      <template #title>Şampiyonlar Ligi Fantazi</template>
-      <template #subtitle>2026–27 · Giriş</template>
-      <template #content>
-        <form class="stack" @submit.prevent="submit">
-          <div class="field">
-            <label for="username">Kullanıcı adı</label>
-            <InputText id="username" v-model="username" autocomplete="username" required />
-          </div>
-          <div class="field">
-            <label for="password">Şifre</label>
-            <Password
-              id="password"
-              v-model="password"
-              :feedback="false"
-              toggle-mask
-              input-id="password"
-              autocomplete="current-password"
-              required
-            />
-          </div>
-          <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>
-          <Button type="submit" label="Giriş yap" :loading="loading" />
-        </form>
-      </template>
-    </Card>
+  <div class="login-page">
+    <div class="login-card">
+      <div class="login-brand">
+        <span class="emoji">⭐️</span>
+        <h1 style="margin: 0; color: #fff; font-size: 1.5rem">Şampiyonlar Ligi Fantazi</h1>
+        <p style="margin: 0.35rem 0 0; color: #c7d2fe">2026/27 sezonu · giriş yap</p>
+      </div>
+      <Card>
+        <template #content>
+          <form class="page-stack" style="gap: 1rem" @submit.prevent="submit">
+            <div class="form-field">
+              <label for="username">Kullanıcı adı</label>
+              <InputText id="username" v-model="username" autocomplete="username" required autofocus />
+            </div>
+            <div class="form-field">
+              <label for="password">Şifre</label>
+              <Password
+                v-model="password"
+                input-id="password"
+                :feedback="false"
+                toggle-mask
+                autocomplete="current-password"
+                required
+              />
+            </div>
+            <Message v-if="error" severity="error" :closable="false">{{ error }}</Message>
+            <Button type="submit" label="Giriş yap" :loading="loading" size="large" />
+          </form>
+        </template>
+      </Card>
+    </div>
   </div>
 </template>
