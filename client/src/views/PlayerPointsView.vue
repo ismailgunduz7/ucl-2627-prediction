@@ -124,7 +124,7 @@ watch(() => route.params.id, (id) => id && load(id as string));
                 v-for="c in w.clubs"
                 :key="c.teamId"
                 class="club-row"
-                :class="{ muted: c.benched && w.jokerCode !== 'bench_boost' }"
+                :class="{ muted: isPlayed(w) && c.benched && w.jokerCode !== 'bench_boost' }"
               >
                 <div class="club-top">
                   <RouterLink :to="`/takim/${c.teamId}`" class="club-id">
@@ -146,16 +146,17 @@ watch(() => route.params.id, (id) => id && load(id as string));
                     </span>
                   </div>
 
-                  <CaptainBadge v-if="c.captain" :multiplier="c.multiplier" :joker-code="w.jokerCode" :size="26" />
-                  <Tag v-else-if="c.benched" severity="secondary" value="Yedek" />
+                  <template v-if="isPlayed(w)">
+                    <CaptainBadge v-if="c.captain" :multiplier="c.multiplier" :joker-code="w.jokerCode" :size="26" />
+                    <Tag v-else-if="c.benched" severity="secondary" value="Yedek" />
 
-                  <span class="club-pts">
-                    <template v-if="c.captain && c.multiplier > 1">
-                      <span class="text-muted base">{{ c.basePoints }} × {{ c.multiplier }}</span>
+                    <span class="club-pts">
+                      <span v-if="c.captain && c.multiplier > 1" class="text-muted base">
+                        {{ c.basePoints }} × {{ c.multiplier }}
+                      </span>
                       <strong :class="c.contributed >= 0 ? 'text-positive' : 'text-negative'">{{ signed(c.contributed) }}</strong>
-                    </template>
-                    <strong v-else :class="c.contributed >= 0 ? 'text-positive' : 'text-negative'">{{ signed(c.contributed) }}</strong>
-                  </span>
+                    </span>
+                  </template>
                 </div>
 
                 <ul v-if="c.entries.length" class="entries">
@@ -190,7 +191,7 @@ watch(() => route.params.id, (id) => id && load(id as string));
 .no-fixture { font-size: 0.85rem; }
 .club-pts { display: flex; align-items: baseline; gap: 0.45rem; margin-left: auto; font-weight: 800; white-space: nowrap; }
 .club-pts .base { font-size: 0.78rem; font-weight: 600; }
-.entries { list-style: none; margin: 0.55rem 0 0; padding: 0.55rem 0 0; border-top: 1px dashed var(--color-border); display: flex; flex-direction: column; gap: 0.3rem; }
-.entries li { display: flex; align-items: center; gap: 0.6rem; font-size: 0.85rem; }
+.entries { list-style: none; margin: 0.55rem 0 0; padding: 0.55rem 0 0; border-top: 1px dashed var(--color-border); display: flex; flex-direction: column; gap: 0.3rem; max-width: 420px; }
+.entries li { display: flex; align-items: center; gap: 0.6rem; font-size: 0.85rem; color: var(--color-text-secondary); }
 .entries li > span:last-child { margin-left: auto; font-weight: 700; }
 </style>

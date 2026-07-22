@@ -437,6 +437,39 @@ a:hover {
 .p-button { font-weight: 600; }
 .p-tag { font-weight: 700; }
 
+/* Accordion: panels read as surface cards, text follows the theme. */
+.p-accordion {
+  display: flex;
+  flex-direction: column;
+  gap: 0.6rem;
+}
+.p-accordionpanel {
+  border: 1px solid var(--color-border) !important;
+  border-radius: var(--radius-lg) !important;
+  background: linear-gradient(180deg, var(--color-surface), var(--color-bg-subtle)) !important;
+  overflow: hidden;
+}
+.p-accordionheader {
+  background: transparent !important;
+  color: var(--color-text) !important;
+  border: none !important;
+  font-weight: 700;
+  padding: 0.9rem 1.15rem !important;
+}
+.p-accordionheader:hover {
+  background: var(--color-surface-2) !important;
+  color: var(--color-text) !important;
+}
+.p-accordioncontent,
+.p-accordioncontent-content {
+  background: transparent !important;
+  color: var(--color-text) !important;
+  border: none !important;
+}
+.p-accordioncontent-content {
+  padding: 0 1.15rem 1.15rem !important;
+}
+
 /* ---- Toast (mobile) ---- */
 @media (max-width: 768px) {
   .p-toast {
