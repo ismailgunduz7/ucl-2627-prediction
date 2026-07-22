@@ -25,6 +25,18 @@ const routes: RouteRecordRaw[] = [
     meta: { requiresAuth: true },
   },
   {
+    path: '/hafta',
+    name: 'hafta',
+    component: () => import('@/views/WeekView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
+    path: '/puan-durumu',
+    name: 'puan-durumu',
+    component: () => import('@/views/LeaderboardView.vue'),
+    meta: { requiresAuth: true },
+  },
+  {
     path: '/kurallar',
     name: 'kurallar',
     component: () => import('@/views/RulesView.vue'),

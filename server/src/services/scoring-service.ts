@@ -5,6 +5,11 @@ import { scoreMatchDraft, type TierRules } from '../domain/scoring.ts';
 import { checkRuleDirection } from '../domain/rules-direction.ts';
 import type { RuleDirection } from '../data/scoring-rules.ts';
 import type { MatchStatus } from '../domain/match.ts';
+import { refreshMatchweekLifecycle } from './matchweek-lifecycle-service.ts';
+import {
+  finalizeCompletedMatchweeks,
+  forceFinalizeCompletedMatchweeks,
+} from './matchweek-scoring-service.ts';
 
 export type { MatchStatus };
 
@@ -179,9 +184,12 @@ export async function clearMatchLinesInTx(client: PoolClient, matchId: string): 
   await client.query('DELETE FROM team_point_entries WHERE match_id = $1', [matchId]);
 }
 
-/** Full club-layer rebuild for all finished matches (§4.7). */
-export async function recalculateAll(): Promise<{ matchesScored: number }> {
-  return withTransaction(async (client) => {
+/**
+ * Full rebuild (§4.7): re-apply club-layer scoring for all finished matches,
+ * then re-apply final participant matchweek scores for completed weeks.
+ */
+export async function recalculateAll(): Promise<{ matchesScored: number; finalizedWeeks: string[] }> {
+  const { matchesScored } = await withTransaction(async (client) => {
     // Clear all match-based lines (Phase 2 has no bonus lines yet).
     await client.query('DELETE FROM team_point_entries WHERE match_id IS NOT NULL');
     const rules = await loadTierRules(client);
@@ -189,6 +197,11 @@ export async function recalculateAll(): Promise<{ matchesScored: number }> {
     for (const match of rows) await scoreOneMatch(client, match, rules);
     return { matchesScored: rows.length };
   });
+
+  // Re-finalize completed matchweeks so player_matchday_scores reflects the
+  // rebuilt club points (and covers participants added after completion).
+  const { finalizedWeeks } = await forceFinalizeCompletedMatchweeks();
+  return { matchesScored, finalizedWeeks };
 }
 
 // --- Admin match-result editor (minimal slice of §5.3) --------------------
@@ -237,7 +250,13 @@ export async function setMatchResult(
       // Not finished → no definitive club points for this match.
       await clearMatchLinesInTx(client, matchId);
     }
+
+    // A manual finish/cancel may complete the matchweek (§4.6).
+    await refreshMatchweekLifecycle(client);
   });
+
+  // After commit: write finals for any newly-completed matchweek.
+  await finalizeCompletedMatchweeks();
 }
 
 /** Clear the manual-override flag so sync may update the match again (§5.3). */

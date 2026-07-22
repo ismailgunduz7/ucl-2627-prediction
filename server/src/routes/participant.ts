@@ -5,13 +5,19 @@ import { requireAuth, type AuthVariables } from '../middleware/auth.ts';
 import { listTeamsByPot } from '../services/team-service.ts';
 import { getSquad, setSquad } from '../services/selection-service.ts';
 import {
+  getCurrentMatchweek,
   getFirstLeagueMatchweek,
+  getOrderedMatchweeks,
   getSelectionLockState,
+  lineupEditability,
   lockStateFor,
   type MatchweekRow,
 } from '../services/matchweek-lifecycle-service.ts';
 import { getConfigValue } from '../services/tournament-config-service.ts';
 import { getRulesMatrix, getTeamDetail } from '../services/scoring-service.ts';
+import { getEffectiveSquad, getLineup, setLineup } from '../services/lineup-service.ts';
+import { getParticipantWeekScore } from '../services/matchweek-scoring-service.ts';
+import { getLeaderboard } from '../services/leaderboard-service.ts';
 import { query } from '../db/pool.ts';
 import { SQUAD_SIZE } from '../domain/constants.ts';
 
@@ -54,14 +60,16 @@ participantRoutes.get('/scoring-rules', async (c) => {
 // --- Tournament status ----------------------------------------------------
 participantRoutes.get('/tournament/status', async (c) => {
   const now = new Date();
-  const [currentAct, mw1, selectionLock, mwRows] = await Promise.all([
+  const [currentAct, mw1, current, selectionLock, mwRows, ordered] = await Promise.all([
     getConfigValue('current_act'),
     getFirstLeagueMatchweek(),
+    getCurrentMatchweek(),
     getSelectionLockState(now),
     query<MatchweekRow>(
       `SELECT id, act, sort_order, label, status, first_kickoff_at, completed_at
        FROM matchweeks ORDER BY act, sort_order`,
     ),
+    getOrderedMatchweeks(),
   ]);
 
   return c.json({
@@ -75,6 +83,7 @@ participantRoutes.get('/tournament/status', async (c) => {
     },
     matchweeks: mwRows.rows.map((mw) => {
       const ls = lockStateFor(mw, now);
+      const edit = lineupEditability(ordered, mw.id, now);
       return {
         id: mw.id,
         act: mw.act,
@@ -84,10 +93,70 @@ participantRoutes.get('/tournament/status', async (c) => {
         firstKickoffAt: mw.first_kickoff_at ? new Date(mw.first_kickoff_at).toISOString() : null,
         lockAt: ls.lockAt?.toISOString() ?? null,
         locked: ls.locked,
+        opened: edit.opened,
+        editable: edit.editable,
       };
     }),
     mw1Id: mw1?.id ?? null,
+    currentMatchweekId: current?.id ?? null,
   });
+});
+
+// --- Weekly lineup (bench/captain) ----------------------------------------
+participantRoutes.get('/matchweeks/:id/lineup', async (c) => {
+  const auth = c.get('auth');
+  const mwId = c.req.param('id');
+  const [lineup, squad] = await Promise.all([getLineup(auth.sub, mwId), getEffectiveSquad(auth.sub)]);
+  if (!lineup) return c.json({ lineup: null, squad: [] });
+  return c.json({
+    lineup: {
+      benchTeamId: lineup.benchTeamId,
+      captainTeamId: lineup.captainTeamId,
+      saved: lineup.saved,
+      lockAt: lineup.editability.lockAt?.toISOString() ?? null,
+      locked: lineup.editability.locked,
+      opened: lineup.editability.opened,
+      editable: lineup.editability.editable,
+    },
+    squad,
+  });
+});
+
+const LineupSchema = z.object({
+  benchTeamId: z.string().uuid(),
+  captainTeamId: z.string().uuid(),
+});
+
+participantRoutes.put('/matchweeks/:id/lineup', async (c) => {
+  const auth = c.get('auth');
+  const body = LineupSchema.safeParse(await c.req.json().catch(() => null));
+  if (!body.success) throw ApiError.badRequest('Bench ve kaptan gerekli', 'invalid_body');
+  const lineup = await setLineup(auth.sub, c.req.param('id'), body.data.benchTeamId, body.data.captainTeamId);
+  return c.json({
+    lineup: {
+      benchTeamId: lineup.benchTeamId,
+      captainTeamId: lineup.captainTeamId,
+      saved: true,
+      lockAt: lineup.editability.lockAt?.toISOString() ?? null,
+      locked: lineup.editability.locked,
+    },
+  });
+});
+
+// --- Participant matchweek score (provisional or final) -------------------
+participantRoutes.get('/matchweeks/:id/score', async (c) => {
+  const auth = c.get('auth');
+  const score = await getParticipantWeekScore(auth.sub, c.req.param('id'));
+  if (!score) return c.json({ score: null });
+  return c.json({ score });
+});
+
+// --- Leaderboard (§4.8) ---------------------------------------------------
+participantRoutes.get('/leaderboard', async (c) => {
+  const auth = c.get('auth');
+  if (!auth.competitionId) return c.json({ leaderboard: [], competitionId: null });
+  const leaderboard = await getLeaderboard(auth.competitionId);
+  return c.json({ leaderboard, competitionId: auth.competitionId, meId: auth.sub });
 });
 
 // --- Permanent squad ------------------------------------------------------

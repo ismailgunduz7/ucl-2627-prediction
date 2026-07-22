@@ -4,6 +4,8 @@ import { mockProvider } from './mock-provider.ts';
 import { footballDataProvider } from './football-data-provider.ts';
 import { getConfigValue } from './tournament-config-service.ts';
 import { clearMatchLinesInTx, scoreFinishedMatchInTx } from './scoring-service.ts';
+import { refreshMatchweekLifecycle } from './matchweek-lifecycle-service.ts';
+import { finalizeCompletedMatchweeks } from './matchweek-scoring-service.ts';
 
 export function providerByName(name: string): ScoreProvider {
   return name === 'football_data' ? footballDataProvider : mockProvider;
@@ -87,6 +89,9 @@ export async function runSync(opts: {
       await refreshMatchweekLifecycle(client);
     });
 
+    // After commit: write finals for any newly-completed matchweek (§4.6).
+    await finalizeCompletedMatchweeks();
+
     await recordRun(startedAt, 'success', summary, null);
     return summary;
   } catch (err) {
@@ -122,38 +127,6 @@ async function applyFixture(
     // Reverted away from finished → remove its definitive lines.
     await clearMatchLinesInTx(client, local.id);
   }
-}
-
-/**
- * Recompute matchweek denormalized state (§3.4, §4.6):
- * 1. first_kickoff_at for weeks not yet started (upcoming/open) — never moves a
- *    started week's lock.
- * 2. mark in_progress once any match is live/finished.
- * 3. mark complete when every match is finished/cancelled.
- */
-async function refreshMatchweekLifecycle(
-  client: Parameters<typeof scoreFinishedMatchInTx>[0],
-): Promise<void> {
-  await client.query(
-    `UPDATE matchweeks mw
-     SET first_kickoff_at = sub.mk, updated_at = now()
-     FROM (SELECT matchweek_id, min(kickoff_at) AS mk FROM matches GROUP BY matchweek_id) sub
-     WHERE mw.id = sub.matchweek_id AND mw.status IN ('upcoming', 'open')`,
-  );
-  await client.query(
-    `UPDATE matchweeks SET status = 'in_progress', updated_at = now()
-     WHERE status IN ('upcoming', 'open')
-       AND id IN (SELECT matchweek_id FROM matches WHERE status IN ('live', 'finished'))`,
-  );
-  await client.query(
-    `UPDATE matchweeks mw SET status = 'complete', completed_at = now(), updated_at = now()
-     WHERE mw.status <> 'complete'
-       AND EXISTS (SELECT 1 FROM matches m WHERE m.matchweek_id = mw.id)
-       AND NOT EXISTS (
-         SELECT 1 FROM matches m
-         WHERE m.matchweek_id = mw.id AND m.status NOT IN ('finished', 'cancelled')
-       )`,
-  );
 }
 
 async function recordRun(

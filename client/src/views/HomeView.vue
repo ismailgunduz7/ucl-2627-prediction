@@ -34,6 +34,8 @@ async function logout() {
     <div style="display: flex; justify-content: space-between; align-items: center">
       <h1 style="margin: 0">Merhaba, {{ auth.user?.displayName }}</h1>
       <div style="display: flex; gap: 0.5rem">
+        <Button label="Hafta" icon="pi pi-calendar" severity="secondary" text @click="router.push('/hafta')" />
+        <Button label="Puan durumu" icon="pi pi-list" severity="secondary" text @click="router.push('/puan-durumu')" />
         <Button label="Kurallar" icon="pi pi-book" severity="secondary" text @click="router.push('/kurallar')" />
         <Button
           v-if="auth.isAdmin"
