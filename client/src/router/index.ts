@@ -1,8 +1,7 @@
 import { createRouter, createWebHistory, type RouteRecordRaw } from 'vue-router';
 import { useAuthStore } from '@/stores/auth';
 
-// The admin area lives under an obscure base path (mirrors server ADMIN_PATH,
-// §12). Kept in one constant so it is easy to change.
+// Admin area lives under an obscure base path (mirrors server ADMIN_PATH).
 export const ADMIN_BASE = '/yonetim';
 
 const routes: RouteRecordRaw[] = [
@@ -12,55 +11,23 @@ const routes: RouteRecordRaw[] = [
     component: () => import('@/views/LoginView.vue'),
     meta: { public: true },
   },
-  {
-    path: '/',
-    name: 'home',
-    component: () => import('@/views/HomeView.vue'),
-    meta: { requiresAuth: true },
-  },
-  {
-    path: '/kadro',
-    name: 'kadro',
-    component: () => import('@/views/SquadView.vue'),
-    meta: { requiresAuth: true },
-  },
-  {
-    path: '/hafta',
-    name: 'hafta',
-    component: () => import('@/views/WeekView.vue'),
-    meta: { requiresAuth: true },
-  },
-  {
-    path: '/puan-durumu',
-    name: 'puan-durumu',
-    component: () => import('@/views/LeaderboardView.vue'),
-    meta: { requiresAuth: true },
-  },
-  {
-    path: '/kurallar',
-    name: 'kurallar',
-    component: () => import('@/views/RulesView.vue'),
-    meta: { requiresAuth: true },
-  },
-  {
-    path: '/takim/:id',
-    name: 'takim',
-    component: () => import('@/views/TeamView.vue'),
-    meta: { requiresAuth: true },
-  },
-  {
-    path: ADMIN_BASE,
-    component: () => import('@/views/admin/AdminLayout.vue'),
-    meta: { requiresAuth: true, requiresAdmin: true },
-    children: [
-      { path: '', name: 'admin-dashboard', component: () => import('@/views/admin/DashboardView.vue') },
-      { path: 'kullanicilar', name: 'admin-users', component: () => import('@/views/admin/UsersView.vue') },
-      { path: 'yarismalar', name: 'admin-competitions', component: () => import('@/views/admin/CompetitionsView.vue') },
-      { path: 'kurallar', name: 'admin-rules', component: () => import('@/views/admin/RulesView.vue') },
-      { path: 'maclar', name: 'admin-matches', component: () => import('@/views/admin/MatchesView.vue') },
-      { path: 'sync', name: 'admin-sync', component: () => import('@/views/admin/SyncView.vue') },
-    ],
-  },
+
+  // Participant area
+  { path: '/', name: 'home', component: () => import('@/views/HomeView.vue'), meta: { requiresAuth: true, participant: true } },
+  { path: '/kadro', name: 'kadro', component: () => import('@/views/SquadView.vue'), meta: { requiresAuth: true, participant: true } },
+  { path: '/hafta', name: 'hafta', component: () => import('@/views/WeekView.vue'), meta: { requiresAuth: true, participant: true } },
+  { path: '/puan-durumu', name: 'puan-durumu', component: () => import('@/views/LeaderboardView.vue'), meta: { requiresAuth: true, participant: true } },
+  { path: '/kurallar', name: 'kurallar', component: () => import('@/views/RulesView.vue'), meta: { requiresAuth: true, participant: true } },
+  { path: '/takim/:id', name: 'takim', component: () => import('@/views/TeamView.vue'), meta: { requiresAuth: true, participant: true } },
+
+  // Admin area (flat, rendered in the shell with admin nav)
+  { path: ADMIN_BASE, name: 'admin-dashboard', component: () => import('@/views/admin/DashboardView.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
+  { path: `${ADMIN_BASE}/kullanicilar`, name: 'admin-users', component: () => import('@/views/admin/UsersView.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
+  { path: `${ADMIN_BASE}/yarismalar`, name: 'admin-competitions', component: () => import('@/views/admin/CompetitionsView.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
+  { path: `${ADMIN_BASE}/kurallar`, name: 'admin-rules', component: () => import('@/views/admin/RulesView.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
+  { path: `${ADMIN_BASE}/maclar`, name: 'admin-matches', component: () => import('@/views/admin/MatchesView.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
+  { path: `${ADMIN_BASE}/sync`, name: 'admin-sync', component: () => import('@/views/admin/SyncView.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
+
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ];
 
@@ -71,7 +38,6 @@ export const router = createRouter({
 
 router.beforeEach(async (to) => {
   const auth = useAuthStore();
-  // Ensure the initial silent refresh has resolved before deciding.
   if (!auth.ready) await auth.bootstrap();
 
   if (to.meta.requiresAuth && !auth.isAuthenticated) {
@@ -80,8 +46,12 @@ router.beforeEach(async (to) => {
   if (to.meta.requiresAdmin && !auth.isAdmin) {
     return { name: 'home' };
   }
+  // Admins have no business on participant pages — keep them in the panel.
+  if (to.meta.participant && auth.isAdmin) {
+    return { name: 'admin-dashboard' };
+  }
   if (to.name === 'login' && auth.isAuthenticated) {
-    return { name: auth.isAdmin ? 'admin-dashboard' : 'home' };
+    return auth.isAdmin ? { name: 'admin-dashboard' } : { name: 'home' };
   }
   return true;
 });
