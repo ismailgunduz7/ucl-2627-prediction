@@ -3,33 +3,32 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import Button from 'primevue/button';
 import Toast from 'primevue/toast';
+import { Home, Users, CalendarDays, Trophy, BookOpen, LayoutGrid, Network, Calculator, Flag, RefreshCw, Menu, X, LogOut } from '@lucide/vue';
 import { useAuthStore } from '@/stores/auth';
-import { useDarkMode } from '@/composables/useDarkMode';
+import AppCursor from '@/components/AppCursor.vue';
 
 const auth = useAuthStore();
 const route = useRoute();
 const router = useRouter();
-const { isDark, toggle: toggleTheme } = useDarkMode();
 
 const mobileNavOpen = ref(false);
-
 const isLoginRoute = computed(() => route.name === 'login');
 const showShell = computed(() => auth.ready && auth.isAuthenticated && !isLoginRoute.value);
 
 const participantNav = [
-  { to: '/', label: 'Ana Sayfa', icon: 'pi pi-home' },
-  { to: '/kadro', label: 'Kadrom', icon: 'pi pi-users' },
-  { to: '/hafta', label: 'Bu Hafta', icon: 'pi pi-calendar' },
-  { to: '/puan-durumu', label: 'Puan Durumu', icon: 'pi pi-chart-bar' },
-  { to: '/kurallar', label: 'Kurallar', icon: 'pi pi-book' },
+  { to: '/', label: 'Ana Sayfa', icon: Home },
+  { to: '/kadro', label: 'Kadrom', icon: Users },
+  { to: '/hafta', label: 'Bu Hafta', icon: CalendarDays },
+  { to: '/puan-durumu', label: 'Puan Durumu', icon: Trophy },
+  { to: '/kurallar', label: 'Kurallar', icon: BookOpen },
 ];
 const adminNav = [
-  { to: '/yonetim', label: 'Panel', icon: 'pi pi-th-large' },
-  { to: '/yonetim/kullanicilar', label: 'Kullanıcılar', icon: 'pi pi-users' },
-  { to: '/yonetim/yarismalar', label: 'Yarışmalar', icon: 'pi pi-sitemap' },
-  { to: '/yonetim/kurallar', label: 'Kurallar', icon: 'pi pi-calculator' },
-  { to: '/yonetim/maclar', label: 'Maçlar', icon: 'pi pi-flag' },
-  { to: '/yonetim/sync', label: 'Sync', icon: 'pi pi-sync' },
+  { to: '/yonetim', label: 'Panel', icon: LayoutGrid },
+  { to: '/yonetim/kullanicilar', label: 'Kullanıcılar', icon: Users },
+  { to: '/yonetim/yarismalar', label: 'Yarışmalar', icon: Network },
+  { to: '/yonetim/kurallar', label: 'Kurallar', icon: Calculator },
+  { to: '/yonetim/maclar', label: 'Maçlar', icon: Flag },
+  { to: '/yonetim/sync', label: 'Sync', icon: RefreshCw },
 ];
 
 const navItems = computed(() => (auth.isAdmin ? adminNav : participantNav));
@@ -39,10 +38,7 @@ onMounted(() => {
   if (!auth.ready) void auth.bootstrap();
 });
 
-watch(
-  () => route.fullPath,
-  () => (mobileNavOpen.value = false),
-);
+watch(() => route.fullPath, () => (mobileNavOpen.value = false));
 
 async function logout() {
   await auth.logout();
@@ -51,65 +47,50 @@ async function logout() {
 </script>
 
 <template>
+  <AppCursor />
   <Toast />
+
   <div v-if="showShell" class="app-shell">
     <header class="app-header">
       <div class="app-header-inner">
         <RouterLink :to="homeHref" class="brand">
-          <span class="brand-badge">★</span>
-          <span>ŞL Fantazi <span class="text-muted" style="font-weight: 600">26/27</span></span>
+          <span class="brand-badge">⚽</span>
+          <span>ŞL Fantazi</span>
         </RouterLink>
 
         <nav class="main-nav" aria-label="Ana menü">
           <RouterLink v-for="item in navItems" :key="item.to" :to="item.to" class="nav-link">
-            <i :class="item.icon" /><span>{{ item.label }}</span>
+            <component :is="item.icon" :size="17" />
+            <span>{{ item.label }}</span>
           </RouterLink>
         </nav>
 
         <div class="header-end">
           <span class="user-chip"><span class="role-dot" />{{ auth.user?.displayName }}</span>
-          <Button
-            :icon="isDark() ? 'pi pi-sun' : 'pi pi-moon'"
-            severity="secondary"
-            text
-            rounded
-            aria-label="Tema"
-            @click="toggleTheme"
-          />
-          <Button icon="pi pi-sign-out" severity="secondary" text rounded aria-label="Çıkış" @click="logout" />
-          <Button
-            class="nav-toggle"
-            :icon="mobileNavOpen ? 'pi pi-times' : 'pi pi-bars'"
-            severity="secondary"
-            text
-            rounded
-            aria-label="Menü"
-            @click="mobileNavOpen = !mobileNavOpen"
-          />
+          <Button severity="secondary" text rounded aria-label="Çıkış" @click="logout">
+            <LogOut :size="18" />
+          </Button>
+          <Button class="nav-toggle" severity="secondary" text rounded aria-label="Menü" @click="mobileNavOpen = !mobileNavOpen">
+            <component :is="mobileNavOpen ? X : Menu" :size="20" />
+          </Button>
         </div>
       </div>
     </header>
 
-    <button
-      v-if="mobileNavOpen"
-      class="mobile-nav-backdrop"
-      aria-label="Menüyü kapat"
-      @click="mobileNavOpen = false"
-    />
+    <button v-if="mobileNavOpen" class="mobile-nav-backdrop" aria-label="Menüyü kapat" @click="mobileNavOpen = false" />
     <nav class="mobile-nav" :class="{ 'is-open': mobileNavOpen }" aria-label="Mobil menü">
-      <RouterLink
-        v-for="item in navItems"
-        :key="`m-${item.to}`"
-        :to="item.to"
-        class="mobile-nav-link"
-        @click="mobileNavOpen = false"
-      >
-        <i :class="item.icon" /><span>{{ item.label }}</span>
+      <RouterLink v-for="item in navItems" :key="`m-${item.to}`" :to="item.to" class="mobile-nav-link" @click="mobileNavOpen = false">
+        <component :is="item.icon" :size="18" />
+        <span>{{ item.label }}</span>
       </RouterLink>
     </nav>
 
     <main class="app-main">
-      <RouterView />
+      <RouterView v-slot="{ Component }">
+        <transition name="page" mode="out-in">
+          <component :is="Component" />
+        </transition>
+      </RouterView>
     </main>
   </div>
 
@@ -117,3 +98,12 @@ async function logout() {
     <RouterView />
   </main>
 </template>
+
+<style>
+.page-enter-active,
+.page-leave-active {
+  transition: opacity 0.18s ease, transform 0.18s ease;
+}
+.page-enter-from { opacity: 0; transform: translateY(8px); }
+.page-leave-to { opacity: 0; transform: translateY(-6px); }
+</style>

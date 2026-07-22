@@ -1,7 +1,11 @@
 import { definePreset } from '@primevue/themes';
 import Aura from '@primevue/themes/aura';
 
-// Champions League vibe: deep indigo primary on a clean neutral surface.
+/**
+ * Dark-only Champions League theme. The dark surface scale is tuned to the same
+ * navy palette the app's CSS variables use, so PrimeVue overlays (dropdowns,
+ * dialogs, toasts) sit on the same colours as our own cards.
+ */
 export const AppPreset = definePreset(Aura, {
   semantic: {
     primary: {
@@ -18,20 +22,47 @@ export const AppPreset = definePreset(Aura, {
       950: '{indigo.950}',
     },
     colorScheme: {
-      light: {
-        surface: {
-          0: '#ffffff',
-          50: '#f8fafc',
-          100: '#f1f5f9',
-          200: '#e2e8f0',
-        },
-      },
       dark: {
         surface: {
-          0: '#0b1220',
-          50: '#111a2e',
-          100: '#16223b',
-          200: '#1e2d4d',
+          0: '#0a0f1d',
+          50: '#0e1526',
+          100: '#131c31',
+          200: '#1a2540',
+          300: '#22304f',
+          400: '#2c3d61',
+          500: '#3a4d75',
+          600: '#5a6d94',
+          700: '#8494b5',
+          800: '#b3bfd6',
+          900: '#dbe3f0',
+          950: '#f0f4fa',
+        },
+        primary: {
+          color: '#818cf8',
+          contrastColor: '#0a0f1d',
+          hoverColor: '#a5b4fc',
+          activeColor: '#c7d2fe',
+        },
+        content: {
+          background: '#131c31',
+          hoverBackground: '#1a2540',
+          borderColor: '#22304f',
+          color: '#e6edf8',
+        },
+        formField: {
+          background: '#0e1526',
+          disabledBackground: '#131c31',
+          filledBackground: '#131c31',
+          borderColor: '#2c3d61',
+          hoverBorderColor: '#3a4d75',
+          focusBorderColor: '#818cf8',
+          color: '#e6edf8',
+          placeholderColor: '#7e8ca8',
+        },
+        overlay: {
+          select: { background: '#131c31', borderColor: '#22304f', color: '#e6edf8' },
+          popover: { background: '#131c31', borderColor: '#22304f', color: '#e6edf8' },
+          modal: { background: '#131c31', borderColor: '#22304f', color: '#e6edf8' },
         },
       },
     },

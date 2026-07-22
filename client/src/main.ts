@@ -3,12 +3,15 @@ import { createPinia } from 'pinia';
 import PrimeVue from 'primevue/config';
 import ToastService from 'primevue/toastservice';
 import ConfirmationService from 'primevue/confirmationservice';
-import 'primeicons/primeicons.css';
+import { MotionPlugin } from '@vueuse/motion';
 
 import { AppPreset } from './theme/preset';
 import App from './App.vue';
 import { router } from './router';
 import './styles/main.css';
+
+// The app is dark-only; the class is always present so PrimeVue uses its dark tokens.
+document.documentElement.classList.add('dark-mode');
 
 const app = createApp(App);
 
@@ -23,12 +26,13 @@ app.use(PrimeVue, {
     reject: 'İptal',
     choose: 'Seç',
     cancel: 'Vazgeç',
-    emptyMessage: 'Kayıt bulunamadı',
-    emptyFilterMessage: 'Sonuç bulunamadı',
+    emptyMessage: 'Kayıt yok',
+    emptyFilterMessage: 'Sonuç yok',
   },
 });
 app.use(ToastService);
 app.use(ConfirmationService);
+app.use(MotionPlugin);
 app.use(router);
 
 app.mount('#app');

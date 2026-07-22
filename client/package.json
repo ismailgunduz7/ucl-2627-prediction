@@ -10,7 +10,9 @@
     "typecheck": "vue-tsc --noEmit"
   },
   "dependencies": {
+    "@lucide/vue": "^1.25.0",
     "@primevue/themes": "^4.2.5",
+    "@vueuse/motion": "^3.0.3",
     "pinia": "^2.3.0",
     "primeicons": "^7.0.0",
     "primevue": "^4.2.5",
