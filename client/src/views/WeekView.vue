@@ -1,23 +1,24 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
-import Button from 'primevue/button';
 import Select from 'primevue/select';
 import Message from 'primevue/message';
 import Tag from 'primevue/tag';
 import Dialog from 'primevue/dialog';
+import Button from 'primevue/button';
 import { useToast } from 'primevue/usetoast';
+import { Crown, Armchair, Zap, Shield, Repeat } from '@lucide/vue';
 import { api, ApiRequestError } from '@/lib/api';
 import PageHeader from '@/components/PageHeader.vue';
-import LoadingState from '@/components/LoadingState.vue';
+import BallLoader from '@/components/BallLoader.vue';
 
 interface Mw { id: string; label: string; status: string; editable: boolean; opened: boolean; locked: boolean }
 interface SquadClub { teamId: string; tierId: number; name: string; shortName: string; eliminated: boolean }
 interface Lineup { benchTeamId: string; captainTeamId: string; saved: boolean; lockAt: string | null; locked: boolean; opened: boolean; editable: boolean }
-interface ScoreLine { teamId: string; name: string; shortName: string; basePoints: number; benched: boolean; captain: boolean; multiplier: number; contributed: number }
+interface ScoreLine { teamId: string; name: string; basePoints: number; benched: boolean; captain: boolean; multiplier: number; contributed: number }
 interface WeekScore { total: number; final: boolean; lines: ScoreLine[]; jokerCode: string | null }
 interface Inventory { code: string; name: string; remaining: number }
 interface ActiveJoker { code: string; payload: Record<string, unknown> }
-interface BriefingClub { teamId: string; name: string; tierId: number; fixtures: { opponentName: string; opponentTierId: number; home: boolean }[]; risk: string | null }
+interface BriefingClub { teamId: string; name: string; fixtures: { opponentName: string; opponentTierId: number; home: boolean }[]; risk: string | null }
 interface OpenPick { userId: string; displayName: string; benchName: string; captainName: string; jokerCode: string | null }
 interface Pot { tierId: number; teams: { id: string; name: string; eliminated: boolean; isActive: boolean }[] }
 
@@ -34,6 +35,7 @@ const briefing = ref<BriefingClub[]>([]);
 const openPicks = ref<{ available: boolean; picks: OpenPick[] }>({ available: false, picks: [] });
 const pots = ref<Pot[]>([]);
 const loading = ref(true);
+const busy = ref(false);
 const now = ref(Date.now());
 let timer: number | undefined;
 
@@ -42,15 +44,16 @@ const captainId = ref<string | null>(null);
 const dragId = ref<string | null>(null);
 const dragOverBench = ref(false);
 
-const shieldTarget = ref<string | null>(null);
-const swapFrom = ref<string | null>(null);
-const swapTo = ref<string | null>(null);
+const swapDialog = ref(false);
+const swapFrom = ref<SquadClub | null>(null);
 const benchConflict = ref(false);
-const cancelConfirm = ref(false);
 
 const JOKER_NAMES: Record<string, string> = {
   weekly_swap: 'Haftalık değişim', triple_boost: 'Üçlü kaptan',
   clean_sheet_shield: 'Gol yememe kalkanı', bench_boost: 'Bench boost',
+};
+const JOKER_ICONS: Record<string, unknown> = {
+  weekly_swap: Repeat, triple_boost: Zap, clean_sheet_shield: Shield, bench_boost: Armchair,
 };
 
 const currentMw = computed(() => matchweeks.value.find((m) => m.id === selectedMw.value) ?? null);
@@ -58,6 +61,9 @@ const editable = computed(() => lineup.value?.editable ?? false);
 const isComplete = computed(() => currentMw.value?.status === 'complete');
 const benchBoost = computed(() => activeJoker.value?.code === 'bench_boost');
 const capMult = computed(() => (activeJoker.value?.code === 'triple_boost' ? 3 : 2));
+const swappedInId = computed(() =>
+  activeJoker.value?.code === 'weekly_swap' ? String(activeJoker.value.payload.toTeamId ?? '') : null,
+);
 
 const benchClub = computed(() => squad.value.find((c) => c.teamId === benchId.value) ?? null);
 const pitchClubs = computed(() => squad.value.filter((c) => c.teamId !== benchId.value));
@@ -72,62 +78,109 @@ const countdown = computed(() => {
 });
 const drama = computed(() => countdownMs.value !== null && countdownMs.value > 0 && countdownMs.value < 7200_000);
 
-const scoringForShield = computed(() => squad.value.filter((c) => c.teamId !== benchId.value));
-function swapToOptions(fromTeamId: string | null) {
-  if (!fromTeamId) return [];
-  const from = squad.value.find((c) => c.teamId === fromTeamId);
-  if (!from) return [];
-  const ids = new Set(squad.value.map((c) => c.teamId));
-  const pot = pots.value.find((p) => p.tierId === from.tierId);
-  return (pot?.teams ?? []).filter((t) => !ids.has(t.id) && !t.eliminated && t.isActive);
-}
-
 function initials(name: string) { return name.split(' ').map((w) => w[0]).slice(0, 3).join('').toUpperCase(); }
 function riskSeverity(r: string | null) { return r === 'yüksek' ? 'danger' : r === 'orta' ? 'warn' : r === 'düşük' ? 'success' : 'secondary'; }
 function lineFor(teamId: string) { return score.value?.lines.find((l) => l.teamId === teamId); }
 function remaining(code: string) { return inventory.value.find((i) => i.code === code)?.remaining ?? 0; }
 
-// Set bench, keeping the captaincy on a scoring club, then auto-save.
+/** Which slot shows the active joker's (highlighted) button. */
+const activeSlot = computed(() => {
+  const j = activeJoker.value;
+  if (!j) return null;
+  if (j.code === 'triple_boost') return captainId.value;
+  if (j.code === 'bench_boost') return benchId.value;
+  if (j.code === 'clean_sheet_shield') return String(j.payload.teamId ?? '');
+  if (j.code === 'weekly_swap') return String(j.payload.toTeamId ?? '');
+  return null;
+});
+
+/**
+ * Joker buttons for a slot. While a joker is live only that one shows (on its
+ * own slot) and doubles as the cancel button; otherwise every joker with stock
+ * left shows on the slots it can apply to.
+ */
+function jokersFor(club: SquadClub, isBench: boolean) {
+  if (!editable.value) return [];
+  if (activeJoker.value) {
+    return activeSlot.value === club.teamId ? [{ code: activeJoker.value.code, active: true }] : [];
+  }
+  const codes = isBench ? ['bench_boost'] : ['triple_boost', 'clean_sheet_shield', 'weekly_swap'];
+  return codes.filter((c) => remaining(c) > 0).map((code) => ({ code, active: false }));
+}
+
+async function onJokerClick(code: string, club: SquadClub, active: boolean) {
+  if (busy.value) return;
+  if (active) { await cancelJoker(); return; }
+  if (code === 'weekly_swap') { swapFrom.value = club; swapDialog.value = true; return; }
+  if (code === 'triple_boost') {
+    // Triple boost rides with the captain, so captain that club first.
+    if (captainId.value !== club.teamId) { captainId.value = club.teamId; await persist(); }
+    await activateJoker('triple_boost', {});
+    return;
+  }
+  if (code === 'clean_sheet_shield') { await activateJoker('clean_sheet_shield', { teamId: club.teamId }); return; }
+  await activateJoker('bench_boost', {});
+}
+
+function swapOptions() {
+  const from = swapFrom.value;
+  if (!from) return [];
+  const ids = new Set(squad.value.map((c) => c.teamId));
+  const pot = pots.value.find((p) => p.tierId === from.tierId);
+  return (pot?.teams ?? []).filter((t) => !ids.has(t.id) && !t.eliminated && t.isActive);
+}
+async function chooseSwap(toTeamId: string) {
+  swapDialog.value = false;
+  await activateJoker('weekly_swap', { fromTeamId: swapFrom.value?.teamId, toTeamId });
+}
+
+// A club swapped in for this week is here to play — it cannot be benched.
+function canBench(club: SquadClub) {
+  return editable.value && club.teamId !== swappedInId.value;
+}
+
 async function setBench(teamId: string) {
   if (!editable.value || teamId === benchId.value) return;
-  benchId.value = teamId;
-  if (captainId.value === teamId) {
-    const s = squad.value.filter((c) => c.teamId !== teamId).sort((a, b) => a.tierId - b.tierId);
-    captainId.value = s[0]?.teamId ?? null;
+  const club = squad.value.find((c) => c.teamId === teamId);
+  if (club && !canBench(club)) {
+    toast.add({ severity: 'warn', summary: 'Takasla gelen kulüp yedeğe çekilemez', life: 3000 });
+    return;
   }
+  const oldBench = benchId.value;
+  benchId.value = teamId;
+  // Captaincy follows the club coming off the bench.
+  if (captainId.value === teamId && !benchBoost.value) captainId.value = oldBench;
   await persist();
 }
 async function setCaptain(teamId: string) {
-  if (!editable.value || teamId === benchId.value) return;
+  if (!editable.value) return;
+  if (teamId === benchId.value && !benchBoost.value) return;
   captainId.value = teamId;
   await persist();
 }
 
 async function persist(force = false) {
   if (!selectedMw.value || !benchId.value || !captainId.value) return;
+  busy.value = true;
   try {
     await api.put(`/api/matchweeks/${selectedMw.value}/lineup`, { benchTeamId: benchId.value, captainTeamId: captainId.value });
     await loadWeek();
   } catch (e) {
     if (e instanceof ApiRequestError && e.code === 'joker_bench_conflict' && !force) {
       benchConflict.value = true;
-      await loadWeek(); // revert local state to server truth
+      await loadWeek();
     } else {
       toast.add({ severity: 'error', summary: 'Kaydedilemedi', detail: msg(e), life: 4000 });
       await loadWeek();
     }
+  } finally {
+    busy.value = false;
   }
 }
 
-// Drag & drop
 function onDragStart(teamId: string) { if (editable.value) dragId.value = teamId; }
-function onDropBench() {
-  dragOverBench.value = false;
-  if (dragId.value) setBench(dragId.value);
-  dragId.value = null;
-}
+function onDropBench() { dragOverBench.value = false; if (dragId.value) setBench(dragId.value); dragId.value = null; }
 function onDropPitch(targetTeamId: string) {
-  // Dropping the benched club onto a pitch club swaps them.
   if (dragId.value && dragId.value === benchId.value) setBench(targetTeamId);
   dragId.value = null;
 }
@@ -138,21 +191,27 @@ async function confirmBenchConflict() {
   await persist(true);
 }
 
-async function activate(code: string, payload: Record<string, unknown> = {}) {
+async function activateJoker(code: string, payload: Record<string, unknown>) {
+  busy.value = true;
   try {
     await api.post(`/api/matchweeks/${selectedMw.value}/jokers`, { code, payload });
-    toast.add({ severity: 'success', summary: 'Joker aktif', detail: JOKER_NAMES[code], life: 2500 });
+    toast.add({ severity: 'success', summary: `${JOKER_NAMES[code]} aktif`, life: 2500 });
     await loadWeek();
   } catch (e) {
     toast.add({ severity: 'error', summary: 'Olmadı', detail: msg(e), life: 4500 });
+  } finally {
+    busy.value = false;
   }
 }
 async function cancelJoker(silent = false) {
+  busy.value = true;
   try {
     await api.del(`/api/matchweeks/${selectedMw.value}/jokers`);
-    if (!silent) { toast.add({ severity: 'success', summary: 'Joker iade edildi', life: 2500 }); await loadWeek(); }
+    if (!silent) { toast.add({ severity: 'success', summary: 'Joker geri alındı', life: 2500 }); await loadWeek(); }
   } catch (e) {
-    if (!silent) toast.add({ severity: 'error', summary: 'İptal edilemedi', detail: msg(e), life: 4000 });
+    if (!silent) toast.add({ severity: 'error', summary: 'Geri alınamadı', detail: msg(e), life: 4000 });
+  } finally {
+    busy.value = false;
   }
 }
 
@@ -188,7 +247,6 @@ async function loadWeek() {
   briefing.value = br.briefing; openPicks.value = op;
   benchId.value = lu.lineup?.benchTeamId ?? null;
   captainId.value = lu.lineup?.captainTeamId ?? null;
-  shieldTarget.value = null; swapFrom.value = null; swapTo.value = null;
 }
 
 function msg(e: unknown) { return e instanceof ApiRequestError ? e.message : 'Beklenmeyen hata'; }
@@ -206,106 +264,107 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
       </template>
     </PageHeader>
 
-    <LoadingState v-if="loading" />
+    <BallLoader v-if="loading" />
     <Message v-else-if="!squad.length" severity="warn" :closable="false">
       Önce kadronu kurmalısın. <RouterLink to="/kadro">Kadroya git →</RouterLink>
     </Message>
 
     <template v-else>
       <Message v-if="isComplete" severity="success" :closable="false">Hafta bitti, puanlar kesinleşti.</Message>
-      <Message v-else-if="!currentMw?.opened" severity="secondary" :closable="false">Bu hafta henüz açılmadı — önceki hafta başlayınca düzenleyebilirsin.</Message>
-      <Message v-else-if="drama" severity="warn" :closable="false">⏰ Kilide son {{ countdown }}! Dizinini gözden geçir.</Message>
-      <Message v-else-if="editable && countdown" severity="info" :closable="false">Kilide {{ countdown }} kaldı. Değişikliklerin anında kaydediliyor.</Message>
-      <Message v-else-if="!editable" severity="warn" :closable="false">Hafta kilitli, dizin sabit.</Message>
+      <Message v-else-if="!currentMw?.opened" severity="secondary" :closable="false">Bu hafta henüz açılmadı.</Message>
+      <Message v-else-if="drama" severity="warn" :closable="false">⏰ Kilide son {{ countdown }}!</Message>
+      <Message v-else-if="editable && countdown" severity="info" :closable="false">Kilide {{ countdown }} kaldı.</Message>
+      <Message v-else-if="!editable" severity="warn" :closable="false">Hafta kilitli.</Message>
 
-      <!-- Pitch -->
-      <section class="surface-card pitch">
-        <div class="pitch-label">Sahada <span class="text-muted" style="font-weight: 500">({{ pitchClubs.length }} kulüp puan yazar)</span></div>
+      <section class="pitch surface-card">
+        <div class="zone-label">Sahada</div>
         <div class="pitch-grid">
           <div
             v-for="club in pitchClubs"
             :key="club.teamId"
-            class="club-card"
+            class="club-card animate-in"
             :class="{ 'is-captain': club.teamId === captainId, drag: editable }"
             :draggable="editable"
             @dragstart="onDragStart(club.teamId)"
             @dragover.prevent
             @drop="onDropPitch(club.teamId)"
           >
-            <button v-if="editable" class="armband" :class="{ on: club.teamId === captainId }" title="Kaptan yap" @click="setCaptain(club.teamId)">C</button>
-            <RouterLink :to="`/takim/${club.teamId}`" class="crest-link"><span class="crest">{{ initials(club.name) }}</span></RouterLink>
+            <RouterLink :to="`/takim/${club.teamId}`" class="crest-link">
+              <span class="crest crest-lg">{{ initials(club.name) }}</span>
+            </RouterLink>
             <div class="club-name">{{ club.name }}</div>
+
             <div class="club-foot">
               <Tag v-if="club.teamId === captainId" severity="warn" :value="`Kaptan ×${capMult}`" />
               <span v-if="lineFor(club.teamId)" class="pts" :class="lineFor(club.teamId)!.contributed >= 0 ? 'text-positive' : 'text-negative'">
                 {{ lineFor(club.teamId)!.contributed >= 0 ? '+' : '' }}{{ lineFor(club.teamId)!.contributed }}
               </span>
             </div>
-            <button v-if="editable" class="to-bench" title="Yedeğe al" @click="setBench(club.teamId)"><i class="pi pi-arrow-down" /></button>
-          </div>
-        </div>
 
-        <!-- Bench slot -->
-        <div class="bench-zone">
-          <div class="bench-label">Yedek</div>
-          <div
-            class="bench-slot"
-            :class="{ over: dragOverBench, boosted: benchBoost }"
-            @dragover.prevent="dragOverBench = editable"
-            @dragleave="dragOverBench = false"
-            @drop="onDropBench"
-          >
-            <template v-if="benchClub">
-              <div
-                class="club-card bench"
-                :draggable="editable"
-                @dragstart="onDragStart(benchClub.teamId)"
+            <div v-if="editable" class="slot-actions">
+              <button class="slot-btn" :class="{ on: club.teamId === captainId }" title="Kaptan yap" @click="setCaptain(club.teamId)">
+                <Crown :size="15" />
+              </button>
+              <button v-if="canBench(club)" class="slot-btn" title="Yedeğe al" @click="setBench(club.teamId)">
+                <Armchair :size="15" />
+              </button>
+              <button
+                v-for="j in jokersFor(club, false)"
+                :key="j.code"
+                class="slot-btn joker"
+                :class="{ on: j.active }"
+                :title="j.active ? `${JOKER_NAMES[j.code]} — geri al` : JOKER_NAMES[j.code]"
+                @click="onJokerClick(j.code, club, j.active)"
               >
-                <RouterLink :to="`/takim/${benchClub.teamId}`" class="crest-link"><span class="crest muted">{{ initials(benchClub.name) }}</span></RouterLink>
-                <div class="club-name">{{ benchClub.name }}</div>
-                <Tag :severity="benchBoost ? 'warn' : 'secondary'" :value="benchBoost ? 'Boost — puan yazar' : 'Puan yazmaz'" />
-              </div>
-            </template>
-            <span v-else class="text-muted">Buraya bir kulüp sürükle</span>
+                <component :is="JOKER_ICONS[j.code]" :size="15" />
+              </button>
+            </div>
           </div>
-          <p v-if="editable" class="text-muted drag-hint">Bir kulübü yedek kutusuna sürükle; oradaki kulüple yer değişir. Değişiklikler otomatik kaydedilir.</p>
         </div>
+
+        <div class="zone-label bench-label">Yedek</div>
+        <div
+          class="bench-slot"
+          :class="{ over: dragOverBench, boosted: benchBoost }"
+          @dragover.prevent="dragOverBench = editable"
+          @dragleave="dragOverBench = false"
+          @drop="onDropBench"
+        >
+          <div
+            v-if="benchClub"
+            class="club-card bench animate-in"
+            :class="{ 'is-captain': benchClub.teamId === captainId }"
+            :draggable="editable"
+            @dragstart="onDragStart(benchClub.teamId)"
+          >
+            <RouterLink :to="`/takim/${benchClub.teamId}`" class="crest-link">
+              <span class="crest crest-lg" :class="{ dim: !benchBoost }">{{ initials(benchClub.name) }}</span>
+            </RouterLink>
+            <div class="club-name">{{ benchClub.name }}</div>
+            <Tag :severity="benchBoost ? 'warn' : 'secondary'" :value="benchBoost ? 'Boost — puan yazar' : 'Puan yazmaz'" />
+            <div v-if="editable" class="slot-actions">
+              <button v-if="benchBoost" class="slot-btn" :class="{ on: benchClub.teamId === captainId }" title="Kaptan yap" @click="setCaptain(benchClub.teamId)">
+                <Crown :size="15" />
+              </button>
+              <button
+                v-for="j in jokersFor(benchClub, true)"
+                :key="j.code"
+                class="slot-btn joker"
+                :class="{ on: j.active }"
+                :title="j.active ? `${JOKER_NAMES[j.code]} — geri al` : JOKER_NAMES[j.code]"
+                @click="onJokerClick(j.code, benchClub, j.active)"
+              >
+                <component :is="JOKER_ICONS[j.code]" :size="15" />
+              </button>
+            </div>
+          </div>
+          <span v-else class="text-muted">Buraya bir kulüp sürükle</span>
+        </div>
+        <p v-if="editable" class="text-muted drag-hint">
+          Bir kulübü yedek kutusuna sürüklersen oradakiyle yer değişir.
+        </p>
       </section>
 
-      <!-- Jokers -->
-      <section class="surface-card card-pad">
-        <div class="section-title" style="display: flex; justify-content: space-between; align-items: center">
-          <span>Jokerler <span class="text-muted" style="font-weight: 500; font-size: 0.85rem">· hafta başına bir tane</span></span>
-        </div>
-        <div v-if="activeJoker" class="tag-row">
-          <Tag severity="warn" :value="JOKER_NAMES[activeJoker.code]" /> <span class="text-muted">bu hafta aktif</span>
-          <Button v-if="editable" label="İptal & iade" icon="pi pi-times" size="small" text severity="danger" @click="cancelConfirm = true" />
-        </div>
-        <div v-else-if="editable" class="joker-grid">
-          <div class="joker-card">
-            <b>Üçlü kaptan</b><small>Kaptanın puanı ×3. Kalan: {{ remaining('triple_boost') }}</small>
-            <Button label="Oyna" size="small" :disabled="!remaining('triple_boost')" @click="activate('triple_boost')" />
-          </div>
-          <div class="joker-card">
-            <b>Bench boost</b><small>Dört kulüp de puan yazar. Kalan: {{ remaining('bench_boost') }}</small>
-            <Button label="Oyna" size="small" :disabled="!remaining('bench_boost')" @click="activate('bench_boost')" />
-          </div>
-          <div class="joker-card">
-            <b>Gol yememe kalkanı</b><small>Bir kulübü koru. Kalan: {{ remaining('clean_sheet_shield') }}</small>
-            <Select v-model="shieldTarget" :options="scoringForShield" option-label="name" option-value="teamId" placeholder="Sahadaki kulüp" />
-            <Button label="Oyna" size="small" :disabled="!shieldTarget || !remaining('clean_sheet_shield')" @click="activate('clean_sheet_shield', { teamId: shieldTarget })" />
-          </div>
-          <div class="joker-card">
-            <b>Haftalık değişim</b><small>Aynı pottan geçici takas. Kalan: {{ remaining('weekly_swap') }}</small>
-            <Select v-model="swapFrom" :options="squad" option-label="name" option-value="teamId" placeholder="Çıkacak kulüp" />
-            <Select v-model="swapTo" :options="swapToOptions(swapFrom)" option-label="name" option-value="id" placeholder="Girecek (aynı pot)" />
-            <Button label="Oyna" size="small" :disabled="!swapFrom || !swapTo || !remaining('weekly_swap')" @click="activate('weekly_swap', { fromTeamId: swapFrom, toTeamId: swapTo })" />
-          </div>
-        </div>
-        <p v-else class="text-muted" style="margin: 0">Hafta kilitli, joker değiştirilemez.</p>
-      </section>
-
-      <!-- Briefing -->
       <section v-if="briefing.length" class="surface-card card-pad">
         <div class="section-title">Kulüplerinin haftası</div>
         <div class="brief-grid">
@@ -322,19 +381,23 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
         </div>
       </section>
 
-      <!-- Score -->
       <section v-if="score" class="surface-card card-pad">
         <div class="section-title" style="display: flex; justify-content: space-between; align-items: center">
-          <span>{{ isComplete ? 'Hafta kapanışı' : 'Anlık puan' }} <Tag v-if="score.jokerCode" severity="warn" :value="JOKER_NAMES[score.jokerCode]" /></span>
+          <span>{{ isComplete ? 'Hafta kapanışı' : 'Anlık puan' }}
+            <Tag v-if="score.jokerCode" severity="warn" :value="JOKER_NAMES[score.jokerCode]" />
+          </span>
           <span class="big-total">{{ score.total }}</span>
         </div>
         <table class="lines">
           <tbody>
-            <tr v-for="l in score.lines" :key="l.teamId" :class="{ muted: l.benched && !l.captain && score.jokerCode !== 'bench_boost' }">
+            <tr v-for="l in score.lines" :key="l.teamId" :class="{ muted: l.benched && score.jokerCode !== 'bench_boost' }">
               <td>{{ l.name }}</td>
-              <td><Tag v-if="l.captain" severity="warn" :value="`K ×${l.multiplier}`" /><Tag v-else-if="l.benched" severity="secondary" value="Yedek" /></td>
+              <td>
+                <Tag v-if="l.captain" severity="warn" :value="`K ×${l.multiplier}`" />
+                <Tag v-else-if="l.benched" severity="secondary" value="Yedek" />
+              </td>
               <td style="text-align: right">
-                <span v-if="l.benched && !l.captain && score.jokerCode !== 'bench_boost'" class="text-muted">puan yazmadı</span>
+                <span v-if="l.benched && score.jokerCode !== 'bench_boost'" class="text-muted">puan yazmadı</span>
                 <span v-else>{{ l.basePoints }} → <strong>{{ l.contributed >= 0 ? '+' : '' }}{{ l.contributed }}</strong></span>
               </td>
             </tr>
@@ -342,7 +405,6 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
         </table>
       </section>
 
-      <!-- Open picks -->
       <section v-if="openPicks.available" class="surface-card card-pad">
         <div class="section-title">Rakiplerin tercihleri</div>
         <table class="lines">
@@ -359,18 +421,21 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
       </section>
     </template>
 
+    <Dialog v-model:visible="swapDialog" modal :header="`${swapFrom?.name} yerine kim gelsin?`" :style="{ width: '420px' }">
+      <p class="text-muted" style="margin: 0 0 0.75rem">Aynı pottan, sadece bu hafta için.</p>
+      <div class="swap-list">
+        <button v-for="t in swapOptions()" :key="t.id" class="swap-option" @click="chooseSwap(t.id)">
+          <span class="crest crest-sm">{{ initials(t.name) }}</span>{{ t.name }}
+        </button>
+        <p v-if="!swapOptions().length" class="text-muted" style="margin: 0">Bu potta uygun kulüp kalmadı.</p>
+      </div>
+    </Dialog>
+
     <Dialog v-model:visible="benchConflict" modal header="Joker çakışması" :style="{ width: '380px' }">
-      <p style="margin: 0">Yedeğe aldığın kulüpte aktif kalkan jokeri var. Devam edersen joker iptal edilip iade edilir. Devam edilsin mi?</p>
+      <p style="margin: 0">Yedeğe aldığın kulüpte kalkan var. Devam edersen joker geri alınır ve hakkın iade edilir.</p>
       <template #footer>
         <Button label="Vazgeç" text @click="benchConflict = false" />
         <Button label="Devam et" severity="danger" @click="confirmBenchConflict" />
-      </template>
-    </Dialog>
-    <Dialog v-model:visible="cancelConfirm" modal header="Jokeri iptal et" :style="{ width: '360px' }">
-      <p style="margin: 0">Aktif joker iptal edilip envanterine geri eklensin mi?</p>
-      <template #footer>
-        <Button label="Vazgeç" text @click="cancelConfirm = false" />
-        <Button label="İptal et" severity="danger" @click="cancelConfirm = false; cancelJoker()" />
       </template>
     </Dialog>
   </div>
@@ -378,81 +443,79 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
 
 <style scoped>
 .pitch {
-  padding: 1.25rem;
+  padding: 1.4rem;
   background:
-    linear-gradient(180deg, color-mix(in srgb, var(--pitch-1) 12%, var(--color-surface)) 0%, var(--color-surface) 55%);
+    repeating-linear-gradient(90deg, rgba(52, 211, 153, 0.045) 0 60px, transparent 60px 120px),
+    radial-gradient(120% 80% at 50% 0%, rgba(11, 122, 59, 0.22), transparent 62%),
+    linear-gradient(180deg, var(--color-surface), var(--color-bg-subtle));
 }
-.pitch-label, .bench-label {
-  font-weight: 700;
-  margin-bottom: 0.85rem;
+.zone-label {
+  font-weight: 800; font-size: 0.76rem; letter-spacing: 0.1em;
+  text-transform: uppercase; color: var(--color-text-muted); margin-bottom: 0.9rem;
 }
-.pitch-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-  gap: 1rem;
-}
+.bench-label { margin-top: 1.6rem; }
+.pitch-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); gap: 1rem; }
 .club-card {
   position: relative;
-  background: var(--color-surface);
+  background: linear-gradient(180deg, var(--color-surface-2), var(--color-surface));
   border: 1.5px solid var(--color-border);
   border-radius: var(--radius-md);
-  padding: 1rem 0.75rem 0.85rem;
-  display: flex;
-  flex-direction: column;
-  align-items: center;
-  gap: 0.5rem;
-  box-shadow: var(--shadow-sm);
+  padding: 1rem 0.75rem 0.8rem;
+  display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
+  transition: transform 0.16s ease, border-color 0.16s, box-shadow 0.16s;
 }
+.club-card:hover { transform: translateY(-3px); border-color: var(--color-border-strong); box-shadow: var(--shadow-md); }
 .club-card.drag { cursor: grab; }
 .club-card.drag:active { cursor: grabbing; }
-.club-card.is-captain { border-color: var(--color-warning); box-shadow: 0 0 0 1px var(--color-warning); }
+.club-card.is-captain { border-color: var(--color-warning); box-shadow: 0 0 0 1px var(--color-warning), 0 0 22px rgba(251, 191, 36, 0.18); }
 .crest-link { text-decoration: none; }
-.crest {
-  width: 56px; height: 56px; border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
-  color: #fff; display: grid; place-items: center; font-weight: 800; font-size: 0.8rem;
+.crest-lg { width: 58px; height: 58px; font-size: 0.8rem; }
+.crest-sm { width: 30px; height: 30px; font-size: 0.62rem; }
+.crest.dim { filter: grayscale(0.7); opacity: 0.75; }
+.club-name { font-size: 0.88rem; font-weight: 700; text-align: center; line-height: 1.25; }
+.club-foot { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; min-height: 1.2rem; }
+.pts { font-weight: 800; font-size: 0.92rem; }
+.slot-actions { display: flex; gap: 0.35rem; margin-top: 0.2rem; flex-wrap: wrap; justify-content: center; }
+.slot-btn {
+  width: 30px; height: 30px; display: grid; place-items: center;
+  border-radius: 50%; border: 1.5px solid var(--color-border-strong);
+  background: var(--color-bg-subtle); color: var(--color-text-secondary);
+  cursor: pointer; transition: transform 0.14s, background 0.14s, color 0.14s, border-color 0.14s;
 }
-.crest.muted { filter: grayscale(0.6); opacity: 0.85; }
-.club-name { font-size: 0.88rem; font-weight: 600; text-align: center; }
-.club-foot { display: flex; flex-direction: column; align-items: center; gap: 0.25rem; }
-.pts { font-weight: 800; font-size: 0.9rem; }
-.armband {
-  position: absolute; top: 0.5rem; left: 0.5rem;
-  width: 26px; height: 26px; border-radius: 50%;
-  border: 1.5px solid var(--color-border-strong); background: var(--color-surface);
-  color: var(--color-text-secondary); font-weight: 800; font-size: 0.75rem; cursor: pointer;
+.slot-btn:hover { transform: translateY(-2px); color: var(--color-text); border-color: var(--color-primary); }
+.slot-btn.on {
+  background: linear-gradient(135deg, var(--color-warning), #f59e0b);
+  border-color: var(--color-warning); color: #17130a;
+  box-shadow: 0 0 16px rgba(251, 191, 36, 0.4);
 }
-.armband.on { background: var(--color-warning); border-color: var(--color-warning); color: #fff; }
-.to-bench {
-  position: absolute; top: 0.5rem; right: 0.5rem;
-  width: 26px; height: 26px; border-radius: 50%;
-  border: 1.5px solid var(--color-border); background: var(--color-surface);
-  color: var(--color-text-muted); cursor: pointer; display: grid; place-items: center;
+.slot-btn.joker.on {
+  background: linear-gradient(135deg, var(--color-primary-strong), var(--color-accent));
+  border-color: var(--color-primary); color: #fff;
+  box-shadow: 0 0 16px rgba(99, 102, 241, 0.5);
 }
-.to-bench:hover { color: var(--color-primary); border-color: var(--color-primary); }
-.bench-zone { margin-top: 1.5rem; }
 .bench-slot {
-  border: 2px dashed var(--color-border-strong);
-  border-radius: var(--radius-md);
-  padding: 1rem;
-  display: grid;
-  place-items: center;
-  min-height: 130px;
+  border: 2px dashed var(--color-border-strong); border-radius: var(--radius-md);
+  padding: 1rem; display: grid; place-items: center; min-height: 150px;
   transition: border-color 0.15s, background 0.15s;
 }
-.bench-slot.over { border-color: var(--color-primary); background: var(--color-primary-soft); }
+.bench-slot.over { border-color: var(--color-primary); background: rgba(99, 102, 241, 0.1); }
 .bench-slot.boosted { border-style: solid; border-color: var(--color-warning); }
-.bench-slot .club-card { border-style: dashed; }
-.drag-hint { margin: 0.65rem 0 0; font-size: 0.82rem; }
-.joker-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 0.85rem; }
-.joker-card { display: flex; flex-direction: column; gap: 0.5rem; padding: 0.85rem; background: var(--color-surface-2); border-radius: var(--radius-md); border: 1px solid var(--color-border); }
-.joker-card small { color: var(--color-text-muted); }
+.bench-slot .club-card { min-width: 180px; }
+.drag-hint { margin: 0.7rem 0 0; font-size: 0.8rem; }
 .brief-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.85rem; }
-.brief-card { background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0.75rem 0.85rem; display: flex; flex-direction: column; gap: 0.35rem; }
-.big-total { font-size: 1.8rem; font-weight: 800; color: var(--color-primary); }
+.brief-card { background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0.8rem 0.9rem; display: flex; flex-direction: column; gap: 0.35rem; }
+.big-total { font-size: 1.9rem; font-weight: 800; color: var(--color-primary); }
 .lines { width: 100%; border-collapse: collapse; }
-.lines th { font-size: 0.78rem; color: var(--color-text-muted); padding: 0.3rem; font-weight: 600; }
-.lines td { padding: 0.5rem 0.35rem; border-bottom: 1px solid var(--color-border); font-size: 0.9rem; }
+.lines th { font-size: 0.76rem; color: var(--color-text-muted); padding: 0.3rem; font-weight: 700; }
+.lines td { padding: 0.55rem 0.35rem; border-bottom: 1px solid var(--color-border); font-size: 0.9rem; }
 .lines tr:last-child td { border-bottom: none; }
 .lines tr.muted td { color: var(--color-text-muted); }
+.swap-list { display: flex; flex-direction: column; gap: 0.45rem; max-height: 320px; overflow-y: auto; }
+.swap-option {
+  display: flex; align-items: center; gap: 0.7rem; padding: 0.55rem 0.7rem;
+  border: 1px solid var(--color-border); border-radius: var(--radius-sm);
+  background: var(--color-surface-2); color: var(--color-text);
+  font: inherit; font-weight: 600; text-align: left; cursor: pointer;
+}
+.swap-option:hover { border-color: var(--color-primary); background: var(--color-primary-soft); }
 </style>
