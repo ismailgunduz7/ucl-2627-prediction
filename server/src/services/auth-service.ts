@@ -8,6 +8,7 @@ import {
   signAccessToken,
   type AccessTokenClaims,
 } from '../lib/tokens.ts';
+import { grantInitialInventory } from './joker-service.ts';
 
 export interface UserRow {
   id: string;
@@ -199,6 +200,8 @@ export async function createUser(input: CreateUserInput): Promise<PublicUser> {
        RETURNING id, username, password_hash, display_name, is_admin, competition_id`,
       [input.username, passwordHash, input.displayName, isAdmin, input.competitionId ?? null],
     );
+    // Participants get their Act I joker inventory before the MW1 lock (§3.6).
+    if (!isAdmin) await grantInitialInventory(rows[0]!.id);
     return toPublicUser(rows[0]!);
   } catch (err) {
     if (err && typeof err === 'object' && 'code' in err && err.code === '23505') {

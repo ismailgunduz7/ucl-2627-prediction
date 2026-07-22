@@ -1,15 +1,88 @@
 import { query } from '../db/pool.ts';
 import { computeMatchweekScore, type ClubLine } from '../domain/lineup.ts';
+import { computeShieldDelta } from '../domain/joker.ts';
+import { scoreMatchDraft } from '../domain/scoring.ts';
 import { resolveLineup, type EffectiveClub } from './lineup-service.ts';
+import { getActiveJoker } from './joker-service.ts';
+import { getTierRules } from './rule-loader.ts';
 
-/** Club-layer points for a matchweek, per team id (finished lines; §4.3 Option A). */
+/**
+ * Club-layer points for a matchweek, per team id: definitive finished lines plus
+ * LIVE provisional drafts computed in memory (§4.3 Option A). Live matches are
+ * scored with the same rules as finished ones (treat current score as final).
+ */
 export async function getTeamPointsForMatchweek(mwId: string): Promise<Map<string, number>> {
-  const { rows } = await query<{ team_id: string; points: number }>(
+  const points = new Map<string, number>();
+
+  const finished = await query<{ team_id: string; points: number }>(
     `SELECT team_id, sum(points)::int AS points FROM team_point_entries
      WHERE matchweek_id = $1 GROUP BY team_id`,
     [mwId],
   );
-  return new Map(rows.map((r) => [r.team_id, r.points]));
+  for (const r of finished.rows) points.set(r.team_id, r.points);
+
+  // Live matches: draft points on the fly.
+  const live = await query<{
+    home_team_id: string;
+    away_team_id: string;
+    home_tier_id: number;
+    away_tier_id: number;
+    home_score: number | null;
+    away_score: number | null;
+  }>(
+    `SELECT m.home_team_id, m.away_team_id, ht.tier_id AS home_tier_id, at.tier_id AS away_tier_id,
+            m.home_score, m.away_score
+     FROM matches m JOIN teams ht ON ht.id = m.home_team_id JOIN teams at ON at.id = m.away_team_id
+     WHERE m.matchweek_id = $1 AND m.status = 'live'
+       AND m.home_score IS NOT NULL AND m.away_score IS NOT NULL`,
+    [mwId],
+  );
+  if (live.rows.length > 0) {
+    const rules = await getTierRules();
+    for (const m of live.rows) {
+      const lines = scoreMatchDraft(
+        {
+          homeTeamId: m.home_team_id,
+          awayTeamId: m.away_team_id,
+          homeTierId: m.home_tier_id,
+          awayTierId: m.away_tier_id,
+          homeScore: m.home_score!,
+          awayScore: m.away_score!,
+        },
+        rules,
+      );
+      for (const l of lines) points.set(l.teamId, (points.get(l.teamId) ?? 0) + l.points);
+    }
+  }
+  return points;
+}
+
+/**
+ * Clean-sheet shield delta for the target club this matchweek (§3.6): scans the
+ * club's finished/live matches for GA and applies the shield table.
+ */
+async function shieldDeltaForTarget(mwId: string, targetTeamId: string): Promise<number> {
+  const tierRes = await query<{ tier_id: number }>('SELECT tier_id FROM teams WHERE id = $1', [
+    targetTeamId,
+  ]);
+  const tierId = tierRes.rows[0]?.tier_id;
+  if (tierId === undefined) return 0;
+
+  const matches = await query<{ ga: number }>(
+    `SELECT (CASE WHEN home_team_id = $2 THEN away_score ELSE home_score END) AS ga
+     FROM matches
+     WHERE matchweek_id = $1 AND (home_team_id = $2 OR away_team_id = $2)
+       AND status IN ('finished', 'live') AND home_score IS NOT NULL AND away_score IS NOT NULL`,
+    [mwId, targetTeamId],
+  );
+  const rules = await getTierRules();
+  const cs = rules.get(tierId)?.get('clean_sheet') ?? 0;
+  const conceded = rules.get(tierId)?.get('goals_conceded') ?? 0;
+  return computeShieldDelta(
+    matches.rows.map((r) => r.ga),
+    cs,
+    conceded,
+  );
 }
 
 export interface ParticipantWeekLine extends ClubLine {
@@ -25,6 +98,8 @@ export interface ParticipantWeekScore {
   lines: ParticipantWeekLine[];
   /** true when read from a stored final row; false when computed provisionally. */
   final: boolean;
+  /** active joker code for the week, if any. */
+  jokerCode: string | null;
 }
 
 function decorateLines(lines: ClubLine[], squad: EffectiveClub[]): ParticipantWeekLine[] {
@@ -36,20 +111,35 @@ function decorateLines(lines: ClubLine[], squad: EffectiveClub[]): ParticipantWe
   }));
 }
 
-/** Compute a participant's provisional matchweek score from current club points. */
+/** Compute a participant's provisional matchweek score, applying any active joker. */
 export async function computeParticipantMatchweek(
   userId: string,
   mwId: string,
 ): Promise<ParticipantWeekScore | null> {
   const lineup = await resolveLineup(userId, mwId);
   if (!lineup) return null;
+
   const teamPoints = await getTeamPointsForMatchweek(mwId);
+  const joker = await getActiveJoker(userId, mwId);
+
+  // clean_sheet_shield: bump the target club's points by the shield delta (§3.6).
+  if (joker?.code === 'clean_sheet_shield') {
+    const targetId = String(joker.payload.teamId ?? '');
+    if (targetId) {
+      const delta = await shieldDeltaForTarget(mwId, targetId);
+      if (delta !== 0) teamPoints.set(targetId, (teamPoints.get(targetId) ?? 0) + delta);
+    }
+  }
+
   const result = computeMatchweekScore({
     squad: lineup.squad.map((s) => ({ teamId: s.teamId, tierId: s.tierId })),
     benchTeamId: lineup.benchTeamId,
     captainTeamId: lineup.captainTeamId,
     teamPoints,
+    benchBoost: joker?.code === 'bench_boost',
+    captainMultiplier: joker?.code === 'triple_boost' ? 3 : 2,
   });
+
   return {
     matchweekId: mwId,
     benchTeamId: lineup.benchTeamId,
@@ -57,6 +147,7 @@ export async function computeParticipantMatchweek(
     total: result.total,
     lines: decorateLines(result.lines, lineup.squad),
     final: false,
+    jokerCode: joker?.code ?? null,
   };
 }
 
@@ -77,7 +168,13 @@ export async function getParticipantWeekScore(
   );
   if (finalRow.rows[0]) {
     const b = finalRow.rows[0].breakdown;
-    return { ...b, matchweekId: mwId, total: finalRow.rows[0].points, final: true };
+    return {
+      ...b,
+      matchweekId: mwId,
+      total: finalRow.rows[0].points,
+      final: true,
+      jokerCode: b.jokerCode ?? null,
+    };
   }
   return computeParticipantMatchweek(userId, mwId);
 }
@@ -112,6 +209,7 @@ export async function finalizeMatchweek(mwId: string): Promise<number> {
           benchTeamId: score.benchTeamId,
           captainTeamId: score.captainTeamId,
           lines: score.lines,
+          jokerCode: score.jokerCode,
         }),
       ],
     );

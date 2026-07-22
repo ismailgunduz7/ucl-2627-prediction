@@ -4,13 +4,14 @@ A private/small-group **club** fantasy game for the UEFA Champions League 2026�
 season. Players pick **clubs** (one per pot), not footballers; points come from
 real match results. See [PLAN.md](PLAN.md) for the authoritative product spec.
 
-> **Status:** Phases 0–4 complete — monorepo + auth; domain + permanent squad;
-> club-layer scoring + rules editor + team pages; provider sync (football-data +
-> mock) with override protection and audit; and weekly bench/captain lineups
-> with T0−5m locks + the M+1 forward gate, participant matchweek scoring
-> (provisional on read, finals on completion), the leaderboard, and the /hafta
-> hub + /puan-durumu. Jokers + live provisional (Phase 5) and the knockout acts
-> (Phase 6) follow.
+> **Status:** Phases 0–5 complete — monorepo + auth; domain + permanent squad;
+> club scoring + rules editor + team pages; provider sync (football-data + mock)
+> with override audit; weekly bench/captain lineups + locks + participant
+> scoring + leaderboard; and the four jokers (weekly_swap, triple_boost,
+> clean_sheet_shield, bench_boost) with one-per-week activation, cancel/refund,
+> bench-conflict handling, live provisional drafts, open picks after kickoff,
+> and the briefing/risk-map + deadline-drama hub. The knockout acts (Phase 6)
+> and hardening (Phase 7) follow.
 
 ## Stack
 

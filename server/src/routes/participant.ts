@@ -18,6 +18,14 @@ import { getRulesMatrix, getTeamDetail } from '../services/scoring-service.ts';
 import { getEffectiveSquad, getLineup, setLineup } from '../services/lineup-service.ts';
 import { getParticipantWeekScore } from '../services/matchweek-scoring-service.ts';
 import { getLeaderboard } from '../services/leaderboard-service.ts';
+import {
+  activate as activateJoker,
+  cancel as cancelJoker,
+  getActiveJoker,
+  getInventory,
+} from '../services/joker-service.ts';
+import { getBriefing, getOpenPicks } from '../services/briefing-service.ts';
+import type { JokerCode } from '../domain/joker.ts';
 import { query } from '../db/pool.ts';
 import { SQUAD_SIZE } from '../domain/constants.ts';
 
@@ -106,7 +114,7 @@ participantRoutes.get('/tournament/status', async (c) => {
 participantRoutes.get('/matchweeks/:id/lineup', async (c) => {
   const auth = c.get('auth');
   const mwId = c.req.param('id');
-  const [lineup, squad] = await Promise.all([getLineup(auth.sub, mwId), getEffectiveSquad(auth.sub)]);
+  const [lineup, squad] = await Promise.all([getLineup(auth.sub, mwId), getEffectiveSquad(auth.sub, mwId)]);
   if (!lineup) return c.json({ lineup: null, squad: [] });
   return c.json({
     lineup: {
@@ -149,6 +157,50 @@ participantRoutes.get('/matchweeks/:id/score', async (c) => {
   const score = await getParticipantWeekScore(auth.sub, c.req.param('id'));
   if (!score) return c.json({ score: null });
   return c.json({ score });
+});
+
+// --- Jokers (§3.6) --------------------------------------------------------
+participantRoutes.get('/matchweeks/:id/jokers', async (c) => {
+  const auth = c.get('auth');
+  const mwId = c.req.param('id');
+  const [inventory, active] = await Promise.all([
+    getInventory(auth.sub),
+    getActiveJoker(auth.sub, mwId),
+  ]);
+  return c.json({ inventory, active });
+});
+
+const ActivateJokerSchema = z.object({
+  code: z.enum(['weekly_swap', 'triple_boost', 'clean_sheet_shield', 'bench_boost']),
+  payload: z.record(z.unknown()).default({}),
+});
+
+participantRoutes.post('/matchweeks/:id/jokers', async (c) => {
+  const auth = c.get('auth');
+  const body = ActivateJokerSchema.safeParse(await c.req.json().catch(() => null));
+  if (!body.success) throw ApiError.badRequest('Geçersiz joker isteği', 'invalid_body');
+  const active = await activateJoker(auth.sub, c.req.param('id'), body.data.code as JokerCode, body.data.payload);
+  return c.json({ active });
+});
+
+participantRoutes.delete('/matchweeks/:id/jokers', async (c) => {
+  const auth = c.get('auth');
+  await cancelJoker(auth.sub, c.req.param('id'));
+  return c.json({ ok: true });
+});
+
+// --- Briefing + open picks (§18.1, §18.4) ---------------------------------
+participantRoutes.get('/matchweeks/:id/briefing', async (c) => {
+  const auth = c.get('auth');
+  const briefing = await getBriefing(auth.sub, c.req.param('id'));
+  return c.json({ briefing });
+});
+
+participantRoutes.get('/matchweeks/:id/open-picks', async (c) => {
+  const auth = c.get('auth');
+  if (!auth.competitionId) return c.json({ available: false, picks: [] });
+  const result = await getOpenPicks(auth.competitionId, c.req.param('id'));
+  return c.json(result);
 });
 
 // --- Leaderboard (§4.8) ---------------------------------------------------
