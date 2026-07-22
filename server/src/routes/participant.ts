@@ -18,6 +18,7 @@ import { getRulesMatrix, getTeamDetail } from '../services/scoring-service.ts';
 import { getEffectiveSquad, getLineup, setLineup } from '../services/lineup-service.ts';
 import { getParticipantWeekScore } from '../services/matchweek-scoring-service.ts';
 import { getLeaderboard } from '../services/leaderboard-service.ts';
+import { getPlayerPoints } from '../services/player-points-service.ts';
 import {
   activate as activateJoker,
   cancel as cancelJoker,
@@ -201,6 +202,13 @@ participantRoutes.get('/matchweeks/:id/open-picks', async (c) => {
   if (!auth.competitionId) return c.json({ available: false, picks: [] });
   const result = await getOpenPicks(auth.competitionId, c.req.param('id'));
   return c.json(result);
+});
+
+// --- Player season breakdown ---------------------------------------------
+participantRoutes.get('/players/:id/points', async (c) => {
+  const auth = c.get('auth');
+  const data = await getPlayerPoints(c.req.param('id'), auth.competitionId);
+  return c.json(data);
 });
 
 // --- Leaderboard (§4.8) ---------------------------------------------------

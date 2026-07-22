@@ -12,12 +12,14 @@ interface TeamDetail {
   matches: {
     matchId: string; matchweekLabel: string; status: string; isHome: boolean;
     opponentName: string; teamScore: number | null; opponentScore: number | null; points: number | null;
+    entries: { ruleCode: string; ruleLabel: string; points: number }[];
   }[];
 }
 
 const route = useRoute();
 const router = useRouter();
 const detail = ref<TeamDetail | null>(null);
+const openMatch = ref<string | null>(null);
 const loading = ref(true);
 const error = ref<string | null>(null);
 
@@ -73,7 +75,11 @@ watch(() => route.params.id, (id) => id && load(id as string));
             <tr><th style="text-align: left">Hafta</th><th style="text-align: left">Rakip</th><th>Skor</th><th>Durum</th><th>Puan</th></tr>
           </thead>
           <tbody>
-            <tr v-for="m in detail.matches" :key="m.matchId">
+            <template v-for="m in detail.matches" :key="m.matchId">
+            <tr
+              :class="{ clickable: m.entries.length, open: openMatch === m.matchId }"
+              @click="m.entries.length && (openMatch = openMatch === m.matchId ? null : m.matchId)"
+            >
               <td style="text-align: left">{{ m.matchweekLabel }}</td>
               <td style="text-align: left">
                 {{ m.opponentName }} <span class="text-muted" style="font-size: 0.78rem">{{ m.isHome ? '(ev)' : '(dep)' }}</span>
@@ -92,6 +98,19 @@ watch(() => route.params.id, (id) => id && load(id as string));
                 <span v-else class="text-muted">—</span>
               </td>
             </tr>
+            <tr v-if="openMatch === m.matchId" class="entry-row">
+              <td colspan="5">
+                <ul class="entries">
+                  <li v-for="(e, i) in m.entries" :key="i">
+                    <span>{{ e.ruleLabel }}</span>
+                    <span :class="e.points >= 0 ? 'text-positive' : 'text-negative'">
+                      {{ e.points > 0 ? '+' : '' }}{{ e.points }}
+                    </span>
+                  </li>
+                </ul>
+              </td>
+            </tr>
+            </template>
           </tbody>
         </table>
       </section>
@@ -112,4 +131,11 @@ watch(() => route.params.id, (id) => id && load(id as string));
 .matches th, .matches td { padding: 0.6rem 0.85rem; text-align: center; border-bottom: 1px solid var(--color-border); font-size: 0.9rem; }
 .matches thead th { background: var(--color-bg-subtle); font-size: 0.8rem; font-weight: 700; color: var(--color-text-secondary); }
 .matches tbody tr:last-child td { border-bottom: none; }
+.matches tr.clickable { cursor: pointer; }
+.matches tr.clickable:hover td { background: var(--color-surface-2); }
+.matches tr.open td { background: var(--color-surface-2); }
+.entry-row td { background: var(--color-bg-subtle); padding: 0.6rem 1.1rem; }
+.entries { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; max-width: 360px; }
+.entries li { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.84rem; }
+.entries li > span:last-child { font-weight: 700; }
 </style>

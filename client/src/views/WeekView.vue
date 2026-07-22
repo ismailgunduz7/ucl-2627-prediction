@@ -6,10 +6,13 @@ import Tag from 'primevue/tag';
 import Dialog from 'primevue/dialog';
 import Button from 'primevue/button';
 import { useToast } from 'primevue/usetoast';
-import { Crown, Armchair, Zap, Shield, Repeat } from '@lucide/vue';
+import { Crown, Armchair, House, Plane } from '@lucide/vue';
 import { api, ApiRequestError } from '@/lib/api';
 import PageHeader from '@/components/PageHeader.vue';
 import BallLoader from '@/components/BallLoader.vue';
+import JokerIcon from '@/components/JokerIcon.vue';
+import CaptainBadge from '@/components/CaptainBadge.vue';
+import { JOKER_ICONS, JOKER_NAMES } from '@/lib/jokers';
 
 interface Mw { id: string; label: string; status: string; editable: boolean; opened: boolean; locked: boolean }
 interface SquadClub { teamId: string; tierId: number; name: string; shortName: string; eliminated: boolean }
@@ -48,13 +51,6 @@ const swapDialog = ref(false);
 const swapFrom = ref<SquadClub | null>(null);
 const benchConflict = ref(false);
 
-const JOKER_NAMES: Record<string, string> = {
-  weekly_swap: 'Haftalık değişim', triple_boost: 'Üçlü kaptan',
-  clean_sheet_shield: 'Gol yememe kalkanı', bench_boost: 'Bench boost',
-};
-const JOKER_ICONS: Record<string, unknown> = {
-  weekly_swap: Repeat, triple_boost: Zap, clean_sheet_shield: Shield, bench_boost: Armchair,
-};
 
 const currentMw = computed(() => matchweeks.value.find((m) => m.id === selectedMw.value) ?? null);
 const editable = computed(() => lineup.value?.editable ?? false);
@@ -295,7 +291,7 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
             <div class="club-name">{{ club.name }}</div>
 
             <div class="club-foot">
-              <Tag v-if="club.teamId === captainId" severity="warn" :value="`Kaptan ×${capMult}`" />
+              <CaptainBadge v-if="club.teamId === captainId" :multiplier="capMult" :joker-code="activeJoker?.code" :size="24" />
               <span v-if="lineFor(club.teamId)" class="pts" :class="lineFor(club.teamId)!.contributed >= 0 ? 'text-positive' : 'text-negative'">
                 {{ lineFor(club.teamId)!.contributed >= 0 ? '+' : '' }}{{ lineFor(club.teamId)!.contributed }}
               </span>
@@ -373,8 +369,9 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
               <b>{{ b.name }}</b>
               <Tag :severity="riskSeverity(b.risk)" :value="b.risk ? `${b.risk} risk` : 'maç yok'" />
             </div>
-            <div v-for="(f, i) in b.fixtures" :key="i" class="text-muted" style="font-size: 0.82rem">
-              {{ f.home ? 'evinde' : 'deplasmanda' }} · Pot {{ f.opponentTierId }} {{ f.opponentName }}
+            <div v-for="(f, i) in b.fixtures" :key="i" class="brief-fixture text-muted">
+              <component :is="f.home ? House : Plane" :size="13" />
+              <span>Pot {{ f.opponentTierId }} · {{ f.opponentName }}</span>
             </div>
             <div v-if="!b.fixtures.length" class="text-muted" style="font-size: 0.82rem">bu hafta maçı yok</div>
           </div>
@@ -384,7 +381,7 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
       <section v-if="score" class="surface-card card-pad">
         <div class="section-title" style="display: flex; justify-content: space-between; align-items: center">
           <span>{{ isComplete ? 'Hafta kapanışı' : 'Anlık puan' }}
-            <Tag v-if="score.jokerCode" severity="warn" :value="JOKER_NAMES[score.jokerCode]" />
+            <JokerIcon v-if="score.jokerCode" :code="score.jokerCode" :size="17" />
           </span>
           <span class="big-total">{{ score.total }}</span>
         </div>
@@ -393,7 +390,7 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
             <tr v-for="l in score.lines" :key="l.teamId" :class="{ muted: l.benched && score.jokerCode !== 'bench_boost' }">
               <td>{{ l.name }}</td>
               <td>
-                <Tag v-if="l.captain" severity="warn" :value="`K ×${l.multiplier}`" />
+                <CaptainBadge v-if="l.captain" :multiplier="l.multiplier" :joker-code="score.jokerCode" :size="22" />
                 <Tag v-else-if="l.benched" severity="secondary" value="Yedek" />
               </td>
               <td style="text-align: right">
@@ -414,7 +411,10 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
               <td style="text-align: left">{{ p.displayName }}</td>
               <td>{{ p.benchName }}</td>
               <td>{{ p.captainName }}</td>
-              <td>{{ p.jokerCode ? JOKER_NAMES[p.jokerCode] : '—' }}</td>
+              <td>
+                <JokerIcon v-if="p.jokerCode" :code="p.jokerCode" :size="16" />
+                <span v-else class="text-muted">—</span>
+              </td>
             </tr>
           </tbody>
         </table>
@@ -503,6 +503,7 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
 .bench-slot .club-card { min-width: 180px; }
 .drag-hint { margin: 0.7rem 0 0; font-size: 0.8rem; }
 .brief-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.85rem; }
+.brief-fixture { display: flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; }
 .brief-card { background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0.8rem 0.9rem; display: flex; flex-direction: column; gap: 0.35rem; }
 .big-total { font-size: 1.9rem; font-weight: 800; color: var(--color-primary); }
 .lines { width: 100%; border-collapse: collapse; }

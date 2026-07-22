@@ -107,7 +107,7 @@ onMounted(async () => {
         <ol v-if="topThree.length" class="mini-lb">
           <li v-for="e in topThree" :key="e.userId" :class="{ me: e.userId === auth.user?.id }">
             <span class="lb-rank">{{ e.rank }}</span>
-            <span class="lb-name">{{ e.displayName }}</span>
+            <RouterLink :to="`/oyuncu/${e.userId}`" class="lb-name">{{ e.displayName }}</RouterLink>
             <span class="lb-pts">{{ e.total }}</span>
           </li>
         </ol>
@@ -207,7 +207,10 @@ onMounted(async () => {
 }
 .lb-name {
   flex: 1;
+  color: var(--color-text);
+  text-decoration: none;
 }
+.lb-name:hover { color: var(--color-primary); }
 .lb-pts {
   font-weight: 700;
 }

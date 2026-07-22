@@ -332,6 +332,7 @@ export interface TeamDetail {
     teamScore: number | null;
     opponentScore: number | null;
     points: number | null;
+    entries: { ruleCode: string; ruleLabel: string; points: number }[];
   }[];
 }
 
@@ -354,7 +355,7 @@ export async function getTeamDetail(teamId: string): Promise<TeamDetail> {
   const team = teamRes.rows[0];
   if (!team) throw ApiError.badRequest('Takım bulunamadı', 'team_not_found');
 
-  const [matchesRes, pointsRes, totalRes] = await Promise.all([
+  const [matchesRes, pointsRes, totalRes, entriesRes] = await Promise.all([
     query<{
       match_id: string;
       matchweek_id: string;
@@ -389,9 +390,24 @@ export async function getTeamDetail(teamId: string): Promise<TeamDetail> {
       `SELECT sum(points)::text AS total FROM team_point_entries WHERE team_id = $1`,
       [teamId],
     ),
+    query<{ match_id: string | null; rule_code: string; rule_label: string; points: number }>(
+      `SELECT e.match_id, e.rule_code, rt.label AS rule_label, e.points
+       FROM team_point_entries e
+       JOIN scoring_rule_types rt ON rt.code = e.rule_code
+       WHERE e.team_id = $1
+       ORDER BY rt.sort_order`,
+      [teamId],
+    ),
   ]);
 
   const pointsByMatch = new Map(pointsRes.rows.map((r) => [r.match_id, r.points]));
+  const entriesByMatch = new Map<string, { ruleCode: string; ruleLabel: string; points: number }[]>();
+  for (const e of entriesRes.rows) {
+    if (!e.match_id) continue;
+    const list = entriesByMatch.get(e.match_id) ?? [];
+    list.push({ ruleCode: e.rule_code, ruleLabel: e.rule_label, points: e.points });
+    entriesByMatch.set(e.match_id, list);
+  }
 
   return {
     team: {
@@ -416,6 +432,7 @@ export async function getTeamDetail(teamId: string): Promise<TeamDetail> {
       teamScore: m.team_score,
       opponentScore: m.opponent_score,
       points: m.status === 'finished' ? (pointsByMatch.get(m.match_id) ?? 0) : null,
+      entries: entriesByMatch.get(m.match_id) ?? [],
     })),
   };
 }

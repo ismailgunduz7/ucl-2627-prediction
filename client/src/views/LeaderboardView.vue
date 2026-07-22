@@ -57,7 +57,8 @@ onMounted(async () => {
             <tr v-for="e in rows" :key="e.userId" :class="{ me: e.userId === meId }">
               <td class="rank">{{ e.rank }}</td>
               <td style="text-align: left">
-                {{ e.displayName }}<span v-if="e.userId === meId" class="you"> · sen</span>
+                <RouterLink :to="`/oyuncu/${e.userId}`" class="player-link">{{ e.displayName }}</RouterLink>
+                <span v-if="e.userId === meId" class="you"> · sen</span>
               </td>
               <td>{{ e.finalPoints }}</td>
               <td v-if="hasProvisional" class="text-muted">
@@ -80,4 +81,6 @@ onMounted(async () => {
 .lb tr.me { background: var(--color-primary-soft); }
 .rank { font-weight: 800; color: var(--color-primary); }
 .you { color: var(--color-primary); font-size: 0.8rem; font-weight: 600; }
+.player-link { color: var(--color-text); font-weight: 600; }
+.player-link:hover { color: var(--color-primary); }
 </style>

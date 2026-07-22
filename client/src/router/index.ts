@@ -18,6 +18,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/hafta', name: 'hafta', component: () => import('@/views/WeekView.vue'), meta: { requiresAuth: true, participant: true } },
   { path: '/puan-durumu', name: 'puan-durumu', component: () => import('@/views/LeaderboardView.vue'), meta: { requiresAuth: true, participant: true } },
   { path: '/kurallar', name: 'kurallar', component: () => import('@/views/RulesView.vue'), meta: { requiresAuth: true, participant: true } },
+  { path: '/oyuncu/:id', name: 'oyuncu', component: () => import('@/views/PlayerPointsView.vue'), meta: { requiresAuth: true, participant: true } },
   { path: '/takim/:id', name: 'takim', component: () => import('@/views/TeamView.vue'), meta: { requiresAuth: true, participant: true } },
 
   // Admin area (flat, rendered in the shell with admin nav)
