@@ -2,6 +2,25 @@
 
 This document is the single source of truth for building the product **from scratch**. An implementer (human or AI agent) should be able to deliver the system using only this plan, without prior knowledge of any other competition or codebase.
 
+Working conventions for contributors (commits, git workflow, design language, testing split) live in [AGENTS.md](AGENTS.md).
+
+---
+
+## 0. Implementation status
+
+Phases 0–6 are built and running against a Supabase database. What follows is the full specification; this section records where reality currently stands so nobody has to infer it from the code.
+
+**Built and verified:** auth and admin-provisioned accounts · pots, clubs, matchweeks, matches, config · permanent squad with one-club-per-pot enforced in the database · club-layer scoring with the per-pot rules editor · provider sync behind a swappable interface with manual-override protection and an audit log · weekly bench/captain with the `T0 − 5m` lock and the M+1 gate · the four jokers with one-per-week activation and cancel/refund · provisional scoring on read and finals on completion · leaderboard, league table, per-player and per-club points breakdowns · the league→knockout act transition (eliminations, top-8 bonus, joker refresh, act transfer) and the knockout bracket through the final with advancement and medals.
+
+**Deliberate deviations from the spec, all temporary:**
+
+- The 36 clubs and their pots are **placeholder data** from a previous season, because the 2026–27 draw has not happened (§2.3). Reseed when it does.
+- A **mock provider** drives the fixtures off a simulated clock so the pipeline can be exercised before real data exists (§5.1). The football-data.org client is written and behind the same interface, but nothing maps to it until clubs carry real provider ids.
+- Level knockout aggregates are settled by a **shootout seeded from the tie id** rather than real penalty data (§2.4), so recalculation always reaches the same winner.
+- `scoring_flags.knockout_time_basis` (§4.4) is **stored but not read**: knockout ties resolve on the 90-minute score. Either wire it up or drop the knob.
+
+**Not built yet:** season replay, the fixtures and multi-live page, the live delta feed, rank movement on the wrap card, admin screens for config / joker inventory / override history, and the scheduled sync job. See §13 Phase 7.
+
 ---
 
 ## 1. Product vision
@@ -61,6 +80,8 @@ At the league-phase draw, UEFA assigns clubs to **four pots** (Pot 1–4). In th
 
 When the official draw is published, seed `teams` with pot assignments. Until then, use placeholder pots and swap via admin/seed update.
 
+*Current state:* seeded with a placeholder field of 36 clubs from the previous season, nine per pot, in `server/src/data/mock-teams.ts`. Pot placement there is illustrative only.
+
 ### 2.4 Knockout phase
 
 After the league phase:
@@ -71,6 +92,8 @@ After the league phase:
 - No third-place match.
 - Scoring continues with stage-specific rules (`round_advance`, final medals, etc.).
 - Tie-break methods (extra time, penalties) follow that season’s UEFA rules. There is **no away-goals rule**.
+
+*Current state:* ties resolve on aggregate over the legs. With no penalty data to read, a level aggregate is settled by a shootout seeded from the tie id, so a recalculation always reaches the same winner. Replace this once the provider supplies shootout results.
 
 ### 2.5 Eliminated clubs
 
@@ -349,6 +372,8 @@ The backend must support **live hubs, anlık delta, and provisional week points*
 
 Config flag: whether win/draw/loss and goals use 90-minute score vs after-extra-time score. Penalties decide the winner for advancement but do **not** count as goals scored/conceded unless explicitly configured.
 
+*Current state:* `scoring_flags.knockout_time_basis` is stored but never read — scoring and tie resolution both use the 90-minute score, and the `*_score_aet` columns are never populated. Either wire the flag through or drop it (§13 Phase 7).
+
 ### 4.5 Match outcomes that are not a normal finish
 
 | Status | Club fantasy points | Matchweek completion |
@@ -402,6 +427,8 @@ Primary provider: **[football-data.org](https://www.football-data.org/)** API v4
 - Paid “livescores” tier if near-real-time UI is required.
 
 Implement behind a **provider interface** so the source can be replaced without rewriting scoring.
+
+*Current state:* two implementations sit behind that interface. The football-data client is written but inert, because placeholder clubs carry no provider ids. A mock provider drives the seeded fixtures from a simulated clock passed in by the admin, which is what makes the whole pipeline testable before the real season starts. Choose between them with the `sync_provider` config key.
 
 ### 5.2 Sync behaviour
 
@@ -649,25 +676,29 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 
 ### 10.1 Participant
 
-| Route | Purpose |
-|-------|---------|
-| `/` | Pre-lock squad CTA → matchweek hub → act-transfer CTA → season replay |
-| `/kadro` | Permanent squad + crest wall |
-| `/hafta` | Lineup, jokers, briefing, deadline drama, live tracker, deltas, wrap when complete |
-| `/puan-durumu` | Leaderboard + open picks after `T0` |
-| `/fikstur` | Multi-live + fixtures |
-| `/kurallar` | Rules matrix + lineup/joker/act copy |
-| `/oyuncu/:id` | Breakdown + wrap history |
-| `/takim/:id` | Club matches/points |
-| `/sezon` | Season replay |
+| Route | Purpose | Status |
+|-------|---------|--------|
+| `/` | Squad summary, current week points, mini standings | built |
+| `/kadro` | Permanent squad + crest wall + act-transfer card | built |
+| `/hafta` | Lineup, jokers, briefing, deadline drama, provisional points, wrap when complete | built |
+| `/lig` | League-phase table with the knockout cut lines | built |
+| `/puan-durumu` | Leaderboard | built |
+| `/kurallar` | Rules matrix, joker explanations, pots and their clubs | built |
+| `/oyuncu/:id` | Season breakdown per matchweek, down to the rule lines | built |
+| `/takim/:id` | Club matches and points, expandable to rule lines | built |
+| `/fikstur` | Multi-live + fixtures | pending |
+| `/sezon` | Season replay | pending |
 
-**Hub must show:** crest wall (bench muted unless boosted + chip), lock countdown, briefing/risk map, bench/captain, joker controls with confirm-on-bench-conflict, multi-live, live deltas, provisional points, wrap card when complete.
+Open picks were folded into `/hafta` rather than the standings page, since that is where the picks themselves are made.
+
+**Hub must show:** crest wall (bench muted unless boosted + chip), lock countdown, briefing/risk map, bench/captain, joker controls with confirm-on-bench-conflict, provisional points, wrap card when complete. Multi-live and live deltas are still to come.
 
 ### 10.2 Admin
 
-- Users (create accounts), competitions, rules, config, matches/overrides, sync, recalculate, joker repair
+- Users (create accounts), competitions, rules, matches/overrides, sync, recalculate — all built.
+- Config editor, joker repair and override history — pending (§13 Phase 7).
 
-UI copy may be Turkish; code identifiers in English.
+UI copy is Turkish; code identifiers are English. The interface is dark-only, built on the design tokens and PrimeVue preset described in [AGENTS.md](AGENTS.md).
 
 ---
 
@@ -717,37 +748,54 @@ UI copy may be Turkish; code identifiers in English.
 
 ## 13. Implementation phases
 
-### Phase 0 — Bootstrap
+### Phase 0 — Bootstrap ✅
 
 - Monorepo, env samples, migrations, auth (login only), admin shell, healthcheck.
+- Also shipped: login rate limiting, rotating hashed refresh tokens, admin password reset and user deletion with self/last-admin guards.
 
-### Phase 1 — Domain skeleton
+### Phase 1 — Domain skeleton ✅
 
 - Pots, 36 clubs, matchweeks registry, matches, config, permanent squad + selection lock, admin user create.
+- Clubs are placeholder data pending the official draw (§2.3). A mock league fixture list is generated so locks and scoring have something to work on.
 
-### Phase 2 — Club scoring + rules UI
+### Phase 2 — Club scoring + rules UI ✅
 
 - Rule types + admin editor; finished-match scoring; team pages.
+- The pot-direction check (§16) is computed but no longer shown in the interface; admins edit values freely.
 
-### Phase 3 — Provider sync
+### Phase 3 — Provider sync ✅
 
-- football-data.org sync, overrides, multi-live payloads, elimination flags when derivable.
+- football-data.org sync, overrides, elimination flags when derivable.
+- Both providers sit behind one interface; the mock one advances seeded fixtures on a simulated clock. Multi-live payloads did **not** ship — see Phase 7.
 
-### Phase 4 — Weekly lineup + matchweek scoring + locks
+### Phase 4 — Weekly lineup + matchweek scoring + locks ✅
 
-- Bench/captain; `T0 − 5m` lock; next-week editing after `T0`; crest wall; participant scores; **weekly wrap on auto-complete**.
+- Bench/captain; `T0 − 5m` lock; next-week editing after `T0`; crest wall; participant scores; weekly wrap on auto-complete.
+- A matchweek that has started is frozen by status as well as by clock, so a simulated provider clock cannot reopen it. The wrap card shows the week's lines but not yet rank movement (Phase 7).
 
-### Phase 5 — Jokers + live provisional + hub chrome
+### Phase 5 — Jokers + live provisional + hub chrome ✅
 
-- All four jokers; cancel/refund; bench-conflict confirm; open picks; deadline drama; briefing/risk map; **Option A provisional scoring** + live deltas.
+- All four jokers; cancel/refund; bench-conflict confirm; open picks; deadline drama; briefing/risk map; Option A provisional scoring.
+- Jokers are played from the club slots themselves rather than a side panel. Live deltas did **not** ship — see Phase 7.
 
-### Phase 6 — Acts + full knockout path
+### Phase 6 — Acts + full knockout path ✅
 
-- Auto league-complete → joker refresh + act_transfers state machine; play-off through final; per-leg matchweeks; medals/advancement; season replay.
+- Auto league-complete → joker refresh + act_transfers state machine; play-off through final; per-leg matchweeks; medals/advancement.
+- The league table is computed on real football points (three for a win) since it decides the knockout routing. Season replay did **not** ship — see Phase 7.
 
-### Phase 7 — Hardening
+### Phase 7 — Remaining work
 
-- Recalc reliability, observability, README, production deploy; final pot seed after official draw.
+Ordered by what blocks a real season most.
+
+1. **Scheduled sync job** (§5.2, §9.5). The whole pipeline runs, but only when triggered by hand. Needs a cron entry with adaptive polling and backoff on throttling.
+2. **README refresh** and production deploy configuration.
+3. **Fixtures + multi-live page** `/fikstur` (§18.5) and the **live delta feed** (§18.6).
+4. **Season replay** `/sezon` (§18.8).
+5. **Wrap card rank movement** (§18.3), plus the bye and top-8 bonus lines.
+6. **Admin screens** for tournament config, joker inventory repair and match override history — the APIs exist for the first and last, the second needs both.
+7. **Knockout time basis** (§4.4): wire `scoring_flags` into scoring or remove the setting.
+8. Remaining edge-case tests from §11: provider score correction after a finish, a postponed match holding its week open, and the top-8 bonus.
+9. **Final pot seed** once UEFA publishes the 2026–27 draw, plus provider id mapping so the real feed takes over from the mock.
 
 ---
 
@@ -768,14 +816,19 @@ UI copy may be Turkish; code identifiers in English.
 
 ## 15. Open decisions (config / copy only)
 
-- Exact joker inventory counts per act.
-- Display strings for joker names (TR).
-- Exact `league_top8_bonus` point values per pot (seed so a top-8 finish ≈ fair vs playing the play-off legs).
-- One vs many competitions in production.
-- Free-tier delayed live vs paid livescore.
+Settled during implementation:
+
+- **Joker counts per act** — seeded at 2 / 1 / 2 / 1 (swap, triple, shield, bench boost) for both acts, admin-editable.
+- **Joker names (TR)** — set, and the interface shows each joker as an icon rather than its name.
+- **`league_top8_bonus` values** — seeded 6 / 8 / 10 / 12 by pot, ascending like every other reward rule.
+- **Provisional path** — Option A, computed on read. No need to revisit unless load testing says otherwise.
+
+Still open:
+
+- One vs many competitions in production. The schema and admin support many; the mock runs a single one.
+- Free-tier delayed live vs paid livescore — decide alongside the scheduled sync job.
 - Final 2026–27 stage labels from UEFA.
-- Risk-map weighting details.
-- Escape hatch only: switch provisional path to Option B after load testing (§4.3).
+- Risk-map weighting details; the current bands use opponent pot and venue only.
 
 ---
 
@@ -800,7 +853,7 @@ Knockout `round_advance` / medal values: tune after league-phase feel is good.
 
 ## 17. Agent working instructions
 
-1. This file is authoritative.
+1. This file is authoritative for *what* to build; [AGENTS.md](AGENTS.md) governs *how* to work (commits, git, design language, testing split).
 2. Ship vertical slices: squad → finished scoring → sync → lineup/locks → jokers/live provisional → acts/knockout.
 3. Automate tests for §11.
 4. Do not add betting, qualifying rounds, player fantasy, half-points, random mode, or self-registration.
