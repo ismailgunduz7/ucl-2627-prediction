@@ -1,0 +1,107 @@
+# Working agreement for agents
+
+Rules for any AI agent (or human) contributing to this repository. Read this
+before making changes.
+
+[PLAN.md](PLAN.md) is the authoritative product specification. When code and
+PLAN.md disagree, PLAN.md wins — or the plan gets updated deliberately, not
+silently.
+
+## Commits
+
+Use [Conventional Commits](https://www.conventionalcommits.org/): `type(scope):
+subject`.
+
+- **Types:** `feat`, `fix`, `refactor`, `chore`, `docs`, `perf`, `test`
+- **Scopes:** `server`, `client`, or omit when a change spans both
+- **Subject:** lowercase, imperative, no trailing period
+- **Body:** explain *why* and what changed in behaviour, in plain prose
+
+### Never hard-wrap the body
+
+**Each paragraph is a single line.** Separate paragraphs with a blank line. Do
+not wrap at 72, 80 or any other column — editors and review tools wrap for us,
+and hard wraps make later edits and diffs messy.
+
+```
+feat(client): put joker actions on every lineup slot
+
+Replace the separate joker panel with buttons on the club cards themselves. Pitch clubs offer triple captain, clean-sheet shield and weekly swap; the bench slot offers bench boost.
+
+Once a joker is live only its own button remains, highlighted on the slot it applies to, and clicking it again cancels and refunds.
+```
+
+Wrong — the same body hard-wrapped:
+
+```
+Replace the separate joker panel with buttons on the club cards themselves.
+Pitch clubs offer triple captain, clean-sheet shield and weekly swap; the
+bench slot offers bench boost.
+```
+
+### Other commit rules
+
+- **No `Co-Authored-By` trailers**, and no "generated with" footers.
+- Prefer prose paragraphs over bullet lists in the body. A list is fine only
+  when the change really is a set of unrelated items.
+- Describe behaviour, not file names. The diff already says which files moved.
+- Group related work into one commit; split unrelated work into separate ones.
+
+## Git workflow
+
+- **Work directly on `main`.** Do not create feature branches.
+- **Commit only when asked.** Leave changes in the working tree otherwise.
+- History rewriting is acceptable while nothing has been pushed; confirm first
+  once the remote has commits.
+
+## Design
+
+The sibling project `../world-cup-prediction` is the design reference for both
+the participant and admin interfaces.
+
+- **Dark only.** There is no light theme and no theme switch. Everything —
+  inputs, dropdowns, dialogs, toasts — must be legible on the dark surface.
+- Style through the CSS variables in `client/src/styles/main.css` and the
+  PrimeVue preset in `client/src/theme/preset.ts`. Avoid one-off colours.
+- PrimeVue is the component library; override its tokens rather than fighting
+  it. Icons come from `@lucide/vue`.
+- **This is a game, not a dashboard.** Lean on the pitch metaphor, motion and
+  the Champions League marks in `client/src/assets`. Prefer direct manipulation
+  (drag a club to the bench) over forms and buttons.
+- Interactions save on their own. Do not add a separate "save" button for a
+  choice the user already made.
+- Responsive down to phone widths; the hamburger menu is mobile-only.
+
+## Copy
+
+- UI text is **Turkish**; code identifiers, comments and commit messages are
+  **English**.
+- Write like a person. No filler that states the obvious ("Değişikliklerin
+  anında kaydediliyor"), no robotic explanations, no internal jargon or spec
+  section symbols in the interface.
+
+## Testing
+
+- The repository owner runs the browser tests. Explain what to click and what
+  to expect rather than driving the UI.
+- Agents are still responsible for verifying their own work: `npm run typecheck`
+  and `npm run test` on the server, `vue-tsc` and a build on the client, plus
+  API-level checks against a running server where behaviour is non-obvious.
+- Cover domain rules with unit tests. The pure logic in `server/src/domain`
+  should be testable without a database, and stay that way.
+
+## Code
+
+- Migrations in `supabase/migrations` are forward-only and immutable once
+  applied. Add a new one instead of editing an old one.
+- The structural constants in `server/src/domain/constants.ts` (squad size, one
+  club per pot, the five-minute lock) are fixed rules, not settings. Never move
+  them into admin config.
+- Scoring is integers only, and rule values are per pot.
+- Keep the score provider behind the interface in
+  `server/src/services/score-provider.ts` so the data source stays swappable.
+
+## Feedback loop
+
+`.claude/notes.md` collects the owner's running notes and complaints. Read it,
+work through the items, and fix them in focused commits.
