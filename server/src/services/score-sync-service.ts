@@ -5,7 +5,7 @@ import { footballDataProvider } from './football-data-provider.ts';
 import { getConfigValue } from './tournament-config-service.ts';
 import { clearMatchLinesInTx, scoreFinishedMatchInTx } from './scoring-service.ts';
 import { refreshMatchweekLifecycle } from './matchweek-lifecycle-service.ts';
-import { finalizeCompletedMatchweeks } from './matchweek-scoring-service.ts';
+import { progressSeason } from './act-service.ts';
 
 export function providerByName(name: string): ScoreProvider {
   return name === 'football_data' ? footballDataProvider : mockProvider;
@@ -89,8 +89,8 @@ export async function runSync(opts: {
       await refreshMatchweekLifecycle(client);
     });
 
-    // After commit: write finals for any newly-completed matchweek (§4.6).
-    await finalizeCompletedMatchweeks();
+    // After commit: close the league act, settle knockout ties, then finalize.
+    await progressSeason();
 
     await recordRun(startedAt, 'success', summary, null);
     return summary;

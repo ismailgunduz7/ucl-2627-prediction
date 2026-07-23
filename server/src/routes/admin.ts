@@ -21,6 +21,8 @@ import {
   type MatchStatus,
 } from '../services/scoring-service.ts';
 import { runSync, listSyncRuns } from '../services/score-sync-service.ts';
+import { progressSeason } from '../services/act-service.ts';
+import { getLeagueStandings } from '../services/standings-service.ts';
 
 // All admin routes require a valid access token AND the admin role.
 export const adminRoutes = new Hono<{ Variables: AuthVariables }>();
@@ -217,6 +219,17 @@ adminRoutes.post('/sync', async (c) => {
 adminRoutes.get('/sync/runs', async (c) => {
   const runs = await listSyncRuns();
   return c.json({ runs });
+});
+
+// --- Season progression (§9.3 manual fallback) ----------------------------
+adminRoutes.post('/acts/advance', async (c) => {
+  await progressSeason();
+  return c.json({ ok: true });
+});
+
+adminRoutes.get('/standings', async (c) => {
+  const standings = await getLeagueStandings();
+  return c.json({ standings });
 });
 
 // --- Full recalculate (§4.7) ----------------------------------------------

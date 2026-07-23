@@ -6,10 +6,8 @@ import { checkRuleDirection } from '../domain/rules-direction.ts';
 import type { RuleDirection } from '../data/scoring-rules.ts';
 import type { MatchStatus } from '../domain/match.ts';
 import { refreshMatchweekLifecycle } from './matchweek-lifecycle-service.ts';
-import {
-  finalizeCompletedMatchweeks,
-  forceFinalizeCompletedMatchweeks,
-} from './matchweek-scoring-service.ts';
+import { forceFinalizeCompletedMatchweeks } from './matchweek-scoring-service.ts';
+import { progressSeason } from './act-service.ts';
 
 export type { MatchStatus };
 
@@ -255,8 +253,8 @@ export async function setMatchResult(
     await refreshMatchweekLifecycle(client);
   });
 
-  // After commit: write finals for any newly-completed matchweek.
-  await finalizeCompletedMatchweeks();
+  // After commit: close the league act, settle knockout ties, then finalize.
+  await progressSeason();
 }
 
 /** Clear the manual-override flag so sync may update the match again (§5.3). */

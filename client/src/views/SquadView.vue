@@ -9,6 +9,7 @@ import { useTournamentStore } from '@/stores/tournament';
 import { ApiRequestError } from '@/lib/api';
 import PageHeader from '@/components/PageHeader.vue';
 import BallLoader from '@/components/BallLoader.vue';
+import ActTransferCard from '@/components/ActTransferCard.vue';
 
 const store = useTournamentStore();
 const toast = useToast();
@@ -97,6 +98,8 @@ onUnmounted(() => window.clearInterval(timer));
     <BallLoader v-if="loading" />
 
     <template v-else>
+      <ActTransferCard @changed="load" />
+
       <div class="tier-grid">
         <section v-for="pot in store.pots" :key="pot.tierId" class="surface-card pot-col">
           <header class="pot-head">

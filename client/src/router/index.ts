@@ -16,6 +16,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/', name: 'home', component: () => import('@/views/HomeView.vue'), meta: { requiresAuth: true, participant: true } },
   { path: '/kadro', name: 'kadro', component: () => import('@/views/SquadView.vue'), meta: { requiresAuth: true, participant: true } },
   { path: '/hafta', name: 'hafta', component: () => import('@/views/WeekView.vue'), meta: { requiresAuth: true, participant: true } },
+  { path: '/lig', name: 'lig', component: () => import('@/views/StandingsView.vue'), meta: { requiresAuth: true, participant: true } },
   { path: '/puan-durumu', name: 'puan-durumu', component: () => import('@/views/LeaderboardView.vue'), meta: { requiresAuth: true, participant: true } },
   { path: '/kurallar', name: 'kurallar', component: () => import('@/views/RulesView.vue'), meta: { requiresAuth: true, participant: true } },
   { path: '/oyuncu/:id', name: 'oyuncu', component: () => import('@/views/PlayerPointsView.vue'), meta: { requiresAuth: true, participant: true } },

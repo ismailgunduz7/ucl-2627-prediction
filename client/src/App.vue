@@ -3,7 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import Button from 'primevue/button';
 import Toast from 'primevue/toast';
-import { Home, Users, CalendarDays, Trophy, BookOpen, LayoutGrid, Network, Calculator, Flag, RefreshCw, Menu, X, LogOut } from '@lucide/vue';
+import { Home, Users, CalendarDays, Trophy, BookOpen, LayoutGrid, Network, Calculator, Flag, RefreshCw, Menu, X, LogOut, Table } from '@lucide/vue';
 import { useAuthStore } from '@/stores/auth';
 import AppCursor from '@/components/AppCursor.vue';
 import StarBall from '@/components/StarBall.vue';
@@ -20,6 +20,7 @@ const participantNav = [
   { to: '/', label: 'Ana Sayfa', icon: Home },
   { to: '/kadro', label: 'Kadrom', icon: Users },
   { to: '/hafta', label: 'Bu Hafta', icon: CalendarDays },
+  { to: '/lig', label: 'Lig Tablosu', icon: Table },
   { to: '/puan-durumu', label: 'Puan Durumu', icon: Trophy },
   { to: '/kurallar', label: 'Kurallar', icon: BookOpen },
 ];

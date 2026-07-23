@@ -19,6 +19,8 @@ import { getEffectiveSquad, getLineup, setLineup } from '../services/lineup-serv
 import { getParticipantWeekScore } from '../services/matchweek-scoring-service.ts';
 import { getLeaderboard } from '../services/leaderboard-service.ts';
 import { getPlayerPoints } from '../services/player-points-service.ts';
+import { getLeagueStandings } from '../services/standings-service.ts';
+import { getActTransfer, setActTransfer } from '../services/act-service.ts';
 import {
   activate as activateJoker,
   cancel as cancelJoker,
@@ -209,6 +211,30 @@ participantRoutes.get('/players/:id/points', async (c) => {
   const auth = c.get('auth');
   const data = await getPlayerPoints(c.req.param('id'), auth.competitionId);
   return c.json(data);
+});
+
+// --- League table (§2.2) --------------------------------------------------
+participantRoutes.get('/standings', async (c) => {
+  const standings = await getLeagueStandings();
+  return c.json({ standings });
+});
+
+// --- Act transfer (§3.7) --------------------------------------------------
+participantRoutes.get('/act-transfer', async (c) => {
+  const auth = c.get('auth');
+  return c.json(await getActTransfer(auth.sub));
+});
+
+const ActTransferSchema = z.object({
+  fromTeamId: z.string().uuid(),
+  toTeamId: z.string().uuid(),
+});
+
+participantRoutes.put('/act-transfer', async (c) => {
+  const auth = c.get('auth');
+  const body = ActTransferSchema.safeParse(await c.req.json().catch(() => null));
+  if (!body.success) throw ApiError.badRequest('Geçersiz transfer isteği', 'invalid_body');
+  return c.json(await setActTransfer(auth.sub, body.data.fromTeamId, body.data.toTeamId));
 });
 
 // --- Leaderboard (§4.8) ---------------------------------------------------
