@@ -3,10 +3,11 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import Button from 'primevue/button';
 import Toast from 'primevue/toast';
-import { Home, Users, CalendarDays, Trophy, BookOpen, LayoutGrid, Network, Calculator, Flag, RefreshCw, Menu, X, LogOut, Table } from '@lucide/vue';
+import { Home, Users, CalendarDays, BookOpen, LayoutGrid, Network, Calculator, Flag, RefreshCw, Menu, X, LogOut, Table } from '@lucide/vue';
 import { useAuthStore } from '@/stores/auth';
 import AppCursor from '@/components/AppCursor.vue';
 import StarBall from '@/components/StarBall.vue';
+import TrophyMark from '@/components/TrophyMark.vue';
 
 const auth = useAuthStore();
 const route = useRoute();
@@ -21,7 +22,7 @@ const participantNav = [
   { to: '/kadro', label: 'Kadrom', icon: Users },
   { to: '/hafta', label: 'Bu Hafta', icon: CalendarDays },
   { to: '/lig', label: 'Lig Tablosu', icon: Table },
-  { to: '/puan-durumu', label: 'Puan Durumu', icon: Trophy },
+  { to: '/puan-durumu', label: 'Puan Durumu', icon: TrophyMark },
   { to: '/kurallar', label: 'Kurallar', icon: BookOpen },
 ];
 const adminNav = [
