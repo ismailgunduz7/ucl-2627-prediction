@@ -228,6 +228,12 @@ export async function setMatchResult(
   if (scored && (homeScore === null || awayScore === null)) {
     throw ApiError.badRequest('Skor gerekli', 'score_required');
   }
+  // A match put back to unplayed has no score; keep a cancelled match's partial
+  // score for the record (it never yields points either way, §4.5).
+  if (status === 'scheduled' || status === 'postponed') {
+    homeScore = null;
+    awayScore = null;
+  }
   await withTransaction(async (client) => {
     const before = await client.query<{
       home_score: number | null;
