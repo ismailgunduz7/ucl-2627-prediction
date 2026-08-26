@@ -14,6 +14,8 @@
  */
 
 export interface MatchweekMenuEntry {
+  /** The round this week belongs to: both legs of a tie share one key. */
+  roundKey: string;
   /** Heading the week sits under. */
   group: string;
   /** What the week is called inside that heading. */
@@ -55,6 +57,7 @@ export interface MatchweekMenuInput {
 export function matchweekMenuEntry(mw: MatchweekMenuInput): MatchweekMenuEntry {
   if (mw.act === 'league_phase') {
     return {
+      roundKey: mw.id,
       group: LEAGUE_GROUP,
       option: mw.label,
       groupOrder: LEAGUE_GROUP_ORDER,
@@ -66,17 +69,33 @@ export function matchweekMenuEntry(mw: MatchweekMenuInput): MatchweekMenuEntry {
   const match = /^([a-z0-9]+)(?:-leg(\d+))?$/.exec(mw.id);
   const round = match ? KNOCKOUT_ROUNDS[match[1]!] : undefined;
   if (!round) {
-    return { group: mw.label, option: mw.label, groupOrder: UNKNOWN_GROUP_ORDER, optionOrder: mw.sortOrder };
+    return {
+      roundKey: mw.id,
+      group: mw.label,
+      option: mw.label,
+      groupOrder: UNKNOWN_GROUP_ORDER,
+      optionOrder: mw.sortOrder,
+    };
   }
 
   const leg = match?.[2] ? Number(match[2]) : 0;
   return {
+    roundKey: match![1]!,
     group: round.label,
     // A one-legged round names itself rather than saying "İlk maçlar".
     option: leg === 0 ? round.label : (LEG_LABELS[leg] ?? `${leg}. maç`),
     groupOrder: round.order,
     optionOrder: leg,
   };
+}
+
+/**
+ * What a leg is called inside its round's page. A one-legged round has nothing
+ * to distinguish, so it gets no heading at all.
+ */
+export function legHeading(mw: MatchweekMenuInput): string | null {
+  const entry = matchweekMenuEntry(mw);
+  return entry.option === entry.group ? null : (LEG_LABELS[entry.optionOrder] ?? null);
 }
 
 /** Menu order for a whole list: groups first, then entries inside each group. */

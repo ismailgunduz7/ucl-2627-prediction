@@ -29,7 +29,7 @@ import {
 } from '../services/joker-service.ts';
 import { getBriefing, getOpenPicks } from '../services/briefing-service.ts';
 import { getWeekPredictions, savePrediction } from '../services/prediction-service.ts';
-import { getWeekFixtures } from '../services/fixture-service.ts';
+import { getRoundFixtures } from '../services/fixture-service.ts';
 import { matchweekMenuEntry } from '../domain/matchweek-menu.ts';
 import type { JokerCode } from '../domain/joker.ts';
 import { query } from '../db/pool.ts';
@@ -177,9 +177,10 @@ participantRoutes.get('/matchweeks/:id/score', async (c) => {
 });
 
 // --- Fixtures + multi-live (§18.5) ----------------------------------------
-participantRoutes.get('/matchweeks/:id/fixtures', async (c) => {
+// Addressed by round, so a two-legged tie is one page with two sections.
+participantRoutes.get('/rounds/:key/fixtures', async (c) => {
   const auth = c.get('auth');
-  const fixtures = await getWeekFixtures(auth.sub, c.req.param('id'));
+  const fixtures = await getRoundFixtures(auth.sub, c.req.param('key'));
   return c.json(fixtures);
 });
 

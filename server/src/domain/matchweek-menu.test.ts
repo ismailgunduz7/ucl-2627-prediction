@@ -2,6 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
   compareMatchweekMenu,
+  legHeading,
   matchweekMenuEntry,
   type MatchweekMenuInput,
 } from './matchweek-menu.ts';
@@ -59,6 +60,22 @@ test('league weeks run from the latest down to the first', () => {
 
 test('no leg ever says "1. maç" in the menu', () => {
   assert.ok(menu().every((e) => !e.option.includes('. maç')));
+});
+
+test('both legs of a tie share one round key; league weeks stand alone', () => {
+  const keyOf = (id: string) => menu().find((e) => e.id === id)!.roundKey;
+  assert.equal(keyOf('r16-leg1'), keyOf('r16-leg2'));
+  assert.equal(keyOf('qf-leg1'), 'qf');
+  assert.equal(keyOf('final'), 'final');
+  assert.equal(keyOf('mw-3'), 'mw-3');
+  assert.notEqual(keyOf('r16-leg1'), keyOf('qf-leg1'));
+});
+
+test('leg headings name the two legs and stay silent for a single one', () => {
+  assert.equal(legHeading(SEASON.find((m) => m.id === 'r16-leg1')!), 'İlk maçlar');
+  assert.equal(legHeading(SEASON.find((m) => m.id === 'r16-leg2')!), 'Rövanş maçları');
+  assert.equal(legHeading(SEASON.find((m) => m.id === 'final')!), null);
+  assert.equal(legHeading(SEASON.find((m) => m.id === 'mw-5')!), null);
 });
 
 test('an unrecognised id keeps its own label rather than disappearing', () => {

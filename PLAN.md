@@ -691,7 +691,14 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 
 Open picks were folded into `/hafta` rather than the standings page, since that is where the picks themselves are made.
 
-**Week pickers** (weekly hub, fixtures, admin matches) all read the season backwards, because the week someone wants is nearly always the most recent one: the final first, then the semi-finals, quarter-finals, round of 16 and play-off, then the league phase from week 8 down to week 1. A two-legged round is **one heading with two entries** — `İlk maçlar` above `Rövanş maçları`, the order they are played — rather than two flat options ending in "1. maç" and "2. maç". Each leg is still its own matchweek (§2.4), so bench, captain, jokers and the coupon continue to lock per leg. The grouping is derived from the matchweek id on the server and served with the week, so every picker files a week the same way.
+**Week pickers** all read the season backwards, because the week someone wants is nearly always the most recent one: the final first, then the semi-finals, quarter-finals, round of 16 and play-off, then the league phase from week 8 down to week 1. No option ever ends in "1. maç" or "2. maç".
+
+How a two-legged round is offered depends on what the page does with it:
+
+- **`/fikstur` picks a round.** Selecting `Çeyrek final` opens one page carrying both legs, split into an `İlk maçlar` section and a `Rövanş maçları` section, first legs above the returns. A league week is a round of one and shows its matches straight away.
+- **The weekly hub and the admin match editor pick a leg**, because a leg is the unit that locks: bench, captain, jokers and the coupon all belong to one leg (§2.4, §3.4). There the round is a heading with its two legs under it.
+
+The grouping — the round a week belongs to, its place in the menu, and what its leg is called — is derived from the matchweek id on the server, beside the code that mints those ids, and travels with each week in the tournament status.
 
 **Hub must show:** crest wall (bench muted unless boosted + chip), lock countdown, briefing with a difficulty band, bench/captain, joker controls with confirm-on-bench-conflict, the Ahtapot Paul coupon, provisional points, wrap card when complete. Multi-live and live deltas are still to come.
 

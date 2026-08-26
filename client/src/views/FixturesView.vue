@@ -5,7 +5,7 @@ import BallLoader from '@/components/BallLoader.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import CaptainBadge from '@/components/CaptainBadge.vue';
 import { api } from '@/lib/api';
-import { groupMatchweeks, matchweekTitle, type MatchweekMenu } from '@/lib/matchweeks';
+import { roundKeyOf, roundOptions, type MatchweekMenu } from '@/lib/matchweeks';
 
 interface Mw { id: string; label: string; status: string; opened: boolean; menu: MatchweekMenu }
 type Outcome = 'home' | 'draw' | 'away';
@@ -17,39 +17,43 @@ interface Fixture {
   matchId: string; kickoffAt: string | null; status: string; stage: string;
   result: Outcome | null; pick: Outcome | null; home: Side; away: Side;
 }
-interface WeekFixtures {
-  matchweekId: string; fixtures: Fixture[];
-  captainMultiplier: 2 | 3; benchBoost: boolean; lastSyncAt: string | null;
+interface Section {
+  matchweekId: string; legLabel: string | null; fixtures: Fixture[];
+  captainMultiplier: 2 | 3; benchBoost: boolean;
+}
+interface RoundFixtures {
+  roundKey: string; roundLabel: string; sections: Section[]; lastSyncAt: string | null;
 }
 
 const matchweeks = ref<Mw[]>([]);
-const selectedMw = ref<string | null>(null);
-const data = ref<WeekFixtures | null>(null);
+const selectedRound = ref<string | null>(null);
+const data = ref<RoundFixtures | null>(null);
 const loading = ref(true);
 let poller: number | undefined;
 
 const PICK_LABEL: Record<Outcome, string> = { home: 'MS1', draw: 'MS0', away: 'MS2' };
 
-const weekGroups = computed(() => groupMatchweeks(matchweeks.value));
-const fixtures = computed(() => data.value?.fixtures ?? []);
+const rounds = computed(() => roundOptions(matchweeks.value));
+const sections = computed(() => data.value?.sections ?? []);
+const fixtures = computed(() => sections.value.flatMap((s) => s.fixtures));
 const liveOnes = computed(() => fixtures.value.filter((f) => f.status === 'live'));
 const mineCount = computed(() => fixtures.value.filter(isMine).length);
 
-/** Matches grouped by calendar day, in kickoff order. */
-const days = computed(() => {
+/** Matches of one section, grouped by the calendar day they are played. */
+function daysOf(section: Section) {
   const groups = new Map<string, Fixture[]>();
-  for (const f of fixtures.value) {
+  for (const f of section.fixtures) {
     const key = f.kickoffAt ? new Date(f.kickoffAt).toDateString() : 'tbd';
     const list = groups.get(key) ?? [];
     list.push(f);
     groups.set(key, list);
   }
   return [...groups.entries()].map(([key, list]) => ({
-    key,
+    key: `${section.matchweekId}:${key}`,
     label: key === 'tbd' ? 'Tarihi belli değil' : dayLabel(list[0]!.kickoffAt!),
     fixtures: list,
   }));
-});
+}
 
 function isMine(f: Fixture) { return f.home.mine || f.away.mine; }
 function dayLabel(iso: string) {
@@ -68,12 +72,13 @@ async function loadWeeks() {
     '/api/tournament/status',
   );
   matchweeks.value = status.matchweeks;
-  selectedMw.value = status.currentMatchweekId ?? status.matchweeks[0]?.id ?? null;
+  selectedRound.value =
+    roundKeyOf(status.matchweeks, status.currentMatchweekId) ?? rounds.value[0]?.value ?? null;
 }
 
 async function loadFixtures() {
-  if (!selectedMw.value) return;
-  data.value = await api.get<WeekFixtures>(`/api/matchweeks/${selectedMw.value}/fixtures`);
+  if (!selectedRound.value) return;
+  data.value = await api.get<RoundFixtures>(`/api/rounds/${selectedRound.value}/fixtures`);
 }
 
 /**
@@ -96,7 +101,7 @@ onMounted(async () => {
   schedulePoll();
 });
 onUnmounted(() => window.clearInterval(poller));
-watch(selectedMw, () => { if (!loading.value) void loadFixtures(); });
+watch(selectedRound, () => { if (!loading.value) void loadFixtures(); });
 watch(liveOnes, schedulePoll);
 </script>
 
@@ -105,16 +110,13 @@ watch(liveOnes, schedulePoll);
     <PageHeader title="Fikstür">
       <template #actions>
         <Select
-          v-model="selectedMw"
-          :options="weekGroups"
-          option-group-label="label"
-          option-group-children="items"
+          v-model="selectedRound"
+          :options="rounds"
           option-label="label"
           option-value="value"
+          placeholder="Hafta seç"
           style="min-width: 200px"
-        >
-          <template #value="{ value }">{{ matchweekTitle(matchweeks, value) || 'Hafta seç' }}</template>
-        </Select>
+        />
       </template>
     </PageHeader>
 
@@ -133,59 +135,63 @@ watch(liveOnes, schedulePoll);
         Bu haftanın fikstürü henüz belli değil.
       </div>
 
-      <section v-for="day in days" :key="day.key" class="surface-card day-card">
-        <div class="day-head">{{ day.label }}</div>
-        <div
-          v-for="f in day.fixtures"
-          :key="f.matchId"
-          class="fx-row"
-          :class="{ mine: isMine(f), live: f.status === 'live' }"
-        >
-          <span class="fx-time">
-            <span v-if="f.status === 'live'" class="live-tag">CANLI</span>
-            <span v-else-if="f.status === 'postponed'" class="text-muted">Ertelendi</span>
-            <span v-else-if="f.status === 'cancelled'" class="text-muted">İptal</span>
-            <span v-else>{{ timeLabel(f.kickoffAt) }}</span>
-          </span>
+      <template v-for="section in sections" :key="section.matchweekId">
+        <h2 v-if="section.legLabel" class="leg-head">{{ section.legLabel }}</h2>
 
-          <span class="fx-side home">
-            <RouterLink :to="`/takim/${f.home.teamId}`" class="fx-club" :class="{ own: f.home.mine }">
-              {{ f.home.name }}
-            </RouterLink>
-            <CaptainBadge v-if="f.home.captain" :multiplier="data!.captainMultiplier" :size="18" />
-            <span v-else-if="f.home.benched && !data!.benchBoost" class="role-chip">Yedek</span>
-          </span>
+        <section v-for="day in daysOf(section)" :key="day.key" class="surface-card day-card">
+          <div class="day-head">{{ day.label }}</div>
+          <div
+            v-for="f in day.fixtures"
+            :key="f.matchId"
+            class="fx-row"
+            :class="{ mine: isMine(f), live: f.status === 'live' }"
+          >
+            <span class="fx-time">
+              <span v-if="f.status === 'live'" class="live-tag">CANLI</span>
+              <span v-else-if="f.status === 'postponed'" class="text-muted">Ertelendi</span>
+              <span v-else-if="f.status === 'cancelled'" class="text-muted">İptal</span>
+              <span v-else>{{ timeLabel(f.kickoffAt) }}</span>
+            </span>
 
-          <span class="fx-score">
-            <template v-if="f.home.score !== null && f.away.score !== null">
-              {{ f.home.score }}–{{ f.away.score }}
-            </template>
-            <template v-else>vs</template>
-          </span>
+            <span class="fx-side home">
+              <RouterLink :to="`/takim/${f.home.teamId}`" class="fx-club" :class="{ own: f.home.mine }">
+                {{ f.home.name }}
+              </RouterLink>
+              <CaptainBadge v-if="f.home.captain" :multiplier="section.captainMultiplier" :size="18" />
+              <span v-else-if="f.home.benched && !section.benchBoost" class="role-chip">Yedek</span>
+            </span>
 
-          <span class="fx-side away">
-            <CaptainBadge v-if="f.away.captain" :multiplier="data!.captainMultiplier" :size="18" />
-            <span v-else-if="f.away.benched && !data!.benchBoost" class="role-chip">Yedek</span>
-            <RouterLink :to="`/takim/${f.away.teamId}`" class="fx-club" :class="{ own: f.away.mine }">
-              {{ f.away.name }}
-            </RouterLink>
-          </span>
+            <span class="fx-score">
+              <template v-if="f.home.score !== null && f.away.score !== null">
+                {{ f.home.score }}–{{ f.away.score }}
+              </template>
+              <template v-else>vs</template>
+            </span>
 
-          <span class="fx-tail">
-            <span
-              v-if="f.pick"
-              class="pick-chip"
-              :class="f.result ? (f.result === f.pick ? 'hit' : 'miss') : ''"
-            >{{ PICK_LABEL[f.pick] }}</span>
-            <span
-              v-for="s in [f.home, f.away].filter((x) => x.mine && x.points !== null && x.points !== 0)"
-              :key="s.teamId"
-              class="pts-chip"
-              :class="s.points! >= 0 ? 'text-positive' : 'text-negative'"
-            >{{ s.shortName }} {{ signed(s.points!) }}</span>
-          </span>
-        </div>
-      </section>
+            <span class="fx-side away">
+              <CaptainBadge v-if="f.away.captain" :multiplier="section.captainMultiplier" :size="18" />
+              <span v-else-if="f.away.benched && !section.benchBoost" class="role-chip">Yedek</span>
+              <RouterLink :to="`/takim/${f.away.teamId}`" class="fx-club" :class="{ own: f.away.mine }">
+                {{ f.away.name }}
+              </RouterLink>
+            </span>
+
+            <span class="fx-tail">
+              <span
+                v-if="f.pick"
+                class="pick-chip"
+                :class="f.result ? (f.result === f.pick ? 'hit' : 'miss') : ''"
+              >{{ PICK_LABEL[f.pick] }}</span>
+              <span
+                v-for="s in [f.home, f.away].filter((x) => x.mine && x.points !== null && x.points !== 0)"
+                :key="s.teamId"
+                class="pts-chip"
+                :class="s.points! >= 0 ? 'text-positive' : 'text-negative'"
+              >{{ s.shortName }} {{ signed(s.points!) }}</span>
+            </span>
+            </div>
+          </section>
+      </template>
     </template>
   </div>
 </template>
@@ -203,6 +209,12 @@ watch(liveOnes, schedulePoll);
   animation: pulse-soft 1.4s ease-in-out infinite;
 }
 
+.leg-head {
+  margin: 0.5rem 0 -0.5rem;
+  font-size: var(--text-lg);
+  font-weight: 800;
+  letter-spacing: -0.01em;
+}
 .day-card { overflow: hidden; }
 .day-head {
   padding: 0.7rem 1.1rem; background: var(--color-bg-subtle);

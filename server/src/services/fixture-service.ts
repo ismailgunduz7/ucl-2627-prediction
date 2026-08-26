@@ -4,6 +4,7 @@ import { outcomeOf, type Outcome } from '../domain/prediction.ts';
 import { resolveLineup } from './lineup-service.ts';
 import { getTierRules } from './rule-loader.ts';
 import { getActiveJoker } from './joker-service.ts';
+import { compareMatchweekMenu, legHeading, matchweekMenuEntry } from '../domain/matchweek-menu.ts';
 
 /**
  * The matchweek seen as a fixture list (§18.5): every match of the week, the
@@ -42,11 +43,24 @@ export interface Fixture {
 
 export interface WeekFixtures {
   matchweekId: string;
+  /** Null for a single-legged round or a league week; else İlk maçlar / Rövanş maçları. */
+  legLabel: string | null;
   fixtures: Fixture[];
   /** ×3 while triple boost is live, so the captain badge tells the truth. */
   captainMultiplier: 2 | 3;
   /** Bench boost makes the benched club score like the rest (§3.6). */
   benchBoost: boolean;
+}
+
+/**
+ * A whole round as one page: a league week is a single section, a two-legged
+ * tie is two — the first legs, then the returns. Each leg keeps its own joker
+ * context, since a leg is still its own matchweek (§2.4).
+ */
+export interface RoundFixtures {
+  roundKey: string;
+  roundLabel: string;
+  sections: WeekFixtures[];
   /** When the provider was last read successfully, for a "son güncelleme" line. */
   lastSyncAt: string | null;
 }
@@ -80,7 +94,7 @@ async function pointsByMatch(mwId: string): Promise<Map<string, number>> {
 }
 
 export async function getWeekFixtures(userId: string, mwId: string): Promise<WeekFixtures> {
-  const [matchRes, lineup, points, rules, joker, lastSync] = await Promise.all([
+  const [matchRes, lineup, points, rules, joker, legRow] = await Promise.all([
     query<MatchRow>(
       `SELECT m.id, m.kickoff_at, m.status, m.stage, m.home_score, m.away_score,
               m.home_team_id, ht.name AS home_name, ht.short_name AS home_short, ht.tier_id AS home_tier,
@@ -96,11 +110,12 @@ export async function getWeekFixtures(userId: string, mwId: string): Promise<Wee
     pointsByMatch(mwId),
     getTierRules(),
     getActiveJoker(userId, mwId),
-    query<{ finished_at: Date }>(
-      `SELECT finished_at FROM sync_runs WHERE status = 'success'
-       ORDER BY created_at DESC LIMIT 1`,
+    query<{ id: string; act: string; sort_order: number; label: string }>(
+      'SELECT id, act, sort_order, label FROM matchweeks WHERE id = $1',
+      [mwId],
     ),
   ]);
+  const mw = legRow.rows[0];
 
   const mine = new Map((lineup?.squad ?? []).map((s) => [s.teamId, s]));
   const picks = await picksOf(userId, matchRes.rows.map((m) => m.id));
@@ -162,11 +177,49 @@ export async function getWeekFixtures(userId: string, mwId: string): Promise<Wee
 
   return {
     matchweekId: mwId,
+    legLabel: mw
+      ? legHeading({ id: mw.id, act: mw.act, sortOrder: mw.sort_order, label: mw.label })
+      : null,
     fixtures,
     captainMultiplier: joker?.code === 'triple_boost' ? 3 : 2,
     benchBoost: joker?.code === 'bench_boost',
-    lastSyncAt: lastSync.rows[0] ? new Date(lastSync.rows[0].finished_at).toISOString() : null,
   };
+}
+
+/** Every matchweek of a round, in the order the legs are played. */
+export async function getRoundFixtures(userId: string, roundKey: string): Promise<RoundFixtures> {
+  const { rows } = await query<{ id: string; act: string; sort_order: number; label: string }>(
+    'SELECT id, act, sort_order, label FROM matchweeks',
+  );
+  const inRound = rows
+    .map((mw) => ({
+      mw,
+      menu: matchweekMenuEntry({ id: mw.id, act: mw.act, sortOrder: mw.sort_order, label: mw.label }),
+    }))
+    .filter((r) => r.menu.roundKey === roundKey)
+    .sort((a, b) => compareMatchweekMenu(a.menu, b.menu));
+
+  if (inRound.length === 0) {
+    return { roundKey, roundLabel: roundKey, sections: [], lastSyncAt: await lastSyncAt() };
+  }
+
+  const sections = await Promise.all(inRound.map((r) => getWeekFixtures(userId, r.mw.id)));
+  const first = inRound[0]!;
+  return {
+    roundKey,
+    // A single-week round is called what it is ("Final", "Hafta 8"); a tie
+    // takes the round's own name with its legs as sections under it.
+    roundLabel: inRound.length === 1 ? first.menu.option : first.menu.group,
+    sections,
+    lastSyncAt: await lastSyncAt(),
+  };
+}
+
+async function lastSyncAt(): Promise<string | null> {
+  const { rows } = await query<{ finished_at: Date }>(
+    `SELECT finished_at FROM sync_runs WHERE status = 'success' ORDER BY created_at DESC LIMIT 1`,
+  );
+  return rows[0] ? new Date(rows[0].finished_at).toISOString() : null;
 }
 
 async function picksOf(userId: string, matchIds: string[]): Promise<Map<string, Outcome>> {

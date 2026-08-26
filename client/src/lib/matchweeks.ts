@@ -6,6 +6,7 @@
  */
 
 export interface MatchweekMenu {
+  roundKey: string;
   group: string;
   option: string;
   groupOrder: number;
@@ -25,7 +26,39 @@ export interface MatchweekGroup {
 
 /** Falls back to the flat label for a week the server did not file. */
 function menuOf(mw: MatchweekLike, index: number): MatchweekMenu {
-  return mw.menu ?? { group: mw.label, option: mw.label, groupOrder: 99, optionOrder: index };
+  return (
+    mw.menu ?? { roundKey: mw.id, group: mw.label, option: mw.label, groupOrder: 99, optionOrder: index }
+  );
+}
+
+export interface RoundOption {
+  label: string;
+  value: string;
+}
+
+/**
+ * One entry per round rather than per leg: a two-legged tie is a single choice
+ * whose page carries both legs. League weeks are rounds of one.
+ */
+export function roundOptions(matchweeks: MatchweekLike[]): RoundOption[] {
+  const entries = matchweeks
+    .map((mw, i) => ({ mw, menu: menuOf(mw, i) }))
+    .sort((a, b) => a.menu.groupOrder - b.menu.groupOrder || a.menu.optionOrder - b.menu.optionOrder);
+
+  const byKey = new Map<string, RoundOption>();
+  for (const { menu } of entries) {
+    if (byKey.has(menu.roundKey)) continue;
+    // A round with legs is named once; a lone week keeps its own name.
+    const isLeg = menu.option !== menu.group;
+    byKey.set(menu.roundKey, { label: isLeg ? menu.group : menu.option, value: menu.roundKey });
+  }
+  return [...byKey.values()];
+}
+
+/** The round a matchweek belongs to, for defaulting a picker. */
+export function roundKeyOf(matchweeks: MatchweekLike[], matchweekId: string | null): string | null {
+  const index = matchweeks.findIndex((m) => m.id === matchweekId);
+  return index === -1 ? null : menuOf(matchweeks[index]!, index).roundKey;
 }
 
 export function groupMatchweeks(matchweeks: MatchweekLike[]): MatchweekGroup[] {
