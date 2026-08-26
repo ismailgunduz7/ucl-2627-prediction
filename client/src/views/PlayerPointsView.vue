@@ -86,7 +86,7 @@ watch(() => route.params.id, (id) => id && load(id as string));
     <Message v-else-if="error" severity="error" :closable="false">{{ error }}</Message>
 
     <template v-else-if="data">
-      <PageHeader :title="data.player.displayName" subtitle="Sezon boyunca hangi puan nereden geldi." />
+      <PageHeader :title="data.player.displayName" />
 
       <div class="stat-row">
         <div class="surface-card card-pad stat">
@@ -141,9 +141,7 @@ watch(() => route.params.id, (id) => id && load(id as string));
                       :team-score="f.teamScore"
                       :opponent-score="f.opponentScore"
                     />
-                    <span v-if="!c.fixtures.length" class="text-muted no-fixture">
-                      {{ c.name }} · bu hafta maçı yok
-                    </span>
+                    <span v-if="!c.fixtures.length" class="text-muted no-fixture">bu hafta maçı yok</span>
                   </div>
 
                   <template v-if="isPlayed(w)">

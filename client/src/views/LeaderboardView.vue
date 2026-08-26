@@ -33,15 +33,12 @@ onMounted(async () => {
 
 <template>
   <div class="page-stack">
-    <PageHeader title="Puan durumu" subtitle="Yarışmandaki herkes burada." />
+    <PageHeader title="Puan durumu" />
 
     <BallLoader v-if="loading" />
     <Message v-else-if="!rows.length" severity="secondary" :closable="false">Bu yarışmada henüz sıralama oluşmadı.</Message>
 
     <template v-else>
-      <Message v-if="hasProvisional" severity="info" :closable="false">
-        Devam eden haftaların puanı anlık gösteriliyor; hafta bitince kesinleşir.
-      </Message>
       <div class="surface-card" style="overflow: hidden">
         <table class="lb">
           <thead>

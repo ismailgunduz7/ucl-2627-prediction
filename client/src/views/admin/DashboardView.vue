@@ -30,7 +30,7 @@ const links = [
 
 <template>
   <div class="page-stack">
-    <PageHeader title="Yönetim paneli" subtitle="Turnuvayı buradan yönetiyorsun." />
+    <PageHeader title="Yönetim paneli" />
 
     <div class="stat-row">
       <div class="surface-card card-pad stat">

@@ -37,7 +37,7 @@ onMounted(async () => {
 
 <template>
   <div class="page-stack">
-    <PageHeader title="Nasıl puan kazanılır" subtitle="Kulüplerin sahadaki sonuçları senin puanına dönüşür." />
+    <PageHeader title="Nasıl puan kazanılır" />
 
     <BallLoader v-if="loading" />
 

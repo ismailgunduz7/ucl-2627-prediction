@@ -86,13 +86,12 @@ onUnmounted(() => window.clearInterval(timer));
   <div class="page-stack">
     <PageHeader title="Kadronu kur" subtitle="Her pottan bir kulüp seç. Bu dört kulüp sezon boyunca senin.">
       <template #actions>
-        <Tag v-if="!loading && locked" severity="warn" value="Seçim kapandı" />
-        <Tag v-else-if="!loading && countdown" severity="info" :value="`Kapanışa ${countdown}`" />
+        <Tag v-if="!loading && !locked && countdown" severity="info" :value="`Kapanışa ${countdown}`" />
       </template>
     </PageHeader>
 
     <Message v-if="!loading && locked" severity="warn" :closable="false">
-      Seçim penceresi kapandı, kadron sabit. Haftalık değişim jokeriyle geçici takas yapabilirsin.
+      Seçim kapandı. Haftalık değişim jokeriyle geçici takas yapabilirsin.
     </Message>
 
     <BallLoader v-if="loading" />

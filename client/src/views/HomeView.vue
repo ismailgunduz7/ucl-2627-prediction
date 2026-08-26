@@ -55,7 +55,7 @@ onMounted(async () => {
 
 <template>
   <div class="page-stack">
-    <PageHeader :title="`Selam ${auth.user?.displayName} 👋`" subtitle="Haftalık kararların ve kulüplerin burada." />
+    <PageHeader :title="`Selam ${auth.user?.displayName} 👋`" />
 
     <BallLoader v-if="loading" />
 

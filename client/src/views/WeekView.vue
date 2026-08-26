@@ -366,7 +366,6 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
               <span class="crest crest-lg" :class="{ dim: !benchBoost }">{{ initials(benchClub.name) }}</span>
             </RouterLink>
             <div class="club-name">{{ benchClub.name }}</div>
-            <Tag :severity="benchBoost ? 'warn' : 'secondary'" :value="benchBoost ? 'Boost — puan yazar' : 'Puan yazmaz'" />
             <div v-if="editable" class="slot-actions">
               <button
                 v-if="benchBoost"
@@ -412,7 +411,7 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
               <component :is="f.home ? House : Plane" :size="13" />
               <span>Pot {{ f.opponentTierId }} · {{ f.opponentName }}</span>
             </div>
-            <div v-if="!b.fixtures.length" class="text-muted" style="font-size: 0.82rem">bu hafta maçı yok</div>
+            <div v-if="!b.fixtures.length" class="text-muted brief-bye">bu hafta maçı yok</div>
           </div>
         </div>
       </section>
@@ -549,6 +548,7 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
 .drag-hint { margin: 0.7rem 0 0; font-size: 0.8rem; }
 .brief-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-3); }
 .brief-head { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
+.brief-bye { font-size: var(--text-xs); }
 .brief-fixture { display: flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; }
 .brief-card { background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0.8rem 0.9rem; display: flex; flex-direction: column; gap: 0.35rem; }
 .big-total { font-size: var(--text-2xl); font-weight: 800; color: var(--color-primary); }
