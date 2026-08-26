@@ -7,6 +7,26 @@ before making changes.
 PLAN.md disagree, PLAN.md wins — or the plan gets updated deliberately, not
 silently.
 
+## Documentation is part of the work
+
+**Every change updates the documentation it affects, in the same commit as the
+code.** Not at the end of the feature, not in a follow-up pass — the commit that
+changes behaviour is the commit that fixes the prose describing it. A reader who
+only has the docs should never be told something the code stopped doing.
+
+What to touch:
+
+- **[PLAN.md](PLAN.md)** — §0 for what is built, deliberately deviating, or not
+  built yet; §13 Phase 7 for what remains; the relevant spec section when the
+  rules themselves change; §14 when a change adds an acceptance criterion.
+- **[README.md](README.md)** — the status paragraph, setup or run steps, scripts,
+  environment variables, and repository layout.
+- **This file** — when a working convention changes.
+- **`.env.example`** — whenever a new environment variable is read.
+
+A change that is genuinely invisible to all four (an internal refactor with no
+behaviour change) needs no doc edit, and inventing one is worse than none.
+
 ## Commits
 
 Use [Conventional Commits](https://www.conventionalcommits.org/): `type(scope):

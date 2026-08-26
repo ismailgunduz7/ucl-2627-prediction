@@ -680,7 +680,7 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 |-------|---------|--------|
 | `/` | Squad summary, current week points, mini standings | built |
 | `/kadro` | Permanent squad + crest wall + act-transfer card | built |
-| `/hafta` | Lineup, jokers, briefing, deadline drama, provisional points, wrap when complete | built |
+| `/hafta` | Lineup, jokers, briefing, Ahtapot Paul coupon, deadline drama, provisional points, wrap when complete | built |
 | `/lig` | League-phase table with the knockout cut lines | built |
 | `/puan-durumu` | Leaderboard | built |
 | `/kurallar` | Rules matrix, joker explanations, pots and their clubs | built |
@@ -691,7 +691,7 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 
 Open picks were folded into `/hafta` rather than the standings page, since that is where the picks themselves are made.
 
-**Hub must show:** crest wall (bench muted unless boosted + chip), lock countdown, briefing/risk map, bench/captain, joker controls with confirm-on-bench-conflict, provisional points, wrap card when complete. Multi-live and live deltas are still to come.
+**Hub must show:** crest wall (bench muted unless boosted + chip), lock countdown, briefing with a difficulty band, bench/captain, joker controls with confirm-on-bench-conflict, the Ahtapot Paul coupon, provisional points, wrap card when complete. Multi-live and live deltas are still to come.
 
 ### 10.2 Admin
 
@@ -787,7 +787,7 @@ UI copy is Turkish; code identifiers are English. The interface is dark-only, bu
 
 Ordered by what blocks a real season most.
 
-1. **README refresh** and production deploy configuration.
+1. **Production deploy configuration.**
 2. **Fixtures + multi-live page** `/fikstur` (§18.5) and the **live delta feed** (§18.6).
 3. **Season replay** `/sezon` (§18.8).
 4. **Wrap card rank movement** (§18.3), plus the bye and top-8 bonus lines.

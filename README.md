@@ -4,14 +4,18 @@ A private/small-group **club** fantasy game for the UEFA Champions League 2026�
 season. Players pick **clubs** (one per pot), not footballers; points come from
 real match results. See [PLAN.md](PLAN.md) for the authoritative product spec.
 
-> **Status:** Phases 0–5 complete — monorepo + auth; domain + permanent squad;
-> club scoring + rules editor + team pages; provider sync (football-data + mock)
-> with override audit; weekly bench/captain lineups + locks + participant
-> scoring + leaderboard; and the four jokers (weekly_swap, triple_boost,
-> clean_sheet_shield, bench_boost) with one-per-week activation, cancel/refund,
-> bench-conflict handling, live provisional drafts, open picks after kickoff,
-> and the briefing/risk-map + deadline-drama hub. The knockout acts (Phase 6)
-> and hardening (Phase 7) follow.
+> **Status:** Phases 0–6 complete and playable end to end — accounts, permanent
+> squads, club scoring with the per-pot rules editor, provider sync behind a
+> swappable interface, weekly lineups with the `T0 − 5m` lock, all four jokers,
+> live provisional scoring, the leaderboard and per-player/per-club breakdowns,
+> and the league → knockout transition through the final. On top of that: a
+> background sync job that polls the provider on an adaptive schedule, and
+> **Ahtapot Paul**, a weekly MS1/MS0/MS2 coupon on every match of the week.
+>
+> What is left is tracked as Phase 7 in [PLAN.md](PLAN.md) §13 — the fixtures
+> and multi-live page, the live delta feed, the season replay, the remaining
+> admin screens, and reseeding the clubs once UEFA publishes the 2026–27 draw.
+> Until then the app runs on placeholder clubs driven by a mock provider.
 
 ## Stack
 
@@ -70,6 +74,13 @@ npm run dev:client   # http://localhost:5173
 - Admin app: `http://localhost:5173/yonetim` (admin login required)
 - Healthcheck: `http://localhost:8787/health` and `/health/ready`
 
+Scores only move when someone pulls them in. Trigger a sync by hand from
+**Yönetim → Sync** (the mock provider takes a simulated clock there, which is
+how you advance the mock season), or set `SYNC_SCHEDULER_ENABLED=true` to let
+the background job poll on its own. That job deliberately parks itself while the
+mock provider is selected, since the mock reads its status off the clock you
+give it.
+
 ## Scripts
 
 | Command                          | Description                              |
@@ -92,7 +103,8 @@ npm run dev:client   # http://localhost:5173
 | `REFRESH_TOKEN_TTL_SECONDS`| Refresh token lifetime (default 1209600 = 14 days)   |
 | `ADMIN_PATH`               | Obscure base path gating the admin area              |
 | `CLIENT_ORIGIN`            | Allowed browser origin (CORS + refresh cookie)       |
-| `FOOTBALL_DATA_API_TOKEN`  | football-data.org API v4 token (used from Phase 3)   |
+| `FOOTBALL_DATA_API_TOKEN`  | football-data.org API v4 token (server-side only)    |
+| `SYNC_SCHEDULER_ENABLED`   | Poll the provider in the background (default `false`) |
 | `PORT`                     | API port (default 8787)                              |
 | `VITE_API_BASE_URL`        | API base URL the client calls                        |
 
@@ -110,7 +122,8 @@ npm run dev:client   # http://localhost:5173
 /
   PLAN.md                 # authoritative product spec
   package.json            # npm workspaces root
+  AGENTS.md               # working agreement for contributors
   client/                 # participant + admin SPA (Vue 3)
-  server/                 # HTTP API, auth, migrations, (later) sync + scoring
+  server/                 # HTTP API, auth, scoring, provider sync, migrations
   supabase/migrations/    # forward-only SQL migrations
 ```
