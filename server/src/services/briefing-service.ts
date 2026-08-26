@@ -2,8 +2,9 @@ import { query } from '../db/pool.ts';
 import { getMatchweekById } from './matchweek-lifecycle-service.ts';
 import { getActiveJoker } from './joker-service.ts';
 import { resolveLineup } from './lineup-service.ts';
+import { difficultyFor, harderBand, type DifficultyBand } from '../domain/difficulty.ts';
 
-export type RiskBand = 'düşük' | 'orta' | 'yüksek';
+export type { DifficultyBand };
 
 export interface BriefingClub {
   teamId: string;
@@ -13,18 +14,10 @@ export interface BriefingClub {
   benched: boolean;
   captain: boolean;
   fixtures: { opponentName: string; opponentTierId: number; home: boolean; kickoffAt: string }[];
-  risk: RiskBand | null; // null = no fixture this week (bye)
+  difficulty: DifficultyBand | null; // null = no fixture this week (bye)
 }
 
-/** Fantasy-danger band from opponent strength + venue + own pot (§18.1). */
-function riskFor(ownTier: number, opponentTier: number, isAway: boolean): RiskBand {
-  const score = 5 - opponentTier + (isAway ? 1 : 0) + (ownTier - 1) * 0.5;
-  if (score >= 4) return 'yüksek';
-  if (score >= 2) return 'orta';
-  return 'düşük';
-}
-
-/** Pre-lock briefing: each squad club's fixtures + a risk band (§18.1). */
+/** Pre-lock briefing: each squad club's fixtures + how hard they look (§18.1). */
 export async function getBriefing(userId: string, mwId: string): Promise<BriefingClub[]> {
   const lineup = await resolveLineup(userId, mwId);
   if (!lineup) return [];
@@ -52,11 +45,10 @@ export async function getBriefing(userId: string, mwId: string): Promise<Briefin
       home: r.is_home,
       kickoffAt: new Date(r.kickoff_at).toISOString(),
     }));
-    // Risk from the toughest fixture (lowest opponent tier + away).
-    let risk: RiskBand | null = null;
+    // A club playing twice is judged on its hardest fixture.
+    let difficulty: DifficultyBand | null = null;
     for (const r of matches.rows) {
-      const band = riskFor(club.tierId, r.opponent_tier, !r.is_home);
-      if (band === 'yüksek' || (band === 'orta' && risk !== 'yüksek') || risk === null) risk = band;
+      difficulty = harderBand(difficulty, difficultyFor(club.tierId, r.opponent_tier, !r.is_home));
     }
 
     clubs.push({
@@ -67,7 +59,7 @@ export async function getBriefing(userId: string, mwId: string): Promise<Briefin
       benched: club.teamId === lineup.benchTeamId,
       captain: club.teamId === lineup.captainTeamId,
       fixtures,
-      risk,
+      difficulty,
     });
   }
   return clubs;

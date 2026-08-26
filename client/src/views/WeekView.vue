@@ -21,7 +21,7 @@ interface ScoreLine { teamId: string; name: string; basePoints: number; benched:
 interface WeekScore { total: number; final: boolean; lines: ScoreLine[]; jokerCode: string | null }
 interface Inventory { code: string; name: string; remaining: number }
 interface ActiveJoker { code: string; payload: Record<string, unknown> }
-interface BriefingClub { teamId: string; name: string; fixtures: { opponentName: string; opponentTierId: number; home: boolean }[]; risk: string | null }
+interface BriefingClub { teamId: string; name: string; fixtures: { opponentName: string; opponentTierId: number; home: boolean }[]; difficulty: string | null }
 interface OpenPick { userId: string; displayName: string; benchName: string; captainName: string; jokerCode: string | null }
 interface Pot { tierId: number; teams: { id: string; name: string; eliminated: boolean; isActive: boolean }[] }
 
@@ -89,7 +89,7 @@ const countdown = computed(() => {
 const drama = computed(() => countdownMs.value !== null && countdownMs.value > 0 && countdownMs.value < 7200_000);
 
 function initials(name: string) { return name.split(' ').map((w) => w[0]).slice(0, 3).join('').toUpperCase(); }
-function riskSeverity(r: string | null) { return r === 'yüksek' ? 'danger' : r === 'orta' ? 'warn' : r === 'düşük' ? 'success' : 'secondary'; }
+function difficultySeverity(d: string | null) { return d === 'zor' ? 'danger' : d === 'orta' ? 'warn' : 'success'; }
 function lineFor(teamId: string) { return score.value?.lines.find((l) => l.teamId === teamId); }
 function remaining(code: string) { return inventory.value.find((i) => i.code === code)?.remaining ?? 0; }
 
@@ -404,9 +404,9 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
         <div class="section-title">Kulüplerinin haftası</div>
         <div class="brief-grid">
           <div v-for="b in briefing" :key="b.teamId" class="brief-card">
-            <div style="display: flex; justify-content: space-between; align-items: center; gap: 0.5rem">
+            <div class="brief-head">
               <b>{{ b.name }}</b>
-              <Tag :severity="riskSeverity(b.risk)" :value="b.risk ? `${b.risk} risk` : 'maç yok'" />
+              <Tag v-if="b.difficulty" :severity="difficultySeverity(b.difficulty)" :value="b.difficulty" />
             </div>
             <div v-for="(f, i) in b.fixtures" :key="i" class="brief-fixture text-muted">
               <component :is="f.home ? House : Plane" :size="13" />
@@ -547,7 +547,8 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
 .bench-slot.boosted { border-style: solid; border-color: var(--color-warning); }
 .bench-slot .club-card { min-width: 180px; }
 .drag-hint { margin: 0.7rem 0 0; font-size: 0.8rem; }
-.brief-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.85rem; }
+.brief-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-3); }
+.brief-head { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
 .brief-fixture { display: flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; }
 .brief-card { background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0.8rem 0.9rem; display: flex; flex-direction: column; gap: 0.35rem; }
 .big-total { font-size: var(--text-2xl); font-weight: 800; color: var(--color-primary); }
