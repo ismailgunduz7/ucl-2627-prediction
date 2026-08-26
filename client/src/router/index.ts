@@ -22,6 +22,7 @@ const routes: RouteRecordRaw[] = [
   { path: '/kurallar', name: 'kurallar', component: () => import('@/views/RulesView.vue'), meta: { requiresAuth: true, participant: true } },
   { path: '/oyuncu/:id', name: 'oyuncu', component: () => import('@/views/PlayerPointsView.vue'), meta: { requiresAuth: true, participant: true } },
   { path: '/takim/:id', name: 'takim', component: () => import('@/views/TeamView.vue'), meta: { requiresAuth: true, participant: true } },
+  { path: '/sezon', name: 'sezon', component: () => import('@/views/SeasonReplayView.vue'), meta: { requiresAuth: true, participant: true } },
 
   // Admin area (flat, rendered in the shell with admin nav)
   { path: ADMIN_BASE, name: 'admin-dashboard', component: () => import('@/views/admin/DashboardView.vue'), meta: { requiresAuth: true, requiresAdmin: true } },

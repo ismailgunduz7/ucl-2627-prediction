@@ -10,7 +10,7 @@ Working conventions for contributors (commits, git workflow, design language, te
 
 Phases 0–6 are built and running against a Supabase database. What follows is the full specification; this section records where reality currently stands so nobody has to infer it from the code.
 
-**Built and verified:** auth and admin-provisioned accounts · pots, clubs, matchweeks, matches, config · permanent squad with one-club-per-pot enforced in the database · club-layer scoring with the per-pot rules editor · provider sync behind a swappable interface with manual-override protection and an audit log · weekly bench/captain with the `T0 − 5m` lock and the M+1 gate · the four jokers with one-per-week activation and cancel/refund · provisional scoring on read and finals on completion · leaderboard, league table, per-player and per-club points breakdowns · the league→knockout act transition (eliminations, top-8 bonus, joker refresh, act transfer) and the knockout bracket through the final with advancement and medals · the background sync job with adaptive cadence and backoff · Ahtapot Paul, the weekly 1X2 coupon (§18.9) · the fixtures and multi-live page (§18.5) · the live delta feed on the hub (§18.6).
+**Built and verified:** auth and admin-provisioned accounts · pots, clubs, matchweeks, matches, config · permanent squad with one-club-per-pot enforced in the database · club-layer scoring with the per-pot rules editor · provider sync behind a swappable interface with manual-override protection and an audit log · weekly bench/captain with the `T0 − 5m` lock and the M+1 gate · the four jokers with one-per-week activation and cancel/refund · provisional scoring on read and finals on completion · leaderboard, league table, per-player and per-club points breakdowns · the league→knockout act transition (eliminations, top-8 bonus, joker refresh, act transfer) and the knockout bracket through the final with advancement and medals · the background sync job with adaptive cadence and backoff · Ahtapot Paul, the weekly 1X2 coupon (§18.9) · the fixtures and multi-live page (§18.5) · the live delta feed on the hub (§18.6) · the season replay (§18.8).
 
 **Deliberate deviations from the spec, all temporary:**
 
@@ -18,7 +18,7 @@ Phases 0–6 are built and running against a Supabase database. What follows is 
 - A **mock provider** drives the fixtures off a simulated clock so the pipeline can be exercised before real data exists (§5.1). The football-data.org client is written and behind the same interface, but nothing maps to it until clubs carry real provider ids. The background sync job stays parked for as long as the mock is the configured provider.
 - Level knockout aggregates are settled by a **shootout seeded from the tie id** rather than real penalty data (§2.4), so recalculation always reaches the same winner.
 
-**Not built yet:** season replay, rank movement on the wrap card, and admin screens for config / joker inventory / override history. See §13 Phase 7.
+**Not built yet:** rank movement on the wrap card, and admin screens for config / joker inventory / override history. See §13 Phase 7.
 
 ---
 
@@ -638,7 +638,7 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 - Live delta feed: the week's point events for the participant's scoring clubs (§18.6)
 - Scoring rules matrix (plus what a correct prediction is worth)
 - Jokers: inventory, activate, cancel (refund) before lock
-- Season replay when tournament finished *(pending)*
+- Season replay when the tournament is finished (§18.8)
 
 ### 9.3 Admin APIs
 
@@ -664,7 +664,7 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 - `briefing-service`, `prediction-service`, `fixture-service`, `delta-service`, `player-points-service`
 - `score-provider`, `football-data-provider`, `mock-provider`, `score-sync-service`, `sync-scheduler`
 - `leaderboard-service`, `standings-service`, `team-service`, `rule-loader`, `tournament-config-service`
-- `season-replay-service` *(pending, §13 Phase 7)*
+- `season-replay-service`
 
 ### 9.5 Jobs
 
@@ -687,7 +687,7 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 | `/oyuncu/:id` | Season breakdown per matchweek, down to the rule lines | built |
 | `/takim/:id` | Club matches and points, expandable to rule lines | built |
 | `/fikstur` | Multi-live + fixtures | built |
-| `/sezon` | Season replay | pending |
+| `/sezon` | Season replay | built |
 
 Open picks were folded into `/hafta` rather than the standings page, since that is where the picks themselves are made.
 
@@ -790,18 +790,17 @@ UI copy is Turkish; code identifiers are English. The interface is dark-only, bu
 ### Phase 6 — Acts + full knockout path ✅
 
 - Auto league-complete → joker refresh + act_transfers state machine; play-off through final; per-leg matchweeks; medals/advancement.
-- The league table is computed on real football points (three for a win) since it decides the knockout routing. Season replay did **not** ship — see Phase 7.
+- The league table is computed on real football points (three for a win) since it decides the knockout routing. Season replay did **not** ship with this phase; it arrived later as `/sezon` (§18.8).
 
 ### Phase 7 — Remaining work
 
-Ordered by what blocks a real season most. Two items left this list already: the live delta feed (§18.6) shipped, and the knockout time-basis question (§4.4) was settled by dropping the unused flag.
+Ordered by what blocks a real season most. Shipped from this list already: the live delta feed (§18.6), the season replay (§18.8), and the knockout time-basis question (§4.4), settled by dropping the unused flag.
 
 1. **Production deploy configuration.**
-2. **Season replay** `/sezon` (§18.8).
-3. **Wrap card rank movement** (§18.3), plus the bye and top-8 bonus lines.
-4. **Admin screens** for tournament config, joker inventory repair and match override history — the APIs exist for the first and last, the second needs both. The one config knob with a real home already has a field on the scoring rules screen (§18.9).
-5. Remaining edge-case tests from §11: provider score correction after a finish, a postponed match holding its week open, and the top-8 bonus.
-6. **Final pot seed** once UEFA publishes the 2026–27 draw, plus provider id mapping so the real feed takes over from the mock.
+2. **Wrap card rank movement** (§18.3), plus the bye and top-8 bonus lines.
+3. **Admin screens** for tournament config, joker inventory repair and match override history — the APIs exist for the first and last, the second needs both. The one config knob with a real home already has a field on the scoring rules screen (§18.9).
+4. Remaining edge-case tests from §11: provider score correction after a finish, a postponed match holding its week open, and the top-8 bonus.
+5. **Final pot seed** once UEFA publishes the 2026–27 draw, plus provider id mapping so the real feed takes over from the mock.
 
 ---
 
@@ -912,6 +911,8 @@ Four crests; bench muted **unless** `bench_boost` (then equal weight + **boosted
 ### 18.8 Season replay
 
 Final rank/total; best/worst week; joker usage; captain hit rate; act transfer committed vs expired; cumulative points timeline.
+
+*Built* as `/sezon`, unlocked when the final's matchweek completes; until then the page says the film is not ready and the home page shows nothing. Everything is summarised from what the season already wrote — final week scores, joker activations, the transfer row — never recomputed. The page opens on the finishing rank and total, draws the cumulative timeline as a hand-drawn SVG line (a dot per week, the last one gold), then the best and worst week, how often the captain turned out to be the week's top club (judged on base points before the multiplier), the jokers played with their weeks, whether the act transfer was used, and the competition's podium with the viewer's own row attached when they missed it. The home page links the replay from a banner once the season is over.
 
 ### 18.9 Ahtapot Paul (1X2 predictions)
 

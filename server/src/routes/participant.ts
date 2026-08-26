@@ -31,6 +31,7 @@ import { getBriefing, getOpenPicks } from '../services/briefing-service.ts';
 import { getWeekPredictions, savePrediction } from '../services/prediction-service.ts';
 import { getRoundFixtures } from '../services/fixture-service.ts';
 import { getWeekDeltas } from '../services/delta-service.ts';
+import { getSeasonReplay } from '../services/season-replay-service.ts';
 import { matchweekMenuEntry, roundOptions } from '../domain/matchweek-menu.ts';
 import type { JokerCode } from '../domain/joker.ts';
 import { query } from '../db/pool.ts';
@@ -283,6 +284,12 @@ participantRoutes.get('/players/:id/points', async (c) => {
 participantRoutes.get('/standings', async (c) => {
   const standings = await getLeagueStandings();
   return c.json({ standings });
+});
+
+// --- Season replay (§18.8) ------------------------------------------------
+participantRoutes.get('/season/replay', async (c) => {
+  const auth = c.get('auth');
+  return c.json(await getSeasonReplay(auth.sub, auth.competitionId));
 });
 
 // --- Act transfer (§3.7) --------------------------------------------------

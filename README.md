@@ -11,11 +11,12 @@ real match results. See [PLAN.md](PLAN.md) for the authoritative product spec.
 > and the league → knockout transition through the final. On top of that: a
 > background sync job that polls the provider on an adaptive schedule, a
 > fixtures and multi-live page covering a whole round at a time,
-> **Ahtapot Paul**, a weekly MS1/MS0/MS2 coupon on every match of the week, and
-> a live delta feed on the weekly hub that itemises every point as it lands.
+> **Ahtapot Paul**, a weekly MS1/MS0/MS2 coupon on every match of the week, a
+> live delta feed on the weekly hub that itemises every point as it lands, and
+> a season replay that opens once the final is played.
 >
-> What is left is tracked as Phase 7 in [PLAN.md](PLAN.md) §13 — the season
-> replay, the remaining admin screens, and reseeding the clubs once UEFA
+> What is left is tracked as Phase 7 in [PLAN.md](PLAN.md) §13 — the remaining
+> admin screens, wrap-card rank movement, and reseeding the clubs once UEFA
 > publishes the 2026–27 draw. Until then the app runs on placeholder clubs
 > driven by a mock provider.
 

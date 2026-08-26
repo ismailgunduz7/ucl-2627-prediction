@@ -20,6 +20,8 @@ const currentMw = ref<Mw | null>(null);
 const weekTotal = ref<number | null>(null);
 const weekFinal = ref(false);
 const leaderboard = ref<LbEntry[]>([]);
+// The final is done — the season has an ending worth replaying (§18.8).
+const seasonOver = ref(false);
 
 const squadComplete = computed(() => squad.value.length === 4);
 const myRank = computed(() => leaderboard.value.find((e) => e.userId === auth.user?.id) ?? null);
@@ -40,6 +42,7 @@ onMounted(async () => {
     squadLocked.value = sq.locked;
     leaderboard.value = lb.leaderboard;
     currentMw.value = status.matchweeks.find((m) => m.id === status.currentMatchweekId) ?? null;
+    seasonOver.value = status.matchweeks.some((m) => m.id === 'final' && m.status === 'complete');
     if (currentMw.value) {
       const sc = await api.get<{ score: { total: number; final: boolean } | null }>(
         `/api/matchweeks/${currentMw.value.id}/score`,
@@ -59,7 +62,13 @@ onMounted(async () => {
 
     <BallLoader v-if="loading" />
 
-    <div v-else class="dash-grid">
+    <RouterLink v-if="!loading && seasonOver" to="/sezon" class="surface-card card-pad replay-banner">
+      <span class="replay-title">🏆 Sezon bitti — filmin hazır</span>
+      <span class="text-muted">Sıralaman, en iyi haftan, jokerlerin ve puanının yolculuğu</span>
+      <Button label="İzle" icon="pi pi-play" size="small" />
+    </RouterLink>
+
+    <div v-if="!loading" class="dash-grid">
       <!-- Squad -->
       <section class="surface-card card-pad">
         <div class="card-top">
@@ -119,6 +128,19 @@ onMounted(async () => {
 </template>
 
 <style scoped>
+.replay-banner {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+  flex-wrap: wrap;
+  text-decoration: none;
+  color: var(--color-text);
+  border-color: var(--color-warning);
+  transition: box-shadow 0.16s ease, transform 0.16s ease;
+}
+.replay-banner:hover { box-shadow: 0 0 18px rgba(251, 191, 36, 0.25); transform: translateY(-2px); text-decoration: none; }
+.replay-banner .replay-title { font-weight: 800; }
+.replay-banner .text-muted { flex: 1; font-size: var(--text-sm); }
 .dash-grid {
   display: grid;
   grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
