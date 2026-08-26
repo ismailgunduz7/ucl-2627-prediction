@@ -152,6 +152,50 @@ export async function activate(
   });
 }
 
+export interface JokerSquadConflict {
+  matchweekId: string;
+  code: JokerCode;
+  teamId: string;
+}
+
+/**
+ * Active jokers on still-editable weeks whose payload references a club being
+ * removed from the squad (§3.6, edge case §11.25). A squad edit that would
+ * strand such a joker must warn first and, on confirm, cancel it with a refund.
+ * Weeks already locked are history and keep their activation untouched.
+ */
+export async function findSquadEditConflicts(
+  userId: string,
+  removedTeamIds: string[],
+): Promise<JokerSquadConflict[]> {
+  if (removedTeamIds.length === 0) return [];
+  const { rows } = await query<{
+    matchweek_id: string;
+    joker_type_code: JokerCode;
+    payload: Record<string, unknown>;
+  }>(
+    `SELECT matchweek_id, joker_type_code, payload FROM joker_activations
+     WHERE user_id = $1 AND cancelled_at IS NULL`,
+    [userId],
+  );
+  if (rows.length === 0) return [];
+
+  const removed = new Set(removedTeamIds);
+  const ordered = await getOrderedMatchweeks();
+  const conflicts: JokerSquadConflict[] = [];
+  for (const row of rows) {
+    if (!lineupEditability(ordered, row.matchweek_id).editable) continue;
+    // The clubs a payload can reference: shield target, swap's outgoing club.
+    const ref = [row.payload.teamId, row.payload.fromTeamId].find(
+      (v): v is string => typeof v === 'string' && removed.has(v),
+    );
+    if (ref) {
+      conflicts.push({ matchweekId: row.matchweek_id, code: row.joker_type_code, teamId: ref });
+    }
+  }
+  return conflicts;
+}
+
 /** Cancel the active joker for a matchweek and refund inventory (+1) (§3.6). */
 export async function cancel(userId: string, mwId: string): Promise<void> {
   await assertEditable(mwId);

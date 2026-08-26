@@ -2,11 +2,13 @@
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
 import Button from 'primevue/button';
+import Dialog from 'primevue/dialog';
 import Message from 'primevue/message';
 import Tag from 'primevue/tag';
 import { useToast } from 'primevue/usetoast';
 import { useTournamentStore } from '@/stores/tournament';
 import { ApiRequestError } from '@/lib/api';
+import { jokerName } from '@/lib/jokers';
 import PageHeader from '@/components/PageHeader.vue';
 import BallLoader from '@/components/BallLoader.vue';
 import ActTransferCard from '@/components/ActTransferCard.vue';
@@ -56,19 +58,39 @@ function select(tierId: number, teamId: string) {
   picks.value[tierId] = picks.value[tierId] === teamId ? null : teamId;
 }
 
-async function save() {
+// A removed club may carry an active joker; the server answers 409 and asks
+// for a confirmation before cancelling and refunding it.
+const jokerConflict = ref<{ teamName: string; jokerName: string } | null>(null);
+
+function conflictText(e: ApiRequestError): { teamName: string; jokerName: string } {
+  const details = e.details as { conflicts?: { code: string; teamId: string }[] } | undefined;
+  const first = details?.conflicts?.[0];
+  const team = store.pots.flatMap((p) => p.teams).find((t) => t.id === first?.teamId);
+  return { teamName: team?.name ?? 'bu kulüp', jokerName: jokerName(first?.code) || 'joker' };
+}
+
+async function save(cancelJokers = false) {
   if (!allPicked.value) return;
   saving.value = true;
   try {
     const teamIds = store.pots.map((p) => picks.value[p.tierId]!).filter(Boolean);
-    await store.saveSquad(teamIds);
+    await store.saveSquad(teamIds, cancelJokers);
     toast.add({ severity: 'success', summary: 'Kadron kaydedildi', life: 2500 });
     await router.push('/');
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Kaydedilemedi', detail: msg(e), life: 5000 });
+    if (e instanceof ApiRequestError && e.code === 'joker_squad_conflict') {
+      jokerConflict.value = conflictText(e);
+    } else {
+      toast.add({ severity: 'error', summary: 'Kaydedilemedi', detail: msg(e), life: 5000 });
+    }
   } finally {
     saving.value = false;
   }
+}
+
+async function confirmJokerCancel() {
+  jokerConflict.value = null;
+  await save(true);
 }
 
 function msg(e: unknown) {
@@ -131,10 +153,27 @@ onUnmounted(() => window.clearInterval(timer));
           icon="pi pi-check"
           :disabled="locked || !allPicked"
           :loading="saving"
-          @click="save"
+          @click="save()"
         />
       </div>
     </template>
+
+    <Dialog
+      :visible="jokerConflict !== null"
+      modal
+      header="Joker çakışması"
+      :style="{ width: '400px' }"
+      @update:visible="jokerConflict = null"
+    >
+      <p style="margin: 0">
+        <strong>{{ jokerConflict?.teamName }}</strong> üzerinde {{ jokerConflict?.jokerName }} oynanmış.
+        Kadroyu böyle kaydedersen joker iptal edilir ve hakkın iade edilir.
+      </p>
+      <template #footer>
+        <Button label="Vazgeç" text @click="jokerConflict = null" />
+        <Button label="Devam et" severity="danger" @click="confirmJokerCancel" />
+      </template>
+    </Dialog>
   </div>
 </template>
 

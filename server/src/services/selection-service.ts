@@ -2,6 +2,7 @@ import { withTransaction, query } from '../db/pool.ts';
 import { ApiError } from '../lib/errors.ts';
 import { validateSquadSelection, type SelectableTeam } from '../domain/squad.ts';
 import { getSelectionLockState } from './matchweek-lifecycle-service.ts';
+import { cancel as cancelJoker, findSquadEditConflicts } from './joker-service.ts';
 
 export interface SquadEntry {
   teamId: string;
@@ -41,11 +42,35 @@ export async function getSquad(userId: string): Promise<SquadEntry[]> {
  * Replace the user's permanent squad. Enforced server-side (§3.2, validation
  * "not only in the UI"): selection lock, one club per pot, no duplicates, active
  * clubs, tier resolved from the DB (never client input).
+ *
+ * An edit that removes a club carrying an active joker (§3.6, §11.25) is
+ * rejected with 409 so the client can confirm; re-sent with `cancelJokers`,
+ * the joker is cancelled and refunded before the squad is rewritten.
  */
-export async function setSquad(userId: string, selectedTeamIds: string[]): Promise<SquadEntry[]> {
+export async function setSquad(
+  userId: string,
+  selectedTeamIds: string[],
+  cancelJokers = false,
+): Promise<SquadEntry[]> {
   const lock = await getSelectionLockState();
   if (lock.locked) {
     throw ApiError.forbidden('Kadro seçim süresi doldu', 'selection_locked');
+  }
+
+  const oldSquad = await getSquad(userId);
+  const keep = new Set(selectedTeamIds);
+  const removed = oldSquad.map((s) => s.teamId).filter((id) => !keep.has(id));
+  const conflicts = await findSquadEditConflicts(userId, removed);
+  if (conflicts.length > 0) {
+    if (!cancelJokers) {
+      throw new ApiError(
+        409,
+        'joker_squad_conflict',
+        'Çıkardığın kulüpte aktif joker var; değişiklik jokeri iptal eder ve hakkını iade eder',
+        { conflicts },
+      );
+    }
+    for (const conflict of conflicts) await cancelJoker(userId, conflict.matchweekId);
   }
 
   await withTransaction(async (client) => {

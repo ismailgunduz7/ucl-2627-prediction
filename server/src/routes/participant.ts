@@ -287,13 +287,17 @@ participantRoutes.get('/act-transfer', async (c) => {
 const ActTransferSchema = z.object({
   fromTeamId: z.string().uuid(),
   toTeamId: z.string().uuid(),
+  // Confirmed answer to a 409 joker_squad_conflict: cancel + refund, then apply.
+  cancelJokers: z.boolean().optional(),
 });
 
 participantRoutes.put('/act-transfer', async (c) => {
   const auth = c.get('auth');
   const body = ActTransferSchema.safeParse(await c.req.json().catch(() => null));
   if (!body.success) throw ApiError.badRequest('Geçersiz transfer isteği', 'invalid_body');
-  return c.json(await setActTransfer(auth.sub, body.data.fromTeamId, body.data.toTeamId));
+  return c.json(
+    await setActTransfer(auth.sub, body.data.fromTeamId, body.data.toTeamId, body.data.cancelJokers),
+  );
 });
 
 // --- Leaderboard (§4.8) ---------------------------------------------------
@@ -317,6 +321,8 @@ participantRoutes.get('/squad', async (c) => {
 
 const PutSquadSchema = z.object({
   teamIds: z.array(z.string().uuid()).length(SQUAD_SIZE),
+  // Confirmed answer to a 409 joker_squad_conflict: cancel + refund, then apply.
+  cancelJokers: z.boolean().optional(),
 });
 
 participantRoutes.put('/squad', async (c) => {
@@ -325,6 +331,6 @@ participantRoutes.put('/squad', async (c) => {
   if (!body.success) {
     throw ApiError.badRequest(`Tam olarak ${SQUAD_SIZE} kulüp gönderilmeli`, 'invalid_body');
   }
-  const squad = await setSquad(auth.sub, body.data.teamIds);
+  const squad = await setSquad(auth.sub, body.data.teamIds, body.data.cancelJokers);
   return c.json({ squad: squad.map((s) => ({ ...s, eliminated: s.eliminatedAt !== null })) });
 });

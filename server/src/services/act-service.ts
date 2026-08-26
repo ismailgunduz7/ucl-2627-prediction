@@ -12,6 +12,7 @@ import {
 } from './knockout-service.ts';
 import { finalizeCompletedMatchweeks } from './matchweek-scoring-service.ts';
 import { getActiveJokerRaw, getPermanentSquad, type EffectiveClub } from './lineup-service.ts';
+import { cancel as cancelJoker, findSquadEditConflicts } from './joker-service.ts';
 import { lineupEditability, getOrderedMatchweeks } from './matchweek-lifecycle-service.ts';
 
 /**
@@ -228,6 +229,7 @@ export async function setActTransfer(
   userId: string,
   fromTeamId: string,
   toTeamId: string,
+  cancelJokers = false,
 ): Promise<ActTransferState> {
   const current = await getTransferRow(userId);
   if (!current) throw ApiError.badRequest('Transfer hakkın yok', 'no_transfer_grant');
@@ -272,6 +274,26 @@ export async function setActTransfer(
   if (toRow.tier_id !== from.tierId) throw ApiError.badRequest('Aynı pottan olmalı', 'wrong_pot');
   if (!toRow.is_active || toRow.eliminated_at) {
     throw ApiError.badRequest('Elenmiş kulüp seçilemez', 'to_ineligible');
+  }
+
+  // A club leaving the effective squad may carry an active joker — a shield on
+  // it, say (§3.6, §11.25). Confirm first; on confirm, cancel with a refund.
+  // (An active weekly swap was already rejected above.)
+  const currentSquad = await getPermanentSquad(userId);
+  const nextIds = new Set(original.map((c) => c.teamId).filter((id) => id !== effectiveFrom));
+  nextIds.add(toTeamId);
+  const removed = currentSquad.map((c) => c.teamId).filter((id) => !nextIds.has(id));
+  const conflicts = await findSquadEditConflicts(userId, removed);
+  if (conflicts.length > 0) {
+    if (!cancelJokers) {
+      throw new ApiError(
+        409,
+        'joker_squad_conflict',
+        'Çıkardığın kulüpte aktif joker var; transfer jokeri iptal eder ve hakkını iade eder',
+        { conflicts },
+      );
+    }
+    for (const conflict of conflicts) await cancelJoker(userId, conflict.matchweekId);
   }
 
   await withTransaction(async (client) => {

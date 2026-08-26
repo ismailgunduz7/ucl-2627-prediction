@@ -51,8 +51,8 @@ export const useTournamentStore = defineStore('tournament', () => {
     squad.value = res.squad;
     squadLocked.value = res.locked;
   }
-  async function saveSquad(teamIds: string[]) {
-    const res = await api.put<{ squad: SquadEntry[] }>('/api/squad', { teamIds });
+  async function saveSquad(teamIds: string[], cancelJokers = false) {
+    const res = await api.put<{ squad: SquadEntry[] }>('/api/squad', { teamIds, cancelJokers });
     squad.value = res.squad;
   }
 
