@@ -184,15 +184,28 @@ export async function clearMatchLinesInTx(client: PoolClient, matchId: string): 
 
 /**
  * Full rebuild (§4.7): re-apply club-layer scoring for all finished matches,
- * then re-apply final participant matchweek scores for completed weeks.
+ * refresh the one-time bonus lines to the current rule values, then re-apply
+ * final participant matchweek scores for completed weeks.
  */
 export async function recalculateAll(): Promise<{ matchesScored: number; finalizedWeeks: string[] }> {
   const { matchesScored } = await withTransaction(async (client) => {
-    // Clear all match-based lines (Phase 2 has no bonus lines yet).
+    // Match-based lines are cleared and rebuilt from scratch. Bonus lines
+    // (top-8, round advance, medals — match_id NULL) are one-time awards tied
+    // to season events that a recalc cannot re-derive cheaply, so they stay —
+    // but their POINTS must follow the current per-pot rule values.
     await client.query('DELETE FROM team_point_entries WHERE match_id IS NOT NULL');
     const rules = await loadTierRules(client);
     const { rows } = await client.query<FinishedMatchRow>(FINISHED_MATCH_SELECT);
     for (const match of rows) await scoreOneMatch(client, match, rules);
+
+    await client.query(
+      `UPDATE team_point_entries e
+       SET points = r.points
+       FROM teams t
+       JOIN tier_scoring_rules r ON r.tier_id = t.tier_id
+       WHERE e.match_id IS NULL AND e.team_id = t.id AND r.rule_code = e.rule_code
+         AND e.points <> r.points`,
+    );
     return { matchesScored: rows.length };
   });
 
