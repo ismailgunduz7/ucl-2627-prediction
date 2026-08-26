@@ -91,6 +91,8 @@ const drama = computed(() => countdownMs.value !== null && countdownMs.value > 0
 function initials(name: string) { return name.split(' ').map((w) => w[0]).slice(0, 3).join('').toUpperCase(); }
 function difficultySeverity(d: string | null) { return d === 'zor' ? 'danger' : d === 'orta' ? 'warn' : 'success'; }
 function lineFor(teamId: string) { return score.value?.lines.find((l) => l.teamId === teamId); }
+/** Benched and not boosted: the club played, but none of it counted. */
+function sittingOut(l: ScoreLine) { return l.benched && score.value?.jokerCode !== 'bench_boost'; }
 function remaining(code: string) { return inventory.value.find((i) => i.code === code)?.remaining ?? 0; }
 
 /** Which slot shows the active joker's (highlighted) button. */
@@ -425,14 +427,16 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
         </div>
         <table class="lines">
           <tbody>
-            <tr v-for="l in score.lines" :key="l.teamId" :class="{ muted: l.benched && score.jokerCode !== 'bench_boost' }">
-              <td>{{ l.name }}</td>
+            <tr v-for="l in score.lines" :key="l.teamId" :class="{ muted: sittingOut(l) }">
               <td>
-                <CaptainBadge v-if="l.captain" :multiplier="l.multiplier" :joker-code="score.jokerCode" :size="22" />
-                <Tag v-else-if="l.benched" severity="secondary" value="Yedek" />
+                <span class="line-club">
+                  {{ l.name }}
+                  <CaptainBadge v-if="l.captain" :multiplier="l.multiplier" :joker-code="score.jokerCode" :size="20" />
+                  <span v-else-if="l.benched" class="role-chip">Yedek</span>
+                </span>
               </td>
-              <td style="text-align: right">
-                <span v-if="l.benched && score.jokerCode !== 'bench_boost'" class="text-muted">puan yazmadı</span>
+              <td class="line-points">
+                <span v-if="sittingOut(l)">—</span>
                 <span v-else>{{ l.basePoints }} → <strong>{{ l.contributed >= 0 ? '+' : '' }}{{ l.contributed }}</strong></span>
               </td>
             </tr>
@@ -553,8 +557,11 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
 .brief-card { background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0.8rem 0.9rem; display: flex; flex-direction: column; gap: 0.35rem; }
 .big-total { font-size: var(--text-2xl); font-weight: 800; color: var(--color-primary); }
 .lines { width: 100%; border-collapse: collapse; }
-.lines th { font-size: 0.76rem; color: var(--color-text-muted); padding: 0.3rem; font-weight: 700; }
-.lines td { padding: 0.55rem 0.35rem; border-bottom: 1px solid var(--color-border); font-size: 0.9rem; }
+.lines th { font-size: var(--text-2xs); color: var(--color-text-muted); padding: 0.3rem; font-weight: 700; }
+/* Fixed height, so a row carrying a badge is no taller than one without. */
+.lines td { height: 2.9rem; padding: 0 0.35rem; border-bottom: 1px solid var(--color-border); font-size: var(--text-sm); }
+.line-club { display: inline-flex; align-items: center; gap: 0.5rem; }
+.line-points { text-align: right; white-space: nowrap; }
 .lines tr:last-child td { border-bottom: none; }
 .lines tr.muted td { color: var(--color-text-muted); }
 .swap-list { display: flex; flex-direction: column; gap: 0.45rem; max-height: 320px; overflow-y: auto; }

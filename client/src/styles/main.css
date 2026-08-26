@@ -470,6 +470,16 @@ table,
 }
 
 .text-muted { color: var(--color-text-muted); }
+/* Compact inline marker; sized so a row carrying one is no taller. */
+.role-chip {
+  padding: 0.1rem 0.5rem;
+  border-radius: var(--radius-pill);
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+  white-space: nowrap;
+}
 /* Explanatory copy stops at a readable measure instead of the full 1360px. */
 .p-message-text,
 .empty-state { max-width: 68ch; }

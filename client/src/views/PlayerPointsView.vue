@@ -146,7 +146,7 @@ watch(() => route.params.id, (id) => id && load(id as string));
 
                   <template v-if="isPlayed(w)">
                     <CaptainBadge v-if="c.captain" :multiplier="c.multiplier" :joker-code="w.jokerCode" :size="26" />
-                    <Tag v-else-if="c.benched" severity="secondary" value="Yedek" />
+                    <span v-else-if="c.benched" class="role-chip">Yedek</span>
 
                     <span class="club-pts">
                       <span v-if="c.captain && c.multiplier > 1" class="text-muted base">
