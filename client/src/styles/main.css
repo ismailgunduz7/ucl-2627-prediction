@@ -582,6 +582,8 @@ table,
   border: none !important;
   font-weight: 700;
   padding: 0.9rem 1.15rem !important;
+  /* Keeps a right-aligned value off the toggle chevron. */
+  gap: var(--space-4);
 }
 .p-accordionheader:hover {
   background: var(--color-surface-2) !important;
