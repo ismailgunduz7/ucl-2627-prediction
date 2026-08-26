@@ -11,7 +11,7 @@ interface Mw { id: string; label: string; status: string; opened: boolean; menu:
 type Outcome = 'home' | 'draw' | 'away';
 interface Side {
   teamId: string; name: string; shortName: string; tierId: number; score: number | null;
-  mine: boolean; benched: boolean; captain: boolean; points: number | null;
+  mine: boolean; benched: boolean; captain: boolean; counts: boolean; points: number | null;
 }
 interface Fixture {
   matchId: string; kickoffAt: string | null; status: string; stage: string;
@@ -66,6 +66,7 @@ function syncLabel(iso: string | null) {
   return iso ? new Date(iso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : null;
 }
 function signed(n: number) { return n > 0 ? `+${n}` : `${n}`; }
+function tone(n: number) { return n > 0 ? 'up' : n < 0 ? 'down' : 'flat'; }
 
 async function loadWeeks() {
   const status = await api.get<{
@@ -157,11 +158,14 @@ watch(liveOnes, schedulePoll);
             </span>
 
             <span class="fx-side home">
+              <span v-if="f.home.points !== null" class="fx-pts" :class="tone(f.home.points)">
+                {{ signed(f.home.points) }}
+              </span>
+              <CaptainBadge v-if="f.home.captain" :multiplier="section.captainMultiplier" :size="18" />
+              <span v-else-if="f.home.benched && !section.benchBoost" class="role-chip">Yedek</span>
               <RouterLink :to="`/takim/${f.home.teamId}`" class="fx-club" :class="{ own: f.home.mine }">
                 {{ f.home.name }}
               </RouterLink>
-              <CaptainBadge v-if="f.home.captain" :multiplier="section.captainMultiplier" :size="18" />
-              <span v-else-if="f.home.benched && !section.benchBoost" class="role-chip">Yedek</span>
             </span>
 
             <span class="fx-score">
@@ -172,11 +176,14 @@ watch(liveOnes, schedulePoll);
             </span>
 
             <span class="fx-side away">
-              <CaptainBadge v-if="f.away.captain" :multiplier="section.captainMultiplier" :size="18" />
-              <span v-else-if="f.away.benched && !section.benchBoost" class="role-chip">Yedek</span>
               <RouterLink :to="`/takim/${f.away.teamId}`" class="fx-club" :class="{ own: f.away.mine }">
                 {{ f.away.name }}
               </RouterLink>
+              <CaptainBadge v-if="f.away.captain" :multiplier="section.captainMultiplier" :size="18" />
+              <span v-else-if="f.away.benched && !section.benchBoost" class="role-chip">Yedek</span>
+              <span v-if="f.away.points !== null" class="fx-pts" :class="tone(f.away.points)">
+                {{ signed(f.away.points) }}
+              </span>
             </span>
 
             <span class="fx-tail">
@@ -185,12 +192,6 @@ watch(liveOnes, schedulePoll);
                 class="pick-chip"
                 :class="f.result ? (f.result === f.pick ? 'hit' : 'miss') : ''"
               >{{ PICK_LABEL[f.pick] }}</span>
-              <span
-                v-for="s in [f.home, f.away].filter((x) => x.mine && x.points !== null && x.points !== 0)"
-                :key="s.teamId"
-                class="pts-chip"
-                :class="s.points! >= 0 ? 'text-positive' : 'text-negative'"
-              >{{ s.shortName }} {{ signed(s.points!) }}</span>
             </span>
             </div>
           </section>
@@ -228,7 +229,7 @@ watch(liveOnes, schedulePoll);
 
 .fx-row {
   display: grid;
-  grid-template-columns: 4.5rem 1fr auto 1fr 8rem;
+  grid-template-columns: 4.5rem 1fr auto 1fr 3.5rem;
   align-items: center;
   gap: 0.75rem;
   padding: 0.7rem 1.1rem;
@@ -236,8 +237,9 @@ watch(liveOnes, schedulePoll);
   border-left: 3px solid transparent;
 }
 .fx-row:last-child { border-bottom: none; }
-.fx-row.mine { border-left-color: var(--color-primary); background: var(--color-primary-soft); }
-.fx-row.live { background: var(--color-danger-soft); }
+/* Enough tint to find my clubs while scanning, not enough to shout. */
+.fx-row.mine { border-left-color: var(--color-primary); background: rgba(99, 102, 241, 0.09); }
+.fx-row.live { background: rgba(251, 113, 133, 0.09); }
 .fx-row.live.mine { border-left-color: var(--color-primary); }
 
 .fx-time { font-size: var(--text-2xs); color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
@@ -247,12 +249,27 @@ watch(liveOnes, schedulePoll);
 .fx-side.home { justify-content: flex-end; text-align: right; }
 .fx-club { color: var(--color-text-secondary); font-weight: 500; }
 .fx-club.own { color: var(--color-text); }
+
+/* What this club put on my scoreboard, on its own side of the fixture. */
+.fx-pts {
+  min-width: 2.2rem;
+  padding: 0.15rem 0.4rem;
+  border-radius: var(--radius-sm);
+  font-size: var(--text-2xs);
+  font-weight: 800;
+  text-align: center;
+  font-variant-numeric: tabular-nums;
+  background: var(--color-surface-2);
+  color: var(--color-text-muted);
+}
+.fx-pts.up { background: var(--color-success-soft); color: var(--color-success); }
+.fx-pts.down { background: var(--color-danger-soft); color: var(--color-danger); }
 .fx-score {
   min-width: 3.2rem; text-align: center; font-weight: 700;
   font-variant-numeric: tabular-nums; white-space: nowrap;
 }
-.fx-tail { display: flex; align-items: center; justify-content: flex-end; gap: 0.35rem; flex-wrap: wrap; }
-.pick-chip, .pts-chip {
+.fx-tail { display: flex; align-items: center; justify-content: flex-end; gap: 0.35rem; }
+.pick-chip {
   padding: 0.1rem 0.5rem; border-radius: var(--radius-pill);
   font-size: var(--text-2xs); font-weight: 700; white-space: nowrap;
   background: var(--color-surface-2); color: var(--color-text-muted);

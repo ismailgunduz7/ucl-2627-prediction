@@ -24,7 +24,9 @@ export interface FixtureSide {
   /** On their bench, and therefore not scoring unless bench boost is live. */
   benched: boolean;
   captain: boolean;
-  /** Club-layer points from this match; null when the club is not theirs. */
+  /** Whether what this club did in this match reaches the participant's score. */
+  counts: boolean;
+  /** Points from this match, or null when they do not count for the participant. */
   points: number | null;
 }
 
@@ -140,9 +142,14 @@ export async function getWeekFixtures(userId: string, mwId: string): Promise<Wee
     const draftFor = (teamId: string) =>
       draft.filter((l) => l.teamId === teamId).reduce((acc, l) => acc + l.points, 0);
 
+    const benchBoost = joker?.code === 'bench_boost';
     const side = (which: 'home' | 'away'): FixtureSide => {
       const teamId = which === 'home' ? m.home_team_id : m.away_team_id;
       const squadClub = mine.get(teamId);
+      const benched = squadClub !== undefined && teamId === lineup?.benchTeamId;
+      // A benched club still earns club-layer points; they just do not reach
+      // the participant, so the row does not offer them a number (§3.5).
+      const counts = squadClub !== undefined && (!benched || benchBoost);
       return {
         teamId,
         name: which === 'home' ? m.home_name : m.away_name,
@@ -150,13 +157,10 @@ export async function getWeekFixtures(userId: string, mwId: string): Promise<Wee
         tierId: which === 'home' ? m.home_tier : m.away_tier,
         score: which === 'home' ? m.home_score : m.away_score,
         mine: squadClub !== undefined,
-        benched: squadClub !== undefined && teamId === lineup?.benchTeamId,
+        benched,
         captain: squadClub !== undefined && teamId === lineup?.captainTeamId,
-        points: squadClub === undefined
-          ? null
-          : live
-            ? draftFor(teamId)
-            : (points.get(`${m.id}:${teamId}`) ?? null),
+        counts,
+        points: !counts ? null : live ? draftFor(teamId) : (points.get(`${m.id}:${teamId}`) ?? null),
       };
     };
 
