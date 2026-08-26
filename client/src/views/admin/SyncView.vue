@@ -116,23 +116,25 @@ onBeforeUnmount(() => { if (statusTimer) clearInterval(statusTimer); });
 
     <section class="surface-card" style="overflow: hidden">
       <div class="card-pad section-title" style="margin: 0; border-bottom: 1px solid var(--color-border)">Son çalışmalar</div>
-      <table class="runs">
-        <thead>
-          <tr><th>Zaman</th><th>Sağlayıcı</th><th>Kaynak</th><th>Durum</th><th>Fikstür</th><th>Güncel.</th><th>Bitti</th></tr>
-        </thead>
-        <tbody>
-          <tr v-for="r in runs" :key="r.id">
-            <td>{{ fmt(r.finished_at) }}</td>
-            <td>{{ r.provider }}</td>
-            <td>{{ r.trigger === 'scheduled' ? 'otomatik' : 'elle' }}</td>
-            <td><Tag :severity="r.status === 'success' ? 'success' : 'danger'" :value="r.status" /></td>
-            <td>{{ r.fixtures_seen }}</td>
-            <td>{{ r.matches_upserted }}</td>
-            <td>{{ r.matches_finished }}</td>
-          </tr>
-          <tr v-if="!runs.length"><td colspan="7" class="empty-state">Henüz sync çalışmadı.</td></tr>
-        </tbody>
-      </table>
+      <div style="overflow-x: auto">
+        <table class="runs">
+          <thead>
+            <tr><th>Zaman</th><th>Sağlayıcı</th><th>Kaynak</th><th>Durum</th><th>Fikstür</th><th>Güncel.</th><th>Bitti</th></tr>
+          </thead>
+          <tbody>
+            <tr v-for="r in runs" :key="r.id">
+              <td>{{ fmt(r.finished_at) }}</td>
+              <td>{{ r.provider }}</td>
+              <td>{{ r.trigger === 'scheduled' ? 'otomatik' : 'elle' }}</td>
+              <td><Tag :severity="r.status === 'success' ? 'success' : 'danger'" :value="r.status" /></td>
+              <td>{{ r.fixtures_seen }}</td>
+              <td>{{ r.matches_upserted }}</td>
+              <td>{{ r.matches_finished }}</td>
+            </tr>
+            <tr v-if="!runs.length"><td colspan="7" class="empty-state">Henüz sync çalışmadı.</td></tr>
+          </tbody>
+        </table>
+      </div>
     </section>
   </div>
 </template>
