@@ -218,6 +218,7 @@ export async function finalizeMatchweek(mwId: string): Promise<number> {
           captainTeamId: score.captainTeamId,
           lines: score.lines,
           jokerCode: score.jokerCode,
+          predictions: score.predictions,
         }),
       ],
     );
