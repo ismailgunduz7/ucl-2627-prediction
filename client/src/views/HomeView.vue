@@ -92,7 +92,7 @@ onMounted(async () => {
             <span class="text-muted">{{ weekFinal ? 'kesin puan' : 'anlık puan' }}</span>
           </div>
           <RouterLink to="/hafta">
-            <Button label="Dizini ayarla" icon="pi pi-calendar" size="small" />
+            <Button label="Dizilişini ayarla" icon="pi pi-calendar" size="small" />
           </RouterLink>
         </template>
         <p v-else class="text-muted" style="margin: 0">Sezon henüz başlamadı.</p>
