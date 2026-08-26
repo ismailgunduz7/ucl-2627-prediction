@@ -6,11 +6,13 @@ import Button from 'primevue/button';
 import { api, ApiRequestError } from '@/lib/api';
 import PageHeader from '@/components/PageHeader.vue';
 import BallLoader from '@/components/BallLoader.vue';
+import OctopusMark from '@/components/OctopusMark.vue';
 
 interface RuleRow { code: string; category: string; label: string; points: Record<number, number> }
 
 const toast = useToast();
 const rules = ref<RuleRow[]>([]);
+const predictionPoints = ref(3);
 const loading = ref(true);
 const saving = ref(false);
 const recalculating = ref(false);
@@ -20,8 +22,12 @@ const categoryLabel: Record<string, string> = { match: 'Maç', league: 'Lig', kn
 async function load() {
   loading.value = true;
   try {
-    const res = await api.get<{ rules: RuleRow[] }>('/api/admin/scoring-rules');
+    const [res, cfg] = await Promise.all([
+      api.get<{ rules: RuleRow[] }>('/api/admin/scoring-rules'),
+      api.get<{ config: { prediction_points_per_correct: number } }>('/api/admin/config'),
+    ]);
     rules.value = res.rules;
+    predictionPoints.value = cfg.config.prediction_points_per_correct;
   } catch (e) {
     toast.add({ severity: 'error', summary: 'Hata', detail: msg(e), life: 4000 });
   } finally {
@@ -32,7 +38,13 @@ async function save() {
   saving.value = true;
   try {
     const updates = rules.value.flatMap((r) => [1, 2, 3, 4].map((tierId) => ({ ruleCode: r.code, tierId, points: r.points[tierId] ?? 0 })));
-    const res = await api.put<{ rules: RuleRow[] }>('/api/admin/scoring-rules', { updates });
+    const [res] = await Promise.all([
+      api.put<{ rules: RuleRow[] }>('/api/admin/scoring-rules', { updates }),
+      api.put('/api/admin/config', {
+        key: 'prediction_points_per_correct',
+        value: predictionPoints.value,
+      }),
+    ]);
     rules.value = res.rules;
     toast.add({ severity: 'success', summary: 'Kurallar kaydedildi', life: 2500 });
   } catch (e) {
@@ -69,7 +81,25 @@ onMounted(load);
 
     <BallLoader v-if="loading" />
 
-    <section v-else class="surface-card" style="overflow-x: auto">
+    <section v-if="!loading" class="surface-card card-pad paul-config">
+      <span class="paul-name"><OctopusMark :size="19" /> Ahtapot Paul</span>
+      <label for="paulPoints" class="text-muted">tutan her tahmin</label>
+      <InputNumber
+        v-model="predictionPoints"
+        input-id="paulPoints"
+        :min="0"
+        :max="50"
+        :use-grouping="false"
+        show-buttons
+        button-layout="horizontal"
+        :input-style="{ width: '3rem', textAlign: 'center' }"
+        decrement-button-class="p-button-secondary"
+        increment-button-class="p-button-secondary"
+      />
+      <span class="text-muted">puan</span>
+    </section>
+
+    <section v-if="!loading" class="surface-card" style="overflow-x: auto">
       <table class="rules">
         <thead>
           <tr>
@@ -96,6 +126,8 @@ onMounted(load);
 </template>
 
 <style scoped>
+.paul-config { display: flex; align-items: center; gap: 0.75rem; flex-wrap: wrap; }
+.paul-name { display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 700; }
 .rules { width: 100%; border-collapse: collapse; min-width: 560px; }
 .rules th, .rules td { padding: 0.55rem 0.7rem; text-align: center; border-bottom: 1px solid var(--color-border); vertical-align: middle; }
 .rules thead th { background: var(--color-bg-subtle); font-size: 0.82rem; font-weight: 700; color: var(--color-text-secondary); }

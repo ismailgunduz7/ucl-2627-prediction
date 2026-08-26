@@ -791,7 +791,7 @@ Ordered by what blocks a real season most.
 2. **Fixtures + multi-live page** `/fikstur` (§18.5) and the **live delta feed** (§18.6).
 3. **Season replay** `/sezon` (§18.8).
 4. **Wrap card rank movement** (§18.3), plus the bye and top-8 bonus lines.
-5. **Admin screens** for tournament config, joker inventory repair and match override history — the APIs exist for the first and last, the second needs both.
+5. **Admin screens** for tournament config, joker inventory repair and match override history — the APIs exist for the first and last, the second needs both. The one config knob with a real home already has a field on the scoring rules screen (§18.9).
 6. **Knockout time basis** (§4.4): wire `scoring_flags` into scoring or remove the setting.
 7. Remaining edge-case tests from §11: provider score correction after a finish, a postponed match holding its week open, and the top-8 bonus.
 8. **Final pot seed** once UEFA publishes the 2026–27 draw, plus provider id mapping so the real feed takes over from the mock.
