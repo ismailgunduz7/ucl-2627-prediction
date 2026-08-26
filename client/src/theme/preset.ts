@@ -23,19 +23,30 @@ export const AppPreset = definePreset(Aura, {
     },
     colorScheme: {
       dark: {
+        // Aura's dark scheme reads this ramp light-to-dark: surface.0 is the
+        // brightest foreground and surface.950 the deepest background. It was
+        // written the other way round, so every token Aura derives from it —
+        // list option text, icons, menu items — came out dark on dark.
         surface: {
-          0: '#0a0f1d',
-          50: '#0e1526',
-          100: '#131c31',
-          200: '#1a2540',
-          300: '#22304f',
-          400: '#2c3d61',
+          0: '#ffffff',
+          50: '#f0f4fa',
+          100: '#dbe3f0',
+          200: '#b3bfd6',
+          300: '#8494b5',
+          400: '#5a6d94',
           500: '#3a4d75',
-          600: '#5a6d94',
-          700: '#8494b5',
-          800: '#b3bfd6',
-          900: '#dbe3f0',
-          950: '#f0f4fa',
+          600: '#2c3d61',
+          700: '#22304f',
+          800: '#1a2540',
+          900: '#131c31',
+          950: '#0e1526',
+        },
+        text: {
+          color: '#e9eefb',
+          hoverColor: '#ffffff',
+          // Same 4.6:1 muted tone the app's own CSS uses.
+          mutedColor: '#8b9abc',
+          hoverMutedColor: '#aab8d4',
         },
         primary: {
           color: '#818cf8',
@@ -53,11 +64,21 @@ export const AppPreset = definePreset(Aura, {
           background: '#0e1526',
           disabledBackground: '#131c31',
           filledBackground: '#131c31',
-          borderColor: '#2c3d61',
-          hoverBorderColor: '#3a4d75',
-          focusBorderColor: '#818cf8',
+          // Field boundaries carry meaning, so they clear 3:1 on every surface
+          // they sit on (WCAG non-text contrast).
+          borderColor: '#5a72ab',
+          hoverBorderColor: '#7b90c4',
+          focusBorderColor: '#a5b4fc',
           color: '#e6edf8',
           placeholderColor: '#7e8ca8',
+          disabledColor: '#7e8ca8',
+          iconColor: '#8b9abc',
+          floatLabelColor: '#8b9abc',
+          floatLabelActiveColor: '#8b9abc',
+        },
+        list: {
+          // Meaningful icons inside options need 3:1 like any other control mark.
+          option: { icon: { color: '#8b9abc', focusColor: '#aab8d4' } },
         },
         overlay: {
           select: { background: '#131c31', borderColor: '#22304f', color: '#e6edf8' },

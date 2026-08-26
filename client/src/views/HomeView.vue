@@ -147,7 +147,7 @@ onMounted(async () => {
   color: var(--color-text);
 }
 .crest-mini small {
-  font-size: 0.72rem;
+  font-size: var(--text-2xs);
   line-height: 1.15;
 }
 .crest {
@@ -158,7 +158,7 @@ onMounted(async () => {
   color: #fff;
   display: grid;
   place-items: center;
-  font-size: 0.72rem;
+  font-size: var(--text-2xs);
   font-weight: 800;
   box-shadow: var(--shadow-sm);
 }
@@ -177,7 +177,7 @@ onMounted(async () => {
   margin-bottom: 1rem;
 }
 .big-num {
-  font-size: 2.4rem;
+  font-size: var(--text-3xl);
   font-weight: 800;
   color: var(--color-primary);
   line-height: 1;

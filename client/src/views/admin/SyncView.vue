@@ -147,7 +147,7 @@ onBeforeUnmount(() => { if (statusTimer) clearInterval(statusTimer); });
 .dt { padding: 0.6rem 0.7rem; border: 1px solid var(--color-border); border-radius: var(--radius-sm); font: inherit; background: var(--color-surface); color: var(--color-text); }
 .summary { display: flex; gap: 1rem; flex-wrap: wrap; }
 .stat { display: flex; flex-direction: column; align-items: center; min-width: 96px; }
-.stat b { font-size: 1.5rem; color: var(--color-primary); }
+.stat b { font-size: var(--text-xl); color: var(--color-primary); }
 .runs { width: 100%; border-collapse: collapse; }
 .runs th, .runs td { padding: 0.55rem 0.7rem; text-align: center; border-bottom: 1px solid var(--color-border); font-size: 0.88rem; }
 .runs thead th { background: var(--color-bg-subtle); font-weight: 700; color: var(--color-text-secondary); }

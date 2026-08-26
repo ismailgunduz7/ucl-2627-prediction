@@ -57,7 +57,7 @@ watch(() => route.params.id, (id) => id && load(id as string));
       <section class="surface-card card-pad team-head">
         <span class="crest">{{ initials(detail.team.name) }}</span>
         <div style="flex: 1">
-          <h1 style="margin: 0; font-size: 1.5rem">{{ detail.team.name }}</h1>
+          <h1 style="margin: 0; font-size: var(--text-xl)">{{ detail.team.name }}</h1>
           <div class="tag-row" style="margin-top: 0.4rem">
             <Tag :value="detail.team.tierName" />
             <span v-if="detail.team.country" class="text-muted">{{ detail.team.country }}</span>

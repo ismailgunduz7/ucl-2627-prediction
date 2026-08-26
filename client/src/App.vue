@@ -43,6 +43,13 @@ onMounted(() => {
 
 watch(() => route.fullPath, () => (mobileNavOpen.value = false));
 
+// A plain fragment link would go through the router; move focus ourselves.
+function skipToContent() {
+  const main = document.getElementById('main-content');
+  main?.focus();
+  main?.scrollIntoView({ block: 'start' });
+}
+
 async function logout() {
   await auth.logout();
   await router.replace('/login');
@@ -54,6 +61,7 @@ async function logout() {
   <Toast />
 
   <div v-if="showShell" class="app-shell">
+    <a class="skip-link" href="#main-content" @click.prevent="skipToContent">İçeriğe geç</a>
     <header class="app-header">
       <div class="app-header-inner">
         <RouterLink :to="homeHref" class="brand">
@@ -63,7 +71,7 @@ async function logout() {
 
         <nav class="main-nav" aria-label="Ana menü">
           <RouterLink v-for="item in navItems" :key="item.to" :to="item.to" class="nav-link">
-            <component :is="item.icon" :size="17" />
+            <component :is="item.icon" :size="17" aria-hidden="true" />
             <span>{{ item.label }}</span>
           </RouterLink>
         </nav>
@@ -83,12 +91,12 @@ async function logout() {
     <button v-if="mobileNavOpen" class="mobile-nav-backdrop" aria-label="Menüyü kapat" @click="mobileNavOpen = false" />
     <nav class="mobile-nav" :class="{ 'is-open': mobileNavOpen }" aria-label="Mobil menü">
       <RouterLink v-for="item in navItems" :key="`m-${item.to}`" :to="item.to" class="mobile-nav-link" @click="mobileNavOpen = false">
-        <component :is="item.icon" :size="18" />
+        <component :is="item.icon" :size="18" aria-hidden="true" />
         <span>{{ item.label }}</span>
       </RouterLink>
     </nav>
 
-    <main class="app-main">
+    <main id="main-content" class="app-main" tabindex="-1">
       <RouterView v-slot="{ Component }">
         <transition name="page" mode="out-in">
           <component :is="Component" />
@@ -103,9 +111,12 @@ async function logout() {
 </template>
 
 <style>
-.page-enter-active,
+.page-enter-active {
+  transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
+}
+/* Leaving is quicker than arriving, so navigation feels answered at once. */
 .page-leave-active {
-  transition: opacity 0.18s ease, transform 0.18s ease;
+  transition: opacity var(--dur-fast) ease-in, transform var(--dur-fast) ease-in;
 }
 .page-enter-from { opacity: 0; transform: translateY(8px); }
 .page-leave-to { opacity: 0; transform: translateY(-6px); }

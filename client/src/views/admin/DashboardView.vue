@@ -41,7 +41,7 @@ const links = [
       </div>
     </div>
 
-    <div class="link-grid">
+    <div class="link-grid stagger">
       <RouterLink v-for="l in links" :key="l.to" :to="l.to" class="surface-card card-pad link-card">
         <i :class="l.icon" class="link-icon" />
         <div>
@@ -61,7 +61,7 @@ const links = [
 .link-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 1rem; }
 .link-card { display: flex; align-items: center; gap: 1rem; text-decoration: none; color: var(--color-text); transition: border-color 0.15s, box-shadow 0.15s; }
 .link-card:hover { border-color: var(--color-primary); box-shadow: var(--shadow-md); text-decoration: none; }
-.link-icon { font-size: 1.4rem; color: var(--color-primary); width: 2.4rem; height: 2.4rem; display: grid; place-items: center; background: var(--color-primary-soft); border-radius: var(--radius-md); }
+.link-icon { font-size: var(--text-xl); color: var(--color-primary); width: 2.4rem; height: 2.4rem; display: grid; place-items: center; background: var(--color-primary-soft); border-radius: var(--radius-md); }
 .link-title { font-weight: 700; }
 .link-card > div { flex: 1; }
 </style>

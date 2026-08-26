@@ -100,7 +100,7 @@ onUnmounted(() => window.clearInterval(timer));
     <template v-else>
       <ActTransferCard @changed="load" />
 
-      <div class="tier-grid">
+      <div class="tier-grid stagger">
         <section v-for="pot in store.pots" :key="pot.tierId" class="surface-card pot-col">
           <header class="pot-head">
             <span>{{ pot.tierName }}</span>
@@ -110,7 +110,7 @@ onUnmounted(() => window.clearInterval(timer));
             v-for="team in pot.teams"
             :key="team.id"
             type="button"
-            class="team-row"
+            class="team-row press"
             :class="{ selected: picks[pot.tierId] === team.id, disabled: locked }"
             :disabled="locked"
             @click="select(pot.tierId, team.id)"
@@ -118,7 +118,7 @@ onUnmounted(() => window.clearInterval(timer));
             <span class="crest">{{ initials(team.name) }}</span>
             <span class="team-meta">
               <span class="team-name">{{ team.name }}</span>
-              <span v-if="team.country" class="text-muted" style="font-size: 0.72rem">{{ team.country }}</span>
+              <span v-if="team.country" class="text-muted" style="font-size: var(--text-2xs)">{{ team.country }}</span>
             </span>
             <Tag v-if="team.eliminated" severity="danger" value="Elendi" />
           </button>
@@ -167,7 +167,7 @@ onUnmounted(() => window.clearInterval(timer));
   text-align: left;
   font: inherit;
   color: var(--color-text);
-  transition: border-color 0.15s, background 0.15s;
+  transition: border-color var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
 }
 .team-row:hover:not(.disabled) {
   border-color: var(--color-border-strong);
@@ -188,7 +188,7 @@ onUnmounted(() => window.clearInterval(timer));
   color: #fff;
   display: grid;
   place-items: center;
-  font-size: 0.68rem;
+  font-size: var(--text-2xs);
   font-weight: 800;
   flex-shrink: 0;
 }
@@ -199,7 +199,7 @@ onUnmounted(() => window.clearInterval(timer));
   min-width: 0;
 }
 .team-name {
-  font-size: 0.88rem;
+  font-size: var(--text-sm);
   font-weight: 600;
 }
 .save-bar {

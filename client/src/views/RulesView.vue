@@ -75,7 +75,7 @@ onMounted(async () => {
         <p class="text-muted" style="margin: 0 0 1rem">
           Her hafta en fazla bir joker oynayabilirsin. Hafta kilitlenmeden vazgeçersen hakkın geri gelir.
         </p>
-        <div class="joker-grid">
+        <div class="joker-grid stagger">
           <div v-for="j in jokers" :key="j.name" class="joker-card">
             <div class="joker-head">
               <component :is="j.icon" :size="18" />

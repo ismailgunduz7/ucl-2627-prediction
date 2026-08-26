@@ -274,11 +274,11 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
 
       <section class="pitch surface-card">
         <div class="zone-label">Sahada</div>
-        <div class="pitch-grid">
+        <div class="pitch-grid stagger">
           <div
             v-for="club in pitchClubs"
             :key="club.teamId"
-            class="club-card animate-in"
+            class="club-card"
             :class="{ 'is-captain': club.teamId === captainId, drag: editable }"
             :draggable="editable"
             @dragstart="onDragStart(club.teamId)"
@@ -298,21 +298,36 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
             </div>
 
             <div v-if="editable" class="slot-actions">
-              <button class="slot-btn" :class="{ on: club.teamId === captainId }" title="Kaptan yap" @click="setCaptain(club.teamId)">
-                <Crown :size="15" />
+              <button
+                class="slot-btn press"
+                :class="{ on: club.teamId === captainId }"
+                :aria-pressed="club.teamId === captainId"
+                :aria-label="`${club.name} kaptan olsun`"
+                title="Kaptan yap"
+                @click="setCaptain(club.teamId)"
+              >
+                <Crown :size="16" aria-hidden="true" />
               </button>
-              <button v-if="canBench(club)" class="slot-btn" title="Yedeğe al" @click="setBench(club.teamId)">
-                <Armchair :size="15" />
+              <button
+                v-if="canBench(club)"
+                class="slot-btn press"
+                :aria-label="`${club.name} yedeğe geçsin`"
+                title="Yedeğe al"
+                @click="setBench(club.teamId)"
+              >
+                <Armchair :size="16" aria-hidden="true" />
               </button>
               <button
                 v-for="j in jokersFor(club, false)"
                 :key="j.code"
-                class="slot-btn joker"
+                class="slot-btn joker press"
                 :class="{ on: j.active }"
+                :aria-pressed="j.active"
+                :aria-label="j.active ? `${JOKER_NAMES[j.code]} — geri al` : `${JOKER_NAMES[j.code]} — ${club.name}`"
                 :title="j.active ? `${JOKER_NAMES[j.code]} — geri al` : JOKER_NAMES[j.code]"
                 @click="onJokerClick(j.code, club, j.active)"
               >
-                <component :is="JOKER_ICONS[j.code]" :size="15" />
+                <component :is="JOKER_ICONS[j.code]" :size="16" aria-hidden="true" />
               </button>
             </div>
           </div>
@@ -328,7 +343,7 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
         >
           <div
             v-if="benchClub"
-            class="club-card bench animate-in"
+            class="club-card bench"
             :class="{ 'is-captain': benchClub.teamId === captainId }"
             :draggable="editable"
             @dragstart="onDragStart(benchClub.teamId)"
@@ -339,18 +354,28 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
             <div class="club-name">{{ benchClub.name }}</div>
             <Tag :severity="benchBoost ? 'warn' : 'secondary'" :value="benchBoost ? 'Boost — puan yazar' : 'Puan yazmaz'" />
             <div v-if="editable" class="slot-actions">
-              <button v-if="benchBoost" class="slot-btn" :class="{ on: benchClub.teamId === captainId }" title="Kaptan yap" @click="setCaptain(benchClub.teamId)">
-                <Crown :size="15" />
+              <button
+                v-if="benchBoost"
+                class="slot-btn press"
+                :class="{ on: benchClub.teamId === captainId }"
+                :aria-pressed="benchClub.teamId === captainId"
+                :aria-label="`${benchClub.name} kaptan olsun`"
+                title="Kaptan yap"
+                @click="setCaptain(benchClub.teamId)"
+              >
+                <Crown :size="16" aria-hidden="true" />
               </button>
               <button
                 v-for="j in jokersFor(benchClub, true)"
                 :key="j.code"
-                class="slot-btn joker"
+                class="slot-btn joker press"
                 :class="{ on: j.active }"
+                :aria-pressed="j.active"
+                :aria-label="j.active ? `${JOKER_NAMES[j.code]} — geri al` : `${JOKER_NAMES[j.code]} — ${benchClub.name}`"
                 :title="j.active ? `${JOKER_NAMES[j.code]} — geri al` : JOKER_NAMES[j.code]"
                 @click="onJokerClick(j.code, benchClub, j.active)"
               >
-                <component :is="JOKER_ICONS[j.code]" :size="15" />
+                <component :is="JOKER_ICONS[j.code]" :size="16" aria-hidden="true" />
               </button>
             </div>
           </div>
@@ -454,7 +479,7 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
   text-transform: uppercase; color: var(--color-text-muted); margin-bottom: 0.9rem;
 }
 .bench-label { margin-top: 1.6rem; }
-.pitch-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); gap: 1rem; }
+.pitch-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); gap: var(--space-4); }
 .club-card {
   position: relative;
   background: linear-gradient(180deg, var(--color-surface-2), var(--color-surface));
@@ -470,19 +495,25 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
 .club-card.is-captain { border-color: var(--color-warning); box-shadow: 0 0 0 1px var(--color-warning), 0 0 22px rgba(251, 191, 36, 0.18); }
 .crest-link { text-decoration: none; }
 .crest-lg { width: 58px; height: 58px; font-size: 0.8rem; }
-.crest-sm { width: 30px; height: 30px; font-size: 0.62rem; }
+.crest-sm { width: 30px; height: 30px; font-size: 0.7rem; }
 .crest.dim { filter: grayscale(0.7); opacity: 0.75; }
 .club-name { font-size: 0.88rem; font-weight: 700; text-align: center; line-height: 1.25; }
 .club-foot { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; min-height: 1.2rem; }
 .pts { font-weight: 800; font-size: 0.92rem; }
 .slot-actions { display: flex; gap: 0.35rem; margin-top: 0.2rem; flex-wrap: wrap; justify-content: center; }
 .slot-btn {
-  width: 30px; height: 30px; display: grid; place-items: center;
-  border-radius: 50%; border: 1.5px solid var(--color-border-strong);
+  width: 34px; height: 34px; display: grid; place-items: center;
+  border-radius: 50%; border: 1.5px solid var(--color-border-control);
   background: var(--color-bg-subtle); color: var(--color-text-secondary);
-  cursor: pointer; transition: transform 0.14s, background 0.14s, color 0.14s, border-color 0.14s;
+  cursor: pointer;
+  transition: transform var(--dur-fast) var(--ease-out), background var(--dur-fast) var(--ease-out),
+    color var(--dur-fast) var(--ease-out), border-color var(--dur-fast) var(--ease-out);
 }
 .slot-btn:hover { transform: translateY(-2px); color: var(--color-text); border-color: var(--color-primary); }
+/* Fingers need more than a mouse does. */
+@media (pointer: coarse) {
+  .slot-btn { width: 44px; height: 44px; }
+}
 .slot-btn.on {
   background: linear-gradient(135deg, var(--color-warning), #f59e0b);
   border-color: var(--color-warning); color: #17130a;
@@ -505,7 +536,7 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
 .brief-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 0.85rem; }
 .brief-fixture { display: flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; }
 .brief-card { background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0.8rem 0.9rem; display: flex; flex-direction: column; gap: 0.35rem; }
-.big-total { font-size: 1.9rem; font-weight: 800; color: var(--color-primary); }
+.big-total { font-size: var(--text-2xl); font-weight: 800; color: var(--color-primary); }
 .lines { width: 100%; border-collapse: collapse; }
 .lines th { font-size: 0.76rem; color: var(--color-text-muted); padding: 0.3rem; font-weight: 700; }
 .lines td { padding: 0.55rem 0.35rem; border-bottom: 1px solid var(--color-border); font-size: 0.9rem; }

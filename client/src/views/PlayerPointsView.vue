@@ -180,13 +180,13 @@ watch(() => route.params.id, (id) => id && load(id as string));
 .stat-num { font-size: 1.9rem; font-weight: 800; color: var(--color-primary); line-height: 1.1; }
 .week-head { display: flex; align-items: center; gap: 0.6rem; width: 100%; }
 .week-label { font-weight: 700; }
-.week-total { margin-left: auto; font-weight: 800; font-size: 1.05rem; }
+.week-total { margin-left: auto; font-weight: 800; font-size: var(--text-lg); }
 .club-list { display: flex; flex-direction: column; gap: 0.65rem; }
 .club-row { background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0.7rem 0.85rem; }
 .club-row.muted { opacity: 0.6; }
 .club-top { display: flex; align-items: center; gap: 0.7rem; }
 .club-id { display: inline-flex; text-decoration: none; }
-.crest-xs { width: 28px; height: 28px; font-size: 0.58rem; }
+.crest-xs { width: 28px; height: 28px; font-size: 0.7rem; }
 .club-mid { flex: 1; display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; font-size: 0.88rem; }
 .no-fixture { font-size: 0.85rem; }
 .club-pts { display: flex; align-items: baseline; gap: 0.45rem; margin-left: auto; font-weight: 800; white-space: nowrap; }

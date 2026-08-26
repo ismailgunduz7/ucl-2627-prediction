@@ -165,8 +165,25 @@ onMounted(load);
         <Column header="İşlemler">
           <template #body="{ data }">
             <div style="display: flex; gap: 0.25rem">
-              <Button icon="pi pi-key" severity="secondary" text rounded title="Şifre değiştir" @click="openPassword(data)" />
-              <Button icon="pi pi-trash" severity="danger" text rounded title="Sil" :disabled="data.id === auth.user?.id" @click="openDelete(data)" />
+              <Button
+                icon="pi pi-key"
+                severity="secondary"
+                text
+                rounded
+                :aria-label="`${data.display_name} şifresini değiştir`"
+                title="Şifre değiştir"
+                @click="openPassword(data)"
+              />
+              <Button
+                icon="pi pi-trash"
+                severity="danger"
+                text
+                rounded
+                :aria-label="`${data.display_name} hesabını sil`"
+                title="Sil"
+                :disabled="data.id === auth.user?.id"
+                @click="openDelete(data)"
+              />
             </div>
           </template>
         </Column>
