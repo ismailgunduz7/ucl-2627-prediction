@@ -1,6 +1,67 @@
 import { query } from '../db/pool.ts';
 import { computeParticipantMatchweek } from './matchweek-scoring-service.ts';
 
+export interface RankMovement {
+  rank: number;
+  /** Null on the season's first completed week — there is nothing to move from. */
+  prevRank: number | null;
+}
+
+/**
+ * Where a participant stood after a completed matchweek versus after the one
+ * before it (§18.3, the wrap card's rank delta). Uses FINAL scores only, over
+ * completed weeks in play order, with the leaderboard's own tie-break (points
+ * in the week itself). The display-only alphabetical tie-break never changes a
+ * rank number under standard competition ranking, so it is not needed here.
+ */
+export async function getRankMovement(
+  competitionId: string,
+  userId: string,
+  mwId: string,
+): Promise<RankMovement | null> {
+  const weeks = await query<{ id: string }>(
+    `SELECT id FROM matchweeks WHERE status = 'complete'
+     ORDER BY CASE act WHEN 'league_phase' THEN 0 ELSE 1 END, sort_order`,
+  );
+  const order = weeks.rows.map((r) => r.id);
+  const idx = order.indexOf(mwId);
+  if (idx === -1) return null;
+
+  const scores = await query<{ user_id: string; matchweek_id: string; points: number }>(
+    `SELECT s.user_id, s.matchweek_id, s.points
+     FROM player_matchday_scores s
+     JOIN users u ON u.id = s.user_id
+     WHERE u.competition_id = $1 AND NOT u.is_admin`,
+    [competitionId],
+  );
+  if (!scores.rows.some((r) => r.user_id === userId)) return null;
+
+  const rankAfter = (weekIndex: number): number | null => {
+    const included = new Set(order.slice(0, weekIndex + 1));
+    const tieWeek = order[weekIndex]!;
+    const totals = new Map<string, { total: number; tie: number }>();
+    for (const r of scores.rows) {
+      if (!included.has(r.matchweek_id)) continue;
+      const t = totals.get(r.user_id) ?? { total: 0, tie: 0 };
+      t.total += r.points;
+      if (r.matchweek_id === tieWeek) t.tie = r.points;
+      totals.set(r.user_id, t);
+    }
+    const mine = totals.get(userId);
+    if (!mine) return null;
+    let ahead = 0;
+    for (const [id, t] of totals) {
+      if (id === userId) continue;
+      if (t.total > mine.total || (t.total === mine.total && t.tie > mine.tie)) ahead++;
+    }
+    return ahead + 1;
+  };
+
+  const rank = rankAfter(idx);
+  if (rank === null) return null;
+  return { rank, prevRank: idx > 0 ? rankAfter(idx - 1) : null };
+}
+
 export interface LeaderboardEntry {
   userId: string;
   displayName: string;

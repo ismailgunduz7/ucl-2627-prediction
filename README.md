@@ -16,9 +16,8 @@ real match results. See [PLAN.md](PLAN.md) for the authoritative product spec.
 > a season replay that opens once the final is played.
 >
 > What is left is tracked as Phase 7 in [PLAN.md](PLAN.md) §13 — the remaining
-> admin screens, wrap-card rank movement, and reseeding the clubs once UEFA
-> publishes the 2026–27 draw. Until then the app runs on placeholder clubs
-> driven by a mock provider.
+> admin screens, and reseeding the clubs once UEFA publishes the 2026–27 draw.
+> Until then the app runs on placeholder clubs driven by a mock provider.
 
 ## Stack
 

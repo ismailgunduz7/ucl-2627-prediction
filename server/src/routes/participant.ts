@@ -17,7 +17,7 @@ import { getConfigValue } from '../services/tournament-config-service.ts';
 import { getRulesMatrix, getTeamDetail } from '../services/scoring-service.ts';
 import { getEffectiveSquad, getLineup, setLineup } from '../services/lineup-service.ts';
 import { getParticipantWeekScore } from '../services/matchweek-scoring-service.ts';
-import { getLeaderboard } from '../services/leaderboard-service.ts';
+import { getLeaderboard, getRankMovement } from '../services/leaderboard-service.ts';
 import { getPlayerPoints } from '../services/player-points-service.ts';
 import { getLeagueStandings } from '../services/standings-service.ts';
 import { getActTransfer, setActTransfer } from '../services/act-service.ts';
@@ -184,9 +184,15 @@ participantRoutes.put('/matchweeks/:id/lineup', async (c) => {
 // --- Participant matchweek score (provisional or final) -------------------
 participantRoutes.get('/matchweeks/:id/score', async (c) => {
   const auth = c.get('auth');
-  const score = await getParticipantWeekScore(auth.sub, c.req.param('id'));
-  if (!score) return c.json({ score: null });
-  return c.json({ score });
+  const mwId = c.req.param('id');
+  const score = await getParticipantWeekScore(auth.sub, mwId);
+  if (!score) return c.json({ score: null, rankMove: null });
+  // The wrap card's rank delta (§18.3): only a completed week has one.
+  const rankMove =
+    score.final && auth.competitionId
+      ? await getRankMovement(auth.competitionId, auth.sub, mwId)
+      : null;
+  return c.json({ score, rankMove });
 });
 
 // --- Live delta feed (§18.6) ----------------------------------------------

@@ -18,7 +18,7 @@ Phases 0–6 are built and running against a Supabase database. What follows is 
 - A **mock provider** drives the fixtures off a simulated clock so the pipeline can be exercised before real data exists (§5.1). The football-data.org client is written and behind the same interface, but nothing maps to it until clubs carry real provider ids. The background sync job stays parked for as long as the mock is the configured provider.
 - Level knockout aggregates are settled by a **shootout seeded from the tie id** rather than real penalty data (§2.4), so recalculation always reaches the same winner.
 
-**Not built yet:** rank movement on the wrap card, and admin screens for config / joker inventory / override history. See §13 Phase 7.
+**Not built yet:** admin screens for config / joker inventory / override history. See §13 Phase 7.
 
 ---
 
@@ -780,7 +780,7 @@ UI copy is Turkish; code identifiers are English. The interface is dark-only, bu
 ### Phase 4 — Weekly lineup + matchweek scoring + locks ✅
 
 - Bench/captain; `T0 − 5m` lock; next-week editing after `T0`; crest wall; participant scores; weekly wrap on auto-complete.
-- A matchweek that has started is frozen by status as well as by clock, so a simulated provider clock cannot reopen it. The wrap card shows the week's lines but not yet rank movement (Phase 7).
+- A matchweek that has started is frozen by status as well as by clock, so a simulated provider clock cannot reopen it. The wrap card's rank movement arrived later, with Phase 7 (§18.3).
 
 ### Phase 5 — Jokers + live provisional + hub chrome ✅
 
@@ -794,13 +794,12 @@ UI copy is Turkish; code identifiers are English. The interface is dark-only, bu
 
 ### Phase 7 — Remaining work
 
-Ordered by what blocks a real season most. Shipped from this list already: the live delta feed (§18.6), the season replay (§18.8), and the knockout time-basis question (§4.4), settled by dropping the unused flag.
+Ordered by what blocks a real season most. Shipped from this list already: the live delta feed (§18.6), the season replay (§18.8), the wrap card's rank movement with the bye and bonus lines (§18.3), and the knockout time-basis question (§4.4), settled by dropping the unused flag.
 
 1. **Production deploy configuration.**
-2. **Wrap card rank movement** (§18.3), plus the bye and top-8 bonus lines.
-3. **Admin screens** for tournament config, joker inventory repair and match override history — the APIs exist for the first and last, the second needs both. The one config knob with a real home already has a field on the scoring rules screen (§18.9).
-4. Remaining edge-case tests from §11: provider score correction after a finish, a postponed match holding its week open, and the top-8 bonus.
-5. **Final pot seed** once UEFA publishes the 2026–27 draw, plus provider id mapping so the real feed takes over from the mock.
+2. **Admin screens** for tournament config, joker inventory repair and match override history — the APIs exist for the first and last, the second needs both. The one config knob with a real home already has a field on the scoring rules screen (§18.9).
+3. Remaining edge-case tests from §11: provider score correction after a finish, a postponed match holding its week open, and the top-8 bonus.
+4. **Final pot seed** once UEFA publishes the 2026–27 draw, plus provider id mapping so the real feed takes over from the mock.
 
 ---
 
@@ -888,6 +887,8 @@ Before lock on the hub: list the user's four clubs' fixtures (opponent, home/awa
 
 When matchweek auto-completes (§4.6): week total, per-club lines (bench “puan yazılmadı” unless boosted; a bye club shows “maç yok — 0”; show `league_top8_bonus` line if awarded that week), captain/joker callout, rank delta. In-app only; share image optional later.
 
+*Built* into the hub's week section: on a completed week the header carries the rank after that week with an arrow against the week before (the season's first week just states the rank), each club line unfolds its rule chips from the delta feed — which is where a `league_top8_bonus` or `round_advance` line shows itself — and a club that had no fixture says "maç yok — 0" instead of pretending it played. The rank delta is computed from final scores only, over completed weeks in play order, with the leaderboard's own tie-break.
+
 ### 18.4 Open picks
 
 From `T0(M)`: peers see bench, captain, and joker **if present**. No joker → show nothing for joker.
@@ -902,7 +903,7 @@ All live CL matches; user clubs pinned; tolerate provider delay.
 
 Compact events from provisional + finished transitions, e.g. `+3 galibiyet`, `−1 gol yedi`, `kaptan ×2 → +6`. Scoped to the user’s scoring clubs. Mark provisional until match finished.
 
-*Built* as the "Puan akışı" section on the hub: one row per scoring club, each rule that landed as a signed chip — finished matches definitive, live matches drafted with the same rules and marked with a pulse until they finish (§4.3 Option A). The shield's adjustment and the captain's `×2/×3` extra appear as their own lines on the club they belong to, so the chips of a week sum to exactly what the club layer feeds the participant's total. While anything is live the page re-reads itself once a minute from our own API — never the provider (§5.6) — and once the week completes the feed yields to the wrap card.
+*Built* as the "Puan akışı" section on the hub: one row per scoring club, each rule that landed as a signed chip — finished matches definitive, live matches drafted with the same rules and marked with a pulse until they finish (§4.3 Option A). The shield's adjustment and the captain's `×2/×3` extra appear as their own lines on the club they belong to, so the chips of a week sum to exactly what the club layer feeds the participant's total. While anything is live the page re-reads itself once a minute from our own API — never the provider (§5.6) — and once the week completes the feed folds its chips into the wrap card's club lines (§18.3).
 
 ### 18.7 Crest wall
 

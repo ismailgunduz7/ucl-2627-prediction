@@ -6,7 +6,7 @@ import Tag from 'primevue/tag';
 import Dialog from 'primevue/dialog';
 import Button from 'primevue/button';
 import { useToast } from 'primevue/usetoast';
-import { Crown, Armchair, House, Plane } from '@lucide/vue';
+import { Crown, Armchair, House, Plane, ArrowUp, ArrowDown, Minus } from '@lucide/vue';
 import { api, ApiRequestError } from '@/lib/api';
 import PageHeader from '@/components/PageHeader.vue';
 import BallLoader from '@/components/BallLoader.vue';
@@ -39,6 +39,7 @@ interface WeekPredictions {
 interface DeltaEvent { ruleCode: string; label: string; points: number; provisional: boolean }
 interface ClubDeltas { teamId: string; name: string; shortName: string; captain: boolean; events: DeltaEvent[] }
 interface WeekDeltas { matchweekId: string; live: boolean; clubs: ClubDeltas[] }
+interface RankMove { rank: number; prevRank: number | null }
 
 /** MS1 / MS0 / MS2, written the way a coupon writes them. */
 const PICK_OPTIONS: { value: Pick; label: string }[] = [
@@ -61,6 +62,7 @@ const openPicks = ref<{ available: boolean; picks: OpenPick[] }>({ available: fa
 const pots = ref<Pot[]>([]);
 const predictions = ref<WeekPredictions | null>(null);
 const deltas = ref<WeekDeltas | null>(null);
+const rankMove = ref<RankMove | null>(null);
 const loading = ref(true);
 const busy = ref(false);
 const now = ref(Date.now());
@@ -121,6 +123,16 @@ function lineFor(teamId: string) { return score.value?.lines.find((l) => l.teamI
 /** Benched and not boosted: the club played, but none of it counted. */
 function sittingOut(l: ScoreLine) { return l.benched && score.value?.jokerCode !== 'bench_boost'; }
 function remaining(code: string) { return inventory.value.find((i) => i.code === code)?.remaining ?? 0; }
+/** Clubs with no fixture this week, so the wrap can explain their zero (§18.3). */
+const byeIds = computed(() => new Set(briefing.value.filter((b) => !b.fixtures.length).map((b) => b.teamId)));
+function wrapEventsFor(teamId: string) {
+  return deltas.value?.clubs.find((c) => c.teamId === teamId)?.events ?? [];
+}
+const moveDir = computed(() => {
+  const m = rankMove.value;
+  if (!m || m.prevRank === null) return 'new';
+  return m.rank < m.prevRank ? 'up' : m.rank > m.prevRank ? 'down' : 'same';
+});
 
 /** Which slot shows the active joker's (highlighted) button. */
 const activeSlot = computed(() => {
@@ -276,7 +288,7 @@ async function loadWeek() {
   const id = selectedMw.value;
   const results = await Promise.all([
     api.get<{ lineup: Lineup | null; squad: SquadClub[] }>(`/api/matchweeks/${id}/lineup`),
-    api.get<{ score: WeekScore | null }>(`/api/matchweeks/${id}/score`),
+    api.get<{ score: WeekScore | null; rankMove: RankMove | null }>(`/api/matchweeks/${id}/score`),
     api.get<{ inventory: Inventory[]; active: ActiveJoker | null }>(`/api/matchweeks/${id}/jokers`),
     api.get<{ briefing: BriefingClub[] }>(`/api/matchweeks/${id}/briefing`),
     api.get<{ available: boolean; picks: OpenPick[] }>(`/api/matchweeks/${id}/open-picks`),
@@ -285,6 +297,7 @@ async function loadWeek() {
   ]);
   const [lu, sc, jk, br, op, pr, dl] = results;
   lineup.value = lu.lineup; squad.value = lu.squad; score.value = sc.score;
+  rankMove.value = sc.rankMove;
   inventory.value = jk.inventory; activeJoker.value = jk.active;
   briefing.value = br.briefing; openPicks.value = op; predictions.value = pr;
   deltas.value = dl;
@@ -543,7 +556,20 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
           <span>{{ isComplete ? 'Hafta kapanışı' : 'Anlık puan' }}
             <JokerIcon v-if="score.jokerCode" :code="score.jokerCode" :size="17" />
           </span>
-          <span class="big-total">{{ score.total }}</span>
+          <span class="total-side">
+            <span
+              v-if="isComplete && rankMove"
+              class="rank-move"
+              :class="moveDir"
+              :title="rankMove.prevRank !== null ? `Geçen hafta ${rankMove.prevRank}. sıradaydın` : 'Sezonun ilk haftası'"
+            >
+              <ArrowUp v-if="moveDir === 'up'" :size="14" aria-hidden="true" />
+              <ArrowDown v-else-if="moveDir === 'down'" :size="14" aria-hidden="true" />
+              <Minus v-else-if="moveDir === 'same'" :size="14" aria-hidden="true" />
+              {{ rankMove.rank }}.
+            </span>
+            <span class="big-total">{{ score.total }}</span>
+          </span>
         </div>
         <table class="lines">
           <tbody>
@@ -554,9 +580,20 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
                   <CaptainBadge v-if="l.captain" :multiplier="l.multiplier" :joker-code="score.jokerCode" :size="20" />
                   <span v-else-if="l.benched" class="role-chip">Yedek</span>
                 </span>
+                <div v-if="isComplete && !sittingOut(l) && wrapEventsFor(l.teamId).length" class="wrap-chips">
+                  <span
+                    v-for="(e, i) in wrapEventsFor(l.teamId)"
+                    :key="i"
+                    class="delta-chip mini"
+                    :class="e.points > 0 ? 'up' : e.points < 0 ? 'down' : 'flat'"
+                  >
+                    {{ signed(e.points) }} {{ e.label.toLocaleLowerCase('tr') }}
+                  </span>
+                </div>
               </td>
               <td class="line-points">
-                <span v-if="sittingOut(l)">—</span>
+                <span v-if="sittingOut(l)" title="Yedek — puan yazılmadı">—</span>
+                <span v-else-if="byeIds.has(l.teamId) && l.basePoints === 0" class="text-muted">maç yok — 0</span>
                 <span v-else>{{ l.basePoints }} → <strong>{{ l.contributed >= 0 ? '+' : '' }}{{ l.contributed }}</strong></span>
               </td>
             </tr>
@@ -711,11 +748,24 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
 .brief-bye { font-size: var(--text-xs); }
 .brief-fixture { display: flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; }
 .brief-card { background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0.8rem 0.9rem; display: flex; flex-direction: column; gap: 0.35rem; }
+.total-side { display: inline-flex; align-items: center; gap: 0.7rem; }
+.rank-move {
+  display: inline-flex; align-items: center; gap: 0.25rem;
+  padding: 0.2rem 0.6rem; border-radius: var(--radius-pill);
+  font-size: var(--text-sm); font-weight: 800;
+  background: var(--color-surface-2); color: var(--color-text-secondary);
+}
+.rank-move.up { background: var(--color-success-soft); color: var(--color-success); }
+.rank-move.down { background: var(--color-danger-soft); color: var(--color-danger); }
+.rank-move.new { background: var(--color-primary-soft); color: var(--color-text); }
 .big-total { font-size: var(--text-2xl); font-weight: 800; color: var(--color-primary); }
 .lines { width: 100%; border-collapse: collapse; }
 .lines th { font-size: var(--text-2xs); color: var(--color-text-muted); padding: 0.3rem; font-weight: 700; }
-/* Fixed height, so a row carrying a badge is no taller than one without. */
-.lines td { height: 2.9rem; padding: 0 0.35rem; border-bottom: 1px solid var(--color-border); font-size: var(--text-sm); }
+/* Min height, so a row carrying a badge is no shorter than one without; a
+   completed week's rule chips may still grow their row. */
+.lines td { height: 2.9rem; padding: 0.35rem; border-bottom: 1px solid var(--color-border); font-size: var(--text-sm); }
+.wrap-chips { display: flex; flex-wrap: wrap; gap: 0.3rem; margin-top: 0.35rem; }
+.delta-chip.mini { padding: 0.08rem 0.45rem; font-size: var(--text-2xs); }
 .line-club { display: inline-flex; align-items: center; gap: 0.5rem; }
 .line-points { text-align: right; white-space: nowrap; }
 .paul-line td { color: var(--color-text-secondary); }
