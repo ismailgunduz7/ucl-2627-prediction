@@ -11,7 +11,7 @@ import {
   settleKnockoutTies,
 } from './knockout-service.ts';
 import { finalizeCompletedMatchweeks } from './matchweek-scoring-service.ts';
-import { getActiveJokerRaw, getPermanentSquad } from './lineup-service.ts';
+import { getActiveJokerRaw, getPermanentSquad, type EffectiveClub } from './lineup-service.ts';
 import { lineupEditability, getOrderedMatchweeks } from './matchweek-lifecycle-service.ts';
 
 /**
@@ -129,22 +129,61 @@ export interface ActTransferState {
   options: { fromTeamId: string; fromName: string; candidates: { id: string; name: string }[] }[];
 }
 
-export async function getActTransfer(userId: string): Promise<ActTransferState> {
+interface TransferRow {
+  status: 'available' | 'committed' | 'expired';
+  from_team_id: string | null;
+  to_team_id: string | null;
+}
+
+async function getTransferRow(userId: string): Promise<TransferRow | null> {
+  const { rows } = await query<TransferRow>(
+    'SELECT status, from_team_id, to_team_id FROM act_transfers WHERE user_id = $1',
+    [userId],
+  );
+  return rows[0] ?? null;
+}
+
+/**
+ * The squad as it stood BEFORE the committed transfer. The transfer is always
+ * expressed against this squad — its options, its from club, and any re-apply —
+ * so updating a committed transfer swaps the original club back out instead of
+ * chasing the club that replaced it.
+ */
+async function getOriginalSquad(userId: string, row: TransferRow | null): Promise<EffectiveClub[]> {
+  const squad = await getPermanentSquad(userId);
+  if (row?.status !== 'committed' || !row.from_team_id || !row.to_team_id) return squad;
   const { rows } = await query<{
-    status: 'available' | 'committed' | 'expired';
-    from_team_id: string | null;
-    to_team_id: string | null;
-    locked_at: Date | null;
-  }>('SELECT status, from_team_id, to_team_id, locked_at FROM act_transfers WHERE user_id = $1', [
-    userId,
+    name: string;
+    short_name: string;
+    crest_url: string | null;
+    eliminated_at: Date | null;
+  }>('SELECT name, short_name, crest_url, eliminated_at FROM teams WHERE id = $1', [
+    row.from_team_id,
   ]);
-  const row = rows[0];
+  const original = rows[0];
+  if (!original) return squad;
+  return squad.map((c) =>
+    c.teamId === row.to_team_id
+      ? {
+          teamId: row.from_team_id!,
+          tierId: c.tierId,
+          name: original.name,
+          shortName: original.short_name,
+          crestUrl: original.crest_url,
+          eliminated: original.eliminated_at !== null,
+        }
+      : c,
+  );
+}
+
+export async function getActTransfer(userId: string): Promise<ActTransferState> {
+  const row = await getTransferRow(userId);
   if (!row) {
     return { status: 'unavailable', fromTeamId: null, toTeamId: null, locked: false, options: [] };
   }
 
   const locked = await isTransferWindowLocked();
-  const options = locked || row.status === 'expired' ? [] : await buildOptions(userId);
+  const options = locked || row.status === 'expired' ? [] : await buildOptions(userId, row);
   return {
     status: row.status,
     fromTeamId: row.from_team_id,
@@ -154,9 +193,12 @@ export async function getActTransfer(userId: string): Promise<ActTransferState> 
   };
 }
 
-/** Same-pot, still-alive alternatives for each club in the permanent squad. */
-async function buildOptions(userId: string): Promise<ActTransferState['options']> {
-  const squad = await getPermanentSquad(userId);
+/**
+ * Same-pot, still-alive alternatives per ORIGINAL squad club. The committed
+ * destination club stays eligible in its pot — it is the current selection.
+ */
+async function buildOptions(userId: string, row: TransferRow | null): Promise<ActTransferState['options']> {
+  const squad = await getOriginalSquad(userId, row);
   const out: ActTransferState['options'] = [];
   for (const club of squad) {
     const { rows } = await query<{ id: string; name: string }>(
@@ -187,12 +229,9 @@ export async function setActTransfer(
   fromTeamId: string,
   toTeamId: string,
 ): Promise<ActTransferState> {
-  const current = await query<{ status: string }>(
-    'SELECT status FROM act_transfers WHERE user_id = $1',
-    [userId],
-  );
-  if (!current.rows[0]) throw ApiError.badRequest('Transfer hakkın yok', 'no_transfer_grant');
-  if (current.rows[0].status === 'expired') {
+  const current = await getTransferRow(userId);
+  if (!current) throw ApiError.badRequest('Transfer hakkın yok', 'no_transfer_grant');
+  if (current.status === 'expired') {
     throw ApiError.forbidden('Transfer penceresi kapandı', 'transfer_expired');
   }
   if (await isTransferWindowLocked()) {
@@ -211,10 +250,16 @@ export async function setActTransfer(
     }
   }
 
-  const squad = await getPermanentSquad(userId);
-  const from = squad.find((c) => c.teamId === fromTeamId);
+  // Validate against the ORIGINAL squad: a committed transfer's destination may
+  // stand in for the club it replaced, but the record always names the original.
+  const original = await getOriginalSquad(userId, current);
+  const effectiveFrom =
+    current.status === 'committed' && current.from_team_id && current.to_team_id === fromTeamId
+      ? current.from_team_id
+      : fromTeamId;
+  const from = original.find((c) => c.teamId === effectiveFrom);
   if (!from) throw ApiError.badRequest('Çıkacak kulüp kadroda değil', 'invalid_from');
-  if (squad.some((c) => c.teamId === toTeamId)) {
+  if (original.some((c) => c.teamId === toTeamId)) {
     throw ApiError.badRequest('Bu kulüp zaten kadronda', 'to_in_squad');
   }
 
@@ -230,8 +275,8 @@ export async function setActTransfer(
   }
 
   await withTransaction(async (client) => {
-    // Re-applying replaces the previous change, so restore the original club
-    // first and then move the newly chosen one.
+    // Re-applying replaces the previous change: restore the original club
+    // first, then move the newly chosen one out of the restored squad.
     const prev = await client.query<{ from_team_id: string | null; to_team_id: string | null }>(
       'SELECT from_team_id, to_team_id FROM act_transfers WHERE user_id = $1 FOR UPDATE',
       [userId],
@@ -245,15 +290,19 @@ export async function setActTransfer(
       );
     }
 
-    await client.query(
+    const applied = await client.query(
       `UPDATE team_selections SET team_id = $1, updated_at = now()
        WHERE user_id = $2 AND team_id = $3`,
-      [toTeamId, userId, fromTeamId],
+      [toTeamId, userId, effectiveFrom],
     );
+    if (applied.rowCount === 0) {
+      // The squad moved between validation and the write (e.g. two tabs).
+      throw ApiError.badRequest('Kadro bu arada değişti, tekrar dene', 'transfer_conflict');
+    }
     await client.query(
       `UPDATE act_transfers SET status = 'committed', from_team_id = $1, to_team_id = $2
        WHERE user_id = $3`,
-      [fromTeamId, toTeamId, userId],
+      [effectiveFrom, toTeamId, userId],
     );
   });
 
