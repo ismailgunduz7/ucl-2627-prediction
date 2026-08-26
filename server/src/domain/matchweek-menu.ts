@@ -98,6 +98,41 @@ export function legHeading(mw: MatchweekMenuInput): string | null {
   return entry.option === entry.group ? null : (LEG_LABELS[entry.optionOrder] ?? null);
 }
 
+export interface RoundOption {
+  key: string;
+  label: string;
+}
+
+/**
+ * One entry per round for a picker that opens a whole round at a time.
+ *
+ * A round of several matchweeks is named once — "Son 16" covers both its legs.
+ * A round of one names itself, so league weeks stay "Hafta 8", "Hafta 7", and
+ * the final stays "Final". The number of weeks in the round is what decides
+ * this; the labels alone cannot, since a league week's own name differs from
+ * its heading too.
+ */
+export function roundOptions(matchweeks: MatchweekMenuInput[]): RoundOption[] {
+  const entries = matchweeks
+    .map((mw) => ({ mw, menu: matchweekMenuEntry(mw) }))
+    .sort((a, b) => compareMatchweekMenu(a.menu, b.menu));
+
+  const counts = new Map<string, number>();
+  for (const { menu } of entries) counts.set(menu.roundKey, (counts.get(menu.roundKey) ?? 0) + 1);
+
+  const options: RoundOption[] = [];
+  const seen = new Set<string>();
+  for (const { menu } of entries) {
+    if (seen.has(menu.roundKey)) continue;
+    seen.add(menu.roundKey);
+    options.push({
+      key: menu.roundKey,
+      label: (counts.get(menu.roundKey) ?? 1) > 1 ? menu.group : menu.option,
+    });
+  }
+  return options;
+}
+
 /** Menu order for a whole list: groups first, then entries inside each group. */
 export function compareMatchweekMenu(a: MatchweekMenuEntry, b: MatchweekMenuEntry): number {
   return a.groupOrder - b.groupOrder || a.optionOrder - b.optionOrder;

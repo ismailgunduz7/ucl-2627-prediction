@@ -32,27 +32,9 @@ function menuOf(mw: MatchweekLike, index: number): MatchweekMenu {
 }
 
 export interface RoundOption {
-  label: string;
+  /** Round key the fixtures endpoint is addressed by. */
   value: string;
-}
-
-/**
- * One entry per round rather than per leg: a two-legged tie is a single choice
- * whose page carries both legs. League weeks are rounds of one.
- */
-export function roundOptions(matchweeks: MatchweekLike[]): RoundOption[] {
-  const entries = matchweeks
-    .map((mw, i) => ({ mw, menu: menuOf(mw, i) }))
-    .sort((a, b) => a.menu.groupOrder - b.menu.groupOrder || a.menu.optionOrder - b.menu.optionOrder);
-
-  const byKey = new Map<string, RoundOption>();
-  for (const { menu } of entries) {
-    if (byKey.has(menu.roundKey)) continue;
-    // A round with legs is named once; a lone week keeps its own name.
-    const isLeg = menu.option !== menu.group;
-    byKey.set(menu.roundKey, { label: isLeg ? menu.group : menu.option, value: menu.roundKey });
-  }
-  return [...byKey.values()];
+  label: string;
 }
 
 /** The round a matchweek belongs to, for defaulting a picker. */

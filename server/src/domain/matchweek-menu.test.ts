@@ -4,6 +4,7 @@ import {
   compareMatchweekMenu,
   legHeading,
   matchweekMenuEntry,
+  roundOptions,
   type MatchweekMenuInput,
 } from './matchweek-menu.ts';
 
@@ -76,6 +77,34 @@ test('leg headings name the two legs and stay silent for a single one', () => {
   assert.equal(legHeading(SEASON.find((m) => m.id === 'r16-leg2')!), 'Rövanş maçları');
   assert.equal(legHeading(SEASON.find((m) => m.id === 'final')!), null);
   assert.equal(legHeading(SEASON.find((m) => m.id === 'mw-5')!), null);
+});
+
+test('a round picker names a tie once and every other week by itself', () => {
+  assert.deepEqual(
+    roundOptions(SEASON).map((r) => r.label),
+    [
+      'Final',
+      'Yarı final',
+      'Çeyrek final',
+      'Son 16',
+      'Play-off',
+      'Hafta 8',
+      'Hafta 7',
+      'Hafta 6',
+      'Hafta 5',
+      'Hafta 4',
+      'Hafta 3',
+      'Hafta 2',
+      'Hafta 1',
+    ],
+  );
+});
+
+test('every round option is a distinct, addressable key', () => {
+  const options = roundOptions(SEASON);
+  assert.equal(new Set(options.map((r) => r.key)).size, options.length);
+  assert.equal(new Set(options.map((r) => r.label)).size, options.length);
+  assert.deepEqual(options.slice(0, 5).map((r) => r.key), ['final', 'sf', 'qf', 'r16', 'playoff']);
 });
 
 test('an unrecognised id keeps its own label rather than disappearing', () => {

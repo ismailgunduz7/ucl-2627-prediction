@@ -698,7 +698,7 @@ How a two-legged round is offered depends on what the page does with it:
 - **`/fikstur` picks a round.** Selecting `Çeyrek final` opens one page carrying both legs, split into an `İlk maçlar` section and a `Rövanş maçları` section, first legs above the returns. A league week is a round of one and shows its matches straight away.
 - **The weekly hub and the admin match editor pick a leg**, because a leg is the unit that locks: bench, captain, jokers and the coupon all belong to one leg (§2.4, §3.4). There the round is a heading with its two legs under it.
 
-The grouping — the round a week belongs to, its place in the menu, and what its leg is called — is derived from the matchweek id on the server, beside the code that mints those ids, and travels with each week in the tournament status.
+The grouping — the round a week belongs to, its place in the menu, what its leg is called, and the ready-made round list a round picker shows — is all derived from the matchweek id on the server, beside the code that mints those ids, and travels with the tournament status. A round is named once when it holds several matchweeks and names itself when it holds one, which is why the league weeks keep their own names rather than repeating their heading.
 
 **Hub must show:** crest wall (bench muted unless boosted + chip), lock countdown, briefing with a difficulty band, bench/captain, joker controls with confirm-on-bench-conflict, the Ahtapot Paul coupon, provisional points, wrap card when complete. Multi-live and live deltas are still to come.
 

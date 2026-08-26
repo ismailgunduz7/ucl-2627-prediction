@@ -30,7 +30,7 @@ import {
 import { getBriefing, getOpenPicks } from '../services/briefing-service.ts';
 import { getWeekPredictions, savePrediction } from '../services/prediction-service.ts';
 import { getRoundFixtures } from '../services/fixture-service.ts';
-import { matchweekMenuEntry } from '../domain/matchweek-menu.ts';
+import { matchweekMenuEntry, roundOptions } from '../domain/matchweek-menu.ts';
 import type { JokerCode } from '../domain/joker.ts';
 import { query } from '../db/pool.ts';
 import { SQUAD_SIZE } from '../domain/constants.ts';
@@ -122,6 +122,15 @@ participantRoutes.get('/tournament/status', async (c) => {
         editable: edit.editable,
       };
     }),
+    // Ready-made options for a picker that opens a whole round (§10.1).
+    rounds: roundOptions(
+      mwRows.rows.map((mw) => ({
+        id: mw.id,
+        act: mw.act,
+        sortOrder: mw.sort_order,
+        label: mw.label,
+      })),
+    ),
     mw1Id: mw1?.id ?? null,
     currentMatchweekId: current?.id ?? null,
   });

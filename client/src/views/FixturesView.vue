@@ -5,7 +5,7 @@ import BallLoader from '@/components/BallLoader.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import CaptainBadge from '@/components/CaptainBadge.vue';
 import { api } from '@/lib/api';
-import { roundKeyOf, roundOptions, type MatchweekMenu } from '@/lib/matchweeks';
+import { roundKeyOf, type MatchweekMenu, type RoundOption } from '@/lib/matchweeks';
 
 interface Mw { id: string; label: string; status: string; opened: boolean; menu: MatchweekMenu }
 type Outcome = 'home' | 'draw' | 'away';
@@ -26,6 +26,7 @@ interface RoundFixtures {
 }
 
 const matchweeks = ref<Mw[]>([]);
+const rounds = ref<RoundOption[]>([]);
 const selectedRound = ref<string | null>(null);
 const data = ref<RoundFixtures | null>(null);
 const loading = ref(true);
@@ -33,7 +34,6 @@ let poller: number | undefined;
 
 const PICK_LABEL: Record<Outcome, string> = { home: 'MS1', draw: 'MS0', away: 'MS2' };
 
-const rounds = computed(() => roundOptions(matchweeks.value));
 const sections = computed(() => data.value?.sections ?? []);
 const fixtures = computed(() => sections.value.flatMap((s) => s.fixtures));
 const liveOnes = computed(() => fixtures.value.filter((f) => f.status === 'live'));
@@ -68,10 +68,13 @@ function syncLabel(iso: string | null) {
 function signed(n: number) { return n > 0 ? `+${n}` : `${n}`; }
 
 async function loadWeeks() {
-  const status = await api.get<{ matchweeks: Mw[]; currentMatchweekId: string | null }>(
-    '/api/tournament/status',
-  );
+  const status = await api.get<{
+    matchweeks: Mw[];
+    rounds: { key: string; label: string }[];
+    currentMatchweekId: string | null;
+  }>('/api/tournament/status');
   matchweeks.value = status.matchweeks;
+  rounds.value = status.rounds.map((r) => ({ value: r.key, label: r.label }));
   selectedRound.value =
     roundKeyOf(status.matchweeks, status.currentMatchweekId) ?? rounds.value[0]?.value ?? null;
 }
