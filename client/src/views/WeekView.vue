@@ -410,7 +410,7 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
               <Tag v-if="b.difficulty" :severity="difficultySeverity(b.difficulty)" :value="b.difficulty" />
             </div>
             <div v-for="(f, i) in b.fixtures" :key="i" class="brief-fixture text-muted">
-              <component :is="f.home ? House : Plane" :size="13" />
+              <component :is="f.home ? House : Plane" :size="13" :aria-label="f.home ? 'Evinde' : 'Deplasmanda'" />
               <span>Pot {{ f.opponentTierId }} · {{ f.opponentName }}</span>
             </div>
             <div v-if="!b.fixtures.length" class="text-muted brief-bye">bu hafta maçı yok</div>
