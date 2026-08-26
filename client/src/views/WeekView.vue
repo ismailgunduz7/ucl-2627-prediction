@@ -53,6 +53,20 @@ const benchConflict = ref(false);
 
 
 const currentMw = computed(() => matchweeks.value.find((m) => m.id === selectedMw.value) ?? null);
+
+/**
+ * Weeks worth picking from: everything already under way plus the one still
+ * open for edits, newest first. Weeks further out have nothing to show yet.
+ */
+const pickableMatchweeks = computed(() => {
+  const all = matchweeks.value;
+  let last = -1;
+  all.forEach((m, i) => {
+    if (m.opened || m.editable) last = i;
+  });
+  if (last < 0) last = 0;
+  return all.slice(0, last + 1).reverse();
+});
 const editable = computed(() => lineup.value?.editable ?? false);
 const isComplete = computed(() => currentMw.value?.status === 'complete');
 const benchBoost = computed(() => activeJoker.value?.code === 'bench_boost');
@@ -256,7 +270,7 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
   <div class="page-stack">
     <PageHeader title="Bu hafta" subtitle="Kaptanını seç, birini yedeğe çek, joker oyna.">
       <template #actions>
-        <Select v-model="selectedMw" :options="matchweeks" option-label="label" option-value="id" style="min-width: 150px" />
+        <Select v-model="selectedMw" :options="pickableMatchweeks" option-label="label" option-value="id" style="min-width: 150px" />
       </template>
     </PageHeader>
 
