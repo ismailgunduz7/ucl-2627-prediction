@@ -17,7 +17,6 @@ Phases 0–6 are built and running against a Supabase database. What follows is 
 - The 36 clubs and their pots are **placeholder data** from a previous season, because the 2026–27 draw has not happened (§2.3). Reseed when it does.
 - A **mock provider** drives the fixtures off a simulated clock so the pipeline can be exercised before real data exists (§5.1). The football-data.org client is written and behind the same interface, but nothing maps to it until clubs carry real provider ids. The background sync job stays parked for as long as the mock is the configured provider.
 - Level knockout aggregates are settled by a **shootout seeded from the tie id** rather than real penalty data (§2.4), so recalculation always reaches the same winner.
-- `scoring_flags.knockout_time_basis` (§4.4) is **stored but not read**: knockout ties resolve on the 90-minute score. Either wire it up or drop the knob.
 
 **Not built yet:** season replay, rank movement on the wrap card, and admin screens for config / joker inventory / override history. See §13 Phase 7.
 
@@ -371,9 +370,7 @@ The backend must support **live hubs, anlık delta, and provisional week points*
 
 ### 4.4 Time basis for knockout
 
-Config flag: whether win/draw/loss and goals use 90-minute score vs after-extra-time score. Penalties decide the winner for advancement but do **not** count as goals scored/conceded unless explicitly configured.
-
-*Current state:* `scoring_flags.knockout_time_basis` is stored but never read — scoring and tie resolution both use the 90-minute score, and the `*_score_aet` columns are never populated. Either wire the flag through or drop it (§13 Phase 7).
+**Settled: there is no time-basis switch.** Match scoring and tie resolution read the one score the provider reports for the match. Penalties decide the winner for advancement but never count as goals scored or conceded. The `scoring_flags` config knob once reserved for this choice was stored but never read, so it was dropped rather than wired; the unused `*_score_aet` and penalty columns remain in the schema (migrations are immutable) and stay unpopulated until a provider actually supplies them.
 
 ### 4.5 Match outcomes that are not a normal finish
 
@@ -520,7 +517,6 @@ Grouping/visibility scope only — a competition partitions participants and the
 **tournament_config**  
 Key/value or JSON document for the **admin-editable** knobs only (the fixed rules in §3.9 are **not** stored here):
 
-- `scoring_flags` (knockout time basis, etc.)
 - `joker_inventory_defaults` per act: `{ weekly_swap, triple_boost, clean_sheet_shield, bench_boost }`
 - `current_act` (`league_phase` | `knockout`)
 - `deadline_drama_window_seconds` (UI-only; default 7200 = final 2 hours banner, §18.2)
@@ -798,15 +794,14 @@ UI copy is Turkish; code identifiers are English. The interface is dark-only, bu
 
 ### Phase 7 — Remaining work
 
-Ordered by what blocks a real season most. The live delta feed (§18.6) shipped from this list already.
+Ordered by what blocks a real season most. Two items left this list already: the live delta feed (§18.6) shipped, and the knockout time-basis question (§4.4) was settled by dropping the unused flag.
 
 1. **Production deploy configuration.**
 2. **Season replay** `/sezon` (§18.8).
 3. **Wrap card rank movement** (§18.3), plus the bye and top-8 bonus lines.
 4. **Admin screens** for tournament config, joker inventory repair and match override history — the APIs exist for the first and last, the second needs both. The one config knob with a real home already has a field on the scoring rules screen (§18.9).
-5. **Knockout time basis** (§4.4): wire `scoring_flags` into scoring or remove the setting.
-6. Remaining edge-case tests from §11: provider score correction after a finish, a postponed match holding its week open, and the top-8 bonus.
-7. **Final pot seed** once UEFA publishes the 2026–27 draw, plus provider id mapping so the real feed takes over from the mock.
+5. Remaining edge-case tests from §11: provider score correction after a finish, a postponed match holding its week open, and the top-8 bonus.
+6. **Final pot seed** once UEFA publishes the 2026–27 draw, plus provider id mapping so the real feed takes over from the mock.
 
 ---
 

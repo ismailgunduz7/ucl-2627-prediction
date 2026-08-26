@@ -10,7 +10,6 @@ export interface JokerInventoryDefaults {
 
 export const DEFAULT_CONFIG = {
   current_act: 'league_phase' as 'league_phase' | 'knockout',
-  scoring_flags: { knockout_time_basis: 'aet' as 'aet' | 'ninety' },
   joker_inventory_defaults: {
     league_phase: { weekly_swap: 2, triple_boost: 1, clean_sheet_shield: 2, bench_boost: 1 },
     knockout: { weekly_swap: 2, triple_boost: 1, clean_sheet_shield: 2, bench_boost: 1 },
