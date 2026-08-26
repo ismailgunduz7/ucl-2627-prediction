@@ -9,7 +9,8 @@ real match results. See [PLAN.md](PLAN.md) for the authoritative product spec.
 > swappable interface, weekly lineups with the `T0 − 5m` lock, all four jokers,
 > live provisional scoring, the leaderboard and per-player/per-club breakdowns,
 > and the league → knockout transition through the final. On top of that: a
-> background sync job that polls the provider on an adaptive schedule, and
+> background sync job that polls the provider on an adaptive schedule, a
+> fixtures and multi-live page covering a whole round at a time, and
 > **Ahtapot Paul**, a weekly MS1/MS0/MS2 coupon on every match of the week.
 >
 > What is left is tracked as Phase 7 in [PLAN.md](PLAN.md) §13 — the live delta

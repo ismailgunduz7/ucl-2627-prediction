@@ -270,11 +270,12 @@ Details in §10 and §18.
 
 | Feature | Summary |
 |---------|---------|
-| Matchweek briefing | Pre-lock overview of *your* fixtures + risk map |
+| Matchweek briefing | Pre-lock overview of *your* fixtures + how hard each looks |
 | Deadline drama | Urgency UX approaching `T0(M) − 5 minutes` |
 | Weekly wrap card | Personal end-of-week summary (in-app; share export not required) |
 | Open picks after kickoff | Bench, captain, and joker (if any) visible to peers from `T0(M)` |
 | Multi-live tracker | Concurrent live matches, own clubs pinned |
+| Ahtapot Paul | MS1/MS0/MS2 on every match of the week, points into the weekly total |
 | Live delta | Point deltas as live/finished scores update |
 | Crest wall | Four crests; mute bench unless bench boost (+ optional boosted chip) |
 | Season replay | End-of-season retrospective |
@@ -634,12 +635,14 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 - Act transfer: get grant / update selection while window open
 - Leaderboard; open picks after `T0(M)` (omit joker field when none)
 - Player points + weekly wrap (wrap when `matchweeks.status = complete`)
-- Briefing + risk map
-- Fixtures + multi-live bundle
-- Live delta / provisional hub summary
-- Scoring rules matrix
+- Briefing + difficulty band
+- Fixtures + multi-live bundle, addressed **by round** so a two-legged tie comes back as one payload with a section per leg (§10.1)
+- League phase standings
+- Ahtapot Paul: the week's matches with the participant's calls; save or clear one call before the lock (§18.9)
+- Live delta / provisional hub summary *(pending)*
+- Scoring rules matrix (plus what a correct prediction is worth)
 - Jokers: inventory, activate, cancel (refund) before lock
-- Season replay when tournament finished
+- Season replay when tournament finished *(pending)*
 
 ### 9.3 Admin APIs
 
@@ -656,15 +659,16 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 ### 9.4 Services
 
 - `auth-service`, `selection-service`, `lineup-service`
-- `scoring-engine` (club layer, finished)
-- `provisional-scoring-service` (Option A drafts for live)
-- `matchweek-scoring-service` (participant layer)
-- `matchweek-lifecycle-service` (lock times, completion detection)
+- `scoring-service` (club layer: finished matches, plus the in-memory drafts that make live matches provisional — there is no separate provisional service, Option A is computed on read)
+- `matchweek-scoring-service` (participant layer; folds in the prediction tally)
+- `matchweek-lifecycle-service` (lock times, editability, completion detection)
 - `joker-service` (activate/cancel/refund, bench conflict → cancel)
 - `act-service` (refresh inventory, act_transfers state machine, **award one-time `league_top8_bonus` at league completion**)
-- `elimination-service` (set `teams.eliminated_at`, filter pickers)
-- `briefing-service`, `score-provider`, `football-data-provider`, `score-sync-service`
-- `leaderboard-service`, `tournament-config-service`, `season-replay-service`
+- `knockout-service` (round registry, ties, legs, advancement — it also sets `teams.eliminated_at`, so there is no separate elimination service)
+- `briefing-service`, `prediction-service`, `fixture-service`, `player-points-service`
+- `score-provider`, `football-data-provider`, `mock-provider`, `score-sync-service`, `sync-scheduler`
+- `leaderboard-service`, `standings-service`, `team-service`, `rule-loader`, `tournament-config-service`
+- `season-replay-service` *(pending, §13 Phase 7)*
 
 ### 9.5 Jobs
 
@@ -784,7 +788,7 @@ UI copy is Turkish; code identifiers are English. The interface is dark-only, bu
 
 ### Phase 5 — Jokers + live provisional + hub chrome ✅
 
-- All four jokers; cancel/refund; bench-conflict confirm; open picks; deadline drama; briefing/risk map; Option A provisional scoring.
+- All four jokers; cancel/refund; bench-conflict confirm; open picks; deadline drama; briefing with its difficulty band; Option A provisional scoring.
 - Jokers are played from the club slots themselves rather than a side panel. Live deltas did **not** ship — see Phase 7.
 
 ### Phase 6 — Acts + full knockout path ✅
@@ -812,7 +816,7 @@ Ordered by what blocks a real season most.
 1. Admin-created users can login; pick one club per pot (4); selection lock enforced; no self-register; no joins after lock.
 2. Each matchweek: bench 1 + captain; three clubs score (four with bench boost); captain ×2 or ×3 with triple; integers only.
 3. Edits for week M stop at `T0(M) − 5 minutes`; after `T0(M)`, week M+1 may be edited.
-4. Sync drives scores; multi-live + live deltas work via provisional scoring (§4.3 Option A unless B chosen later).
+4. Sync drives scores; multi-live works via provisional scoring (§4.3 Option A unless B chosen later), and the live delta feed will read from the same drafts.
 5. At most one joker per week; cancel refunds; shield cannot sit on bench; bench conflict cancels+refunds with confirm.
 6. Peers see open picks from `T0(M)`; if no joker, joker UI omitted.
 7. Matchweek completes automatically when all its matches are finished or cancelled; postponed kept on original week; wrap card on complete.
@@ -820,6 +824,7 @@ Ordered by what blocks a real season most.
 9. Full path in scope; one-time `league_top8_bonus` for clubs finishing league positions 1–8 (idle play-off weeks score 0, no per-week bye award); no qualifying; no betting; no random mode.
 10. Crest wall + boosted chip; season replay; selection lock = MW1 lineup lock.
 11. Ahtapot Paul: one MS1/MS0/MS2 call per match of the week, locked with the lineup, each correct call worth the configured points inside that week's total.
+12. `/fikstur` shows a whole round at once — both legs of a tie, first legs above the returns — with live matches marked, the participant's own clubs picked out, and a figure beside a club only when its points actually reach that participant.
 
 ---
 
@@ -837,7 +842,7 @@ Still open:
 - One vs many competitions in production. The schema and admin support many; the mock runs a single one.
 - Free-tier delayed live vs paid livescore — decide alongside the scheduled sync job.
 - Final 2026–27 stage labels from UEFA.
-- Risk-map weighting details; the current bands use opponent pot and venue only.
+- Difficulty weighting details; the bands use the pot gap and venue only, with no form or injury input.
 
 ---
 
@@ -874,11 +879,11 @@ Knockout `round_advance` / medal values: tune after league-phase feel is good.
 
 ## 18. Engagement feature specs
 
-### 18.1 Matchweek briefing + risk map
+### 18.1 Matchweek briefing + difficulty
 
-Before lock on the hub: list the user’s four clubs’ fixtures (opponent, home/away, kickoff).
+Before lock on the hub: list the user's four clubs' fixtures (opponent, home/away, kickoff).
 
-**Risk map:** per-club band `düşük` / `orta` / `yüksek` for fantasy danger (not a betting tip). Inputs shown as chips: opponent pot, home/away (optional later: recent CL form). Example: “Pot 4 deplasmanda Pot 1 → yüksek risk — bench adayı.”
+**Difficulty:** per-club band `kolay` / `orta` / `zor`, from the gap between the two clubs plus the venue — not a betting tip. What decides it is `own pot − opponent pot`, with an away trip costing a little more than one seed of that gap; a club playing twice in the week is judged on its harder fixture. The same fixture is therefore easy for the stronger host and hard for the weaker visitor. A club with no fixture shows no band at all. Lives in `server/src/domain/difficulty.ts`.
 
 ### 18.2 Deadline drama
 
