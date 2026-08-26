@@ -61,9 +61,10 @@ export async function getTeamPointsForMatchweek(mwId: string): Promise<Map<strin
 
 /**
  * Clean-sheet shield delta for the target club this matchweek (§3.6): scans the
- * club's finished/live matches for GA and applies the shield table.
+ * club's finished/live matches for GA and applies the shield table. Shared with
+ * the delta feed so the hub explains the same adjustment it scores.
  */
-async function shieldDeltaForTarget(mwId: string, targetTeamId: string): Promise<number> {
+export async function shieldDeltaForTarget(mwId: string, targetTeamId: string): Promise<number> {
   const tierRes = await query<{ tier_id: number }>('SELECT tier_id FROM teams WHERE id = $1', [
     targetTeamId,
   ]);

@@ -30,6 +30,7 @@ import {
 import { getBriefing, getOpenPicks } from '../services/briefing-service.ts';
 import { getWeekPredictions, savePrediction } from '../services/prediction-service.ts';
 import { getRoundFixtures } from '../services/fixture-service.ts';
+import { getWeekDeltas } from '../services/delta-service.ts';
 import { matchweekMenuEntry, roundOptions } from '../domain/matchweek-menu.ts';
 import type { JokerCode } from '../domain/joker.ts';
 import { query } from '../db/pool.ts';
@@ -185,6 +186,12 @@ participantRoutes.get('/matchweeks/:id/score', async (c) => {
   const score = await getParticipantWeekScore(auth.sub, c.req.param('id'));
   if (!score) return c.json({ score: null });
   return c.json({ score });
+});
+
+// --- Live delta feed (§18.6) ----------------------------------------------
+participantRoutes.get('/matchweeks/:id/deltas', async (c) => {
+  const auth = c.get('auth');
+  return c.json(await getWeekDeltas(auth.sub, c.req.param('id')));
 });
 
 // --- Fixtures + multi-live (§18.5) ----------------------------------------

@@ -10,7 +10,7 @@ Working conventions for contributors (commits, git workflow, design language, te
 
 Phases 0–6 are built and running against a Supabase database. What follows is the full specification; this section records where reality currently stands so nobody has to infer it from the code.
 
-**Built and verified:** auth and admin-provisioned accounts · pots, clubs, matchweeks, matches, config · permanent squad with one-club-per-pot enforced in the database · club-layer scoring with the per-pot rules editor · provider sync behind a swappable interface with manual-override protection and an audit log · weekly bench/captain with the `T0 − 5m` lock and the M+1 gate · the four jokers with one-per-week activation and cancel/refund · provisional scoring on read and finals on completion · leaderboard, league table, per-player and per-club points breakdowns · the league→knockout act transition (eliminations, top-8 bonus, joker refresh, act transfer) and the knockout bracket through the final with advancement and medals · the background sync job with adaptive cadence and backoff · Ahtapot Paul, the weekly 1X2 coupon (§18.9) · the fixtures and multi-live page (§18.5).
+**Built and verified:** auth and admin-provisioned accounts · pots, clubs, matchweeks, matches, config · permanent squad with one-club-per-pot enforced in the database · club-layer scoring with the per-pot rules editor · provider sync behind a swappable interface with manual-override protection and an audit log · weekly bench/captain with the `T0 − 5m` lock and the M+1 gate · the four jokers with one-per-week activation and cancel/refund · provisional scoring on read and finals on completion · leaderboard, league table, per-player and per-club points breakdowns · the league→knockout act transition (eliminations, top-8 bonus, joker refresh, act transfer) and the knockout bracket through the final with advancement and medals · the background sync job with adaptive cadence and backoff · Ahtapot Paul, the weekly 1X2 coupon (§18.9) · the fixtures and multi-live page (§18.5) · the live delta feed on the hub (§18.6).
 
 **Deliberate deviations from the spec, all temporary:**
 
@@ -19,7 +19,7 @@ Phases 0–6 are built and running against a Supabase database. What follows is 
 - Level knockout aggregates are settled by a **shootout seeded from the tie id** rather than real penalty data (§2.4), so recalculation always reaches the same winner.
 - `scoring_flags.knockout_time_basis` (§4.4) is **stored but not read**: knockout ties resolve on the 90-minute score. Either wire it up or drop the knob.
 
-**Not built yet:** season replay, the live delta feed, rank movement on the wrap card, and admin screens for config / joker inventory / override history. See §13 Phase 7.
+**Not built yet:** season replay, rank movement on the wrap card, and admin screens for config / joker inventory / override history. See §13 Phase 7.
 
 ---
 
@@ -639,7 +639,7 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 - Fixtures + multi-live bundle, addressed **by round** so a two-legged tie comes back as one payload with a section per leg (§10.1)
 - League phase standings
 - Ahtapot Paul: the week's matches with the participant's calls; save or clear one call before the lock (§18.9)
-- Live delta / provisional hub summary *(pending)*
+- Live delta feed: the week's point events for the participant's scoring clubs (§18.6)
 - Scoring rules matrix (plus what a correct prediction is worth)
 - Jokers: inventory, activate, cancel (refund) before lock
 - Season replay when tournament finished *(pending)*
@@ -665,7 +665,7 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 - `joker-service` (activate/cancel/refund, bench conflict → cancel)
 - `act-service` (refresh inventory, act_transfers state machine, **award one-time `league_top8_bonus` at league completion**)
 - `knockout-service` (round registry, ties, legs, advancement — it also sets `teams.eliminated_at`, so there is no separate elimination service)
-- `briefing-service`, `prediction-service`, `fixture-service`, `player-points-service`
+- `briefing-service`, `prediction-service`, `fixture-service`, `delta-service`, `player-points-service`
 - `score-provider`, `football-data-provider`, `mock-provider`, `score-sync-service`, `sync-scheduler`
 - `leaderboard-service`, `standings-service`, `team-service`, `rule-loader`, `tournament-config-service`
 - `season-replay-service` *(pending, §13 Phase 7)*
@@ -704,7 +704,7 @@ How a two-legged round is offered depends on what the page does with it:
 
 The grouping — the round a week belongs to, its place in the menu, what its leg is called, and the ready-made round list a round picker shows — is all derived from the matchweek id on the server, beside the code that mints those ids, and travels with the tournament status. A round is named once when it holds several matchweeks and names itself when it holds one, which is why the league weeks keep their own names rather than repeating their heading.
 
-**Hub must show:** crest wall (bench muted unless boosted + chip), lock countdown, briefing with a difficulty band, bench/captain, joker controls with confirm-on-bench-conflict, the Ahtapot Paul coupon, provisional points, wrap card when complete. Multi-live and live deltas are still to come.
+**Hub must show:** crest wall (bench muted unless boosted + chip), lock countdown, briefing with a difficulty band, bench/captain, joker controls with confirm-on-bench-conflict, the Ahtapot Paul coupon, provisional points, the live delta feed, wrap card when complete. Multi-live lives on `/fikstur` (§18.5).
 
 ### 10.2 Admin
 
@@ -779,7 +779,7 @@ UI copy is Turkish; code identifiers are English. The interface is dark-only, bu
 ### Phase 3 — Provider sync ✅
 
 - football-data.org sync, overrides, elimination flags when derivable.
-- Both providers sit behind one interface; the mock one advances seeded fixtures on a simulated clock. Multi-live payloads did **not** ship — see Phase 7.
+- Both providers sit behind one interface; the mock one advances seeded fixtures on a simulated clock. Multi-live payloads did **not** ship with this phase; they arrived later as the fixtures and multi-live page (§18.5).
 
 ### Phase 4 — Weekly lineup + matchweek scoring + locks ✅
 
@@ -789,7 +789,7 @@ UI copy is Turkish; code identifiers are English. The interface is dark-only, bu
 ### Phase 5 — Jokers + live provisional + hub chrome ✅
 
 - All four jokers; cancel/refund; bench-conflict confirm; open picks; deadline drama; briefing with its difficulty band; Option A provisional scoring.
-- Jokers are played from the club slots themselves rather than a side panel. Live deltas did **not** ship — see Phase 7.
+- Jokers are played from the club slots themselves rather than a side panel. Live deltas did **not** ship with this phase; they arrived later as the Phase 7 delta feed (§18.6).
 
 ### Phase 6 — Acts + full knockout path ✅
 
@@ -798,16 +798,15 @@ UI copy is Turkish; code identifiers are English. The interface is dark-only, bu
 
 ### Phase 7 — Remaining work
 
-Ordered by what blocks a real season most.
+Ordered by what blocks a real season most. The live delta feed (§18.6) shipped from this list already.
 
 1. **Production deploy configuration.**
-2. **Live delta feed** (§18.6) — the compact event stream on the hub. The fixtures and multi-live page it was paired with is built (§18.5).
-3. **Season replay** `/sezon` (§18.8).
-4. **Wrap card rank movement** (§18.3), plus the bye and top-8 bonus lines.
-5. **Admin screens** for tournament config, joker inventory repair and match override history — the APIs exist for the first and last, the second needs both. The one config knob with a real home already has a field on the scoring rules screen (§18.9).
-6. **Knockout time basis** (§4.4): wire `scoring_flags` into scoring or remove the setting.
-7. Remaining edge-case tests from §11: provider score correction after a finish, a postponed match holding its week open, and the top-8 bonus.
-8. **Final pot seed** once UEFA publishes the 2026–27 draw, plus provider id mapping so the real feed takes over from the mock.
+2. **Season replay** `/sezon` (§18.8).
+3. **Wrap card rank movement** (§18.3), plus the bye and top-8 bonus lines.
+4. **Admin screens** for tournament config, joker inventory repair and match override history — the APIs exist for the first and last, the second needs both. The one config knob with a real home already has a field on the scoring rules screen (§18.9).
+5. **Knockout time basis** (§4.4): wire `scoring_flags` into scoring or remove the setting.
+6. Remaining edge-case tests from §11: provider score correction after a finish, a postponed match holding its week open, and the top-8 bonus.
+7. **Final pot seed** once UEFA publishes the 2026–27 draw, plus provider id mapping so the real feed takes over from the mock.
 
 ---
 
@@ -816,7 +815,7 @@ Ordered by what blocks a real season most.
 1. Admin-created users can login; pick one club per pot (4); selection lock enforced; no self-register; no joins after lock.
 2. Each matchweek: bench 1 + captain; three clubs score (four with bench boost); captain ×2 or ×3 with triple; integers only.
 3. Edits for week M stop at `T0(M) − 5 minutes`; after `T0(M)`, week M+1 may be edited.
-4. Sync drives scores; multi-live works via provisional scoring (§4.3 Option A unless B chosen later), and the live delta feed will read from the same drafts.
+4. Sync drives scores; multi-live works via provisional scoring (§4.3 Option A unless B chosen later), and the live delta feed reads from the same drafts.
 5. At most one joker per week; cancel refunds; shield cannot sit on bench; bench conflict cancels+refunds with confirm.
 6. Peers see open picks from `T0(M)`; if no joker, joker UI omitted.
 7. Matchweek completes automatically when all its matches are finished or cancelled; postponed kept on original week; wrap card on complete.
@@ -908,6 +907,8 @@ All live CL matches; user clubs pinned; tolerate provider delay.
 ### 18.6 Anlık delta
 
 Compact events from provisional + finished transitions, e.g. `+3 galibiyet`, `−1 gol yedi`, `kaptan ×2 → +6`. Scoped to the user’s scoring clubs. Mark provisional until match finished.
+
+*Built* as the "Puan akışı" section on the hub: one row per scoring club, each rule that landed as a signed chip — finished matches definitive, live matches drafted with the same rules and marked with a pulse until they finish (§4.3 Option A). The shield's adjustment and the captain's `×2/×3` extra appear as their own lines on the club they belong to, so the chips of a week sum to exactly what the club layer feeds the participant's total. While anything is live the page re-reads itself once a minute from our own API — never the provider (§5.6) — and once the week completes the feed yields to the wrap card.
 
 ### 18.7 Crest wall
 

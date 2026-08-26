@@ -36,6 +36,9 @@ interface WeekPredictions {
   matches: PredictionMatch[]; editable: boolean; lockAt: string | null;
   pointsPerCorrect: number; tally: { settled: number; correct: number; points: number };
 }
+interface DeltaEvent { ruleCode: string; label: string; points: number; provisional: boolean }
+interface ClubDeltas { teamId: string; name: string; shortName: string; captain: boolean; events: DeltaEvent[] }
+interface WeekDeltas { matchweekId: string; live: boolean; clubs: ClubDeltas[] }
 
 /** MS1 / MS0 / MS2, written the way a coupon writes them. */
 const PICK_OPTIONS: { value: Pick; label: string }[] = [
@@ -57,10 +60,12 @@ const briefing = ref<BriefingClub[]>([]);
 const openPicks = ref<{ available: boolean; picks: OpenPick[] }>({ available: false, picks: [] });
 const pots = ref<Pot[]>([]);
 const predictions = ref<WeekPredictions | null>(null);
+const deltas = ref<WeekDeltas | null>(null);
 const loading = ref(true);
 const busy = ref(false);
 const now = ref(Date.now());
 let timer: number | undefined;
+let livePoller: number | undefined;
 
 const benchId = ref<string | null>(null);
 const captainId = ref<string | null>(null);
@@ -110,6 +115,7 @@ const countdown = computed(() => {
 const drama = computed(() => countdownMs.value !== null && countdownMs.value > 0 && countdownMs.value < 7200_000);
 
 function initials(name: string) { return name.split(' ').map((w) => w[0]).slice(0, 3).join('').toUpperCase(); }
+function signed(n: number) { return n > 0 ? `+${n}` : `${n}`; }
 function difficultySeverity(d: string | null) { return d === 'zor' ? 'danger' : d === 'orta' ? 'warn' : 'success'; }
 function lineFor(teamId: string) { return score.value?.lines.find((l) => l.teamId === teamId); }
 /** Benched and not boosted: the club played, but none of it counted. */
@@ -275,13 +281,29 @@ async function loadWeek() {
     api.get<{ briefing: BriefingClub[] }>(`/api/matchweeks/${id}/briefing`),
     api.get<{ available: boolean; picks: OpenPick[] }>(`/api/matchweeks/${id}/open-picks`),
     api.get<WeekPredictions>(`/api/matchweeks/${id}/predictions`),
+    api.get<WeekDeltas>(`/api/matchweeks/${id}/deltas`),
   ]);
-  const [lu, sc, jk, br, op, pr] = results;
+  const [lu, sc, jk, br, op, pr, dl] = results;
   lineup.value = lu.lineup; squad.value = lu.squad; score.value = sc.score;
   inventory.value = jk.inventory; activeJoker.value = jk.active;
   briefing.value = br.briefing; openPicks.value = op; predictions.value = pr;
+  deltas.value = dl;
   benchId.value = lu.lineup?.benchTeamId ?? null;
   captainId.value = lu.lineup?.captainTeamId ?? null;
+}
+
+/**
+ * While a match of the selected week is in play the page re-reads itself once a
+ * minute — from our own API only, the provider is the sync job's business
+ * (§5.6) — so the feed, the coupon and the provisional total keep moving.
+ */
+function scheduleLivePoll() {
+  window.clearInterval(livePoller);
+  livePoller = undefined;
+  if (!deltas.value?.live) return;
+  livePoller = window.setInterval(() => {
+    if (!busy.value) void loadWeek();
+  }, 60_000);
 }
 
 /** Clicking the live pick again takes it back. */
@@ -313,8 +335,9 @@ function pickState(m: PredictionMatch, value: Pick) {
 function msg(e: unknown) { return e instanceof ApiRequestError ? e.message : 'Beklenmeyen hata'; }
 
 onMounted(() => { loadAll(); timer = window.setInterval(() => (now.value = Date.now()), 1000); });
-onUnmounted(() => window.clearInterval(timer));
+onUnmounted(() => { window.clearInterval(timer); window.clearInterval(livePoller); });
 watch(selectedMw, () => { if (!loading.value) loadWeek(); });
+watch(() => deltas.value?.live ?? false, scheduleLivePoll);
 </script>
 
 <template>
@@ -550,6 +573,33 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
         </table>
       </section>
 
+      <section v-if="deltas?.clubs.length && !isComplete" class="surface-card card-pad">
+        <div class="section-title delta-head">
+          <span>Puan akışı</span>
+          <span v-if="deltas.live" class="live-chip"><span class="dot" />canlı</span>
+        </div>
+        <div class="delta-list">
+          <div v-for="c in deltas.clubs" :key="c.teamId" class="delta-row">
+            <span class="delta-club">
+              {{ c.name }}
+              <CaptainBadge v-if="c.captain" :multiplier="capMult" :joker-code="activeJoker?.code" :size="18" />
+            </span>
+            <span class="delta-events">
+              <span
+                v-for="(e, i) in c.events"
+                :key="i"
+                class="delta-chip"
+                :class="[e.points > 0 ? 'up' : e.points < 0 ? 'down' : 'flat', { prov: e.provisional, cap: e.ruleCode === 'captain' }]"
+                :title="e.provisional ? 'Maç sürüyor, kesinleşmedi' : undefined"
+              >
+                <span v-if="e.provisional" class="dot" aria-hidden="true" />
+                {{ signed(e.points) }} {{ e.label.toLocaleLowerCase('tr') }}
+              </span>
+            </span>
+          </div>
+        </div>
+      </section>
+
       <section v-if="openPicks.available" class="surface-card card-pad">
         <div class="section-title">Rakiplerin tercihleri</div>
         <table class="lines">
@@ -669,6 +719,36 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
 .line-club { display: inline-flex; align-items: center; gap: 0.5rem; }
 .line-points { text-align: right; white-space: nowrap; }
 .paul-line td { color: var(--color-text-secondary); }
+
+.delta-head { display: flex; align-items: center; gap: 0.65rem; }
+.live-chip {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  padding: 0.12rem 0.55rem; border-radius: var(--radius-pill);
+  background: var(--color-danger-soft); color: var(--color-danger);
+  font-size: var(--text-2xs); font-weight: 800; letter-spacing: 0.05em; text-transform: uppercase;
+}
+.live-chip .dot { width: 6px; height: 6px; border-radius: 50%; background: currentColor; animation: pulse-soft 1.4s ease-in-out infinite; }
+.delta-list { display: flex; flex-direction: column; }
+.delta-row {
+  display: flex; align-items: baseline; gap: var(--space-4);
+  padding: 0.55rem 0; border-bottom: 1px solid var(--color-border); flex-wrap: wrap;
+}
+.delta-row:last-child { border-bottom: none; }
+.delta-club { display: inline-flex; align-items: center; gap: 0.45rem; font-weight: 700; font-size: var(--text-sm); min-width: 10rem; }
+.delta-events { display: flex; flex-wrap: wrap; gap: 0.4rem; }
+.delta-chip {
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  padding: 0.18rem 0.6rem; border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border); background: var(--color-surface-2);
+  font-size: var(--text-xs); font-weight: 700; white-space: nowrap;
+  font-variant-numeric: tabular-nums; color: var(--color-text-secondary);
+}
+.delta-chip.up { color: var(--color-success); border-color: transparent; background: var(--color-success-soft); }
+.delta-chip.down { color: var(--color-danger); border-color: transparent; background: var(--color-danger-soft); }
+.delta-chip.cap { color: var(--color-warning); background: rgba(251, 191, 36, 0.12); border-color: transparent; }
+/* Still moving: a live match feeds this line. */
+.delta-chip.prov { border: 1.5px dashed var(--color-border-strong); }
+.delta-chip.prov .dot { width: 5px; height: 5px; border-radius: 50%; background: currentColor; animation: pulse-soft 1.4s ease-in-out infinite; }
 
 .paul-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
 .paul-name { display: inline-flex; align-items: center; gap: 0.5rem; }
