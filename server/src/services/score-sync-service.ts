@@ -18,6 +18,8 @@ export async function resolveProvider(explicit?: string): Promise<ScoreProvider>
   return providerByName(configured);
 }
 
+export type SyncTrigger = 'manual' | 'scheduled';
+
 export interface SyncSummary {
   provider: string;
   fixturesSeen: number;
@@ -35,15 +37,29 @@ interface LocalMatchRow {
   is_manual_override: boolean;
 }
 
+// Only one sync may touch the database at a time: the scheduled job and an
+// admin hitting "sync" would otherwise score the same finished match twice.
+// Callers queue behind each other instead of racing.
+let syncChain: Promise<unknown> = Promise.resolve();
+
+export interface SyncOptions {
+  providerName?: string;
+  simulatedNow?: Date;
+  trigger?: SyncTrigger;
+}
+
 /**
  * Run a sync pass (§5.2). Provider fetch happens outside the DB transaction;
  * all writes (upsert, scoring on finish, matchweek lifecycle) happen inside one
  * transaction. Manual-override matches are left untouched (§5.3).
  */
-export async function runSync(opts: {
-  providerName?: string;
-  simulatedNow?: Date;
-} = {}): Promise<SyncSummary> {
+export function runSync(opts: SyncOptions = {}): Promise<SyncSummary> {
+  const run = syncChain.then(() => runSyncPass(opts), () => runSyncPass(opts));
+  syncChain = run.catch(() => undefined);
+  return run;
+}
+
+async function runSyncPass(opts: SyncOptions): Promise<SyncSummary> {
   const startedAt = new Date();
   const provider = await resolveProvider(opts.providerName);
 
@@ -92,11 +108,11 @@ export async function runSync(opts: {
     // After commit: close the league act, settle knockout ties, then finalize.
     await progressSeason();
 
-    await recordRun(startedAt, 'success', summary, null);
+    await recordRun(startedAt, 'success', summary, null, opts.trigger ?? 'manual');
     return summary;
   } catch (err) {
     const message = err instanceof Error ? err.message : String(err);
-    await recordRun(startedAt, 'error', summary, message);
+    await recordRun(startedAt, 'error', summary, message, opts.trigger ?? 'manual');
     throw err;
   }
 }
@@ -134,11 +150,12 @@ async function recordRun(
   status: 'success' | 'error',
   summary: SyncSummary,
   error: string | null,
+  trigger: SyncTrigger,
 ): Promise<void> {
   await query(
     `INSERT INTO sync_runs
-       (provider, status, started_at, fixtures_seen, matches_upserted, matches_finished, error)
-     VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+       (provider, status, started_at, fixtures_seen, matches_upserted, matches_finished, error, trigger)
+     VALUES ($1, $2, $3, $4, $5, $6, $7, $8)`,
     [
       summary.provider,
       status,
@@ -147,6 +164,7 @@ async function recordRun(
       summary.matchesUpserted,
       summary.matchesFinished,
       error,
+      trigger,
     ],
   );
 }
@@ -155,6 +173,7 @@ export interface SyncRunRow {
   id: string;
   provider: string;
   status: string;
+  trigger: string;
   started_at: string;
   finished_at: string;
   fixtures_seen: number;
@@ -165,7 +184,7 @@ export interface SyncRunRow {
 
 export async function listSyncRuns(limit = 20): Promise<SyncRunRow[]> {
   const { rows } = await query<SyncRunRow>(
-    `SELECT id, provider, status, started_at, finished_at,
+    `SELECT id, provider, status, trigger, started_at, finished_at,
             fixtures_seen, matches_upserted, matches_finished, error
      FROM sync_runs ORDER BY created_at DESC LIMIT $1`,
     [limit],

@@ -10,16 +10,16 @@ Working conventions for contributors (commits, git workflow, design language, te
 
 Phases 0–6 are built and running against a Supabase database. What follows is the full specification; this section records where reality currently stands so nobody has to infer it from the code.
 
-**Built and verified:** auth and admin-provisioned accounts · pots, clubs, matchweeks, matches, config · permanent squad with one-club-per-pot enforced in the database · club-layer scoring with the per-pot rules editor · provider sync behind a swappable interface with manual-override protection and an audit log · weekly bench/captain with the `T0 − 5m` lock and the M+1 gate · the four jokers with one-per-week activation and cancel/refund · provisional scoring on read and finals on completion · leaderboard, league table, per-player and per-club points breakdowns · the league→knockout act transition (eliminations, top-8 bonus, joker refresh, act transfer) and the knockout bracket through the final with advancement and medals.
+**Built and verified:** auth and admin-provisioned accounts · pots, clubs, matchweeks, matches, config · permanent squad with one-club-per-pot enforced in the database · club-layer scoring with the per-pot rules editor · provider sync behind a swappable interface with manual-override protection and an audit log · weekly bench/captain with the `T0 − 5m` lock and the M+1 gate · the four jokers with one-per-week activation and cancel/refund · provisional scoring on read and finals on completion · leaderboard, league table, per-player and per-club points breakdowns · the league→knockout act transition (eliminations, top-8 bonus, joker refresh, act transfer) and the knockout bracket through the final with advancement and medals · the background sync job with adaptive cadence and backoff.
 
 **Deliberate deviations from the spec, all temporary:**
 
 - The 36 clubs and their pots are **placeholder data** from a previous season, because the 2026–27 draw has not happened (§2.3). Reseed when it does.
-- A **mock provider** drives the fixtures off a simulated clock so the pipeline can be exercised before real data exists (§5.1). The football-data.org client is written and behind the same interface, but nothing maps to it until clubs carry real provider ids.
+- A **mock provider** drives the fixtures off a simulated clock so the pipeline can be exercised before real data exists (§5.1). The football-data.org client is written and behind the same interface, but nothing maps to it until clubs carry real provider ids. The background sync job stays parked for as long as the mock is the configured provider.
 - Level knockout aggregates are settled by a **shootout seeded from the tie id** rather than real penalty data (§2.4), so recalculation always reaches the same winner.
 - `scoring_flags.knockout_time_basis` (§4.4) is **stored but not read**: knockout ties resolve on the 90-minute score. Either wire it up or drop the knob.
 
-**Not built yet:** season replay, the fixtures and multi-live page, the live delta feed, rank movement on the wrap card, admin screens for config / joker inventory / override history, and the scheduled sync job. See §13 Phase 7.
+**Not built yet:** season replay, the fixtures and multi-live page, the live delta feed, rank movement on the wrap card, and admin screens for config / joker inventory / override history. See §13 Phase 7.
 
 ---
 
@@ -439,7 +439,7 @@ Implement behind a **provider interface** so the source can be replaced without 
 - On transition to `finished`: persist club entries; recompute affected participant views; check matchweek completion (§4.6).
 - Ensure `matchweeks` registry rows exist/update for every fixture slug (league and each KO leg).
 - On every sync, **recompute `matchweeks.first_kickoff_at`** from current fixture kickoff times so lock instants track provider reschedules (§3.4). A matchweek already started (`now ≥ T0`) stays frozen and does not re-open.
-- Poll schedule: quiet periods infrequent; active match windows more frequent within rate limits.
+- Poll schedule: quiet periods infrequent; active match windows more frequent within rate limits. *Built:* an in-process job re-arms itself after every poll — a minute apart while a match is in play, two minutes just before kickoff, ten on a matchday, half an hour otherwise, six hours when no fixture is left. Failures back off exponentially (a throttled poll starts from a longer wait) and never poll sooner than the healthy cadence. `SYNC_SCHEDULER_ENABLED` turns it on; runs are tagged `scheduled` vs `manual` in `sync_runs`. The job parks itself while `sync_provider` is `mock`: that provider reads status off the admin's simulated clock, so a wall-clock poll would report every simulated result as unplayed and rewind the season. It resumes on its own once config names a real provider.
 - Persist sync cursors / last success / error logs for admin.
 
 ### 5.3 Admin override
@@ -668,7 +668,7 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 
 ### 9.5 Jobs
 
-- Scheduled sync + matchweek completion + act transition when league phase matches all finished
+- Scheduled sync + matchweek completion + act transition when league phase matches all finished — built as `sync-scheduler`, an in-process timer rather than an external cron, so the cadence can follow the fixture list minute by minute instead of a fixed crontab line. A serverless host would call `POST /api/admin/sync` from its own scheduler instead and lose the adaptive part.
 
 ---
 
@@ -787,15 +787,14 @@ UI copy is Turkish; code identifiers are English. The interface is dark-only, bu
 
 Ordered by what blocks a real season most.
 
-1. **Scheduled sync job** (§5.2, §9.5). The whole pipeline runs, but only when triggered by hand. Needs a cron entry with adaptive polling and backoff on throttling.
-2. **README refresh** and production deploy configuration.
-3. **Fixtures + multi-live page** `/fikstur` (§18.5) and the **live delta feed** (§18.6).
-4. **Season replay** `/sezon` (§18.8).
-5. **Wrap card rank movement** (§18.3), plus the bye and top-8 bonus lines.
-6. **Admin screens** for tournament config, joker inventory repair and match override history — the APIs exist for the first and last, the second needs both.
-7. **Knockout time basis** (§4.4): wire `scoring_flags` into scoring or remove the setting.
-8. Remaining edge-case tests from §11: provider score correction after a finish, a postponed match holding its week open, and the top-8 bonus.
-9. **Final pot seed** once UEFA publishes the 2026–27 draw, plus provider id mapping so the real feed takes over from the mock.
+1. **README refresh** and production deploy configuration.
+2. **Fixtures + multi-live page** `/fikstur` (§18.5) and the **live delta feed** (§18.6).
+3. **Season replay** `/sezon` (§18.8).
+4. **Wrap card rank movement** (§18.3), plus the bye and top-8 bonus lines.
+5. **Admin screens** for tournament config, joker inventory repair and match override history — the APIs exist for the first and last, the second needs both.
+6. **Knockout time basis** (§4.4): wire `scoring_flags` into scoring or remove the setting.
+7. Remaining edge-case tests from §11: provider score correction after a finish, a postponed match holding its week open, and the top-8 bonus.
+8. **Final pot seed** once UEFA publishes the 2026–27 draw, plus provider id mapping so the real feed takes over from the mock.
 
 ---
 

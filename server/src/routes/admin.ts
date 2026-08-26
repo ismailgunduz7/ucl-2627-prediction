@@ -21,6 +21,7 @@ import {
   type MatchStatus,
 } from '../services/scoring-service.ts';
 import { runSync, listSyncRuns } from '../services/score-sync-service.ts';
+import { getSyncSchedulerStatus } from '../services/sync-scheduler.ts';
 import { progressSeason } from '../services/act-service.ts';
 import { getLeagueStandings } from '../services/standings-service.ts';
 
@@ -212,13 +213,14 @@ adminRoutes.post('/sync', async (c) => {
   const summary = await runSync({
     providerName: body.data.provider,
     simulatedNow: body.data.simulatedNow ? new Date(body.data.simulatedNow) : undefined,
+    trigger: 'manual',
   });
   return c.json({ summary });
 });
 
 adminRoutes.get('/sync/runs', async (c) => {
   const runs = await listSyncRuns();
-  return c.json({ runs });
+  return c.json({ runs, scheduler: getSyncSchedulerStatus() });
 });
 
 // --- Season progression (§9.3 manual fallback) ----------------------------

@@ -17,6 +17,12 @@ const EnvSchema = z.object({
   ADMIN_PATH: z.string().startsWith('/').default('/yonetim'),
   CLIENT_ORIGIN: z.string().url().default('http://localhost:5173'),
   FOOTBALL_DATA_API_TOKEN: z.string().default(''),
+  // Background provider polling (§5.2). Off by default so local runs and the
+  // mock clock stay under the admin's control; on for a real deployment.
+  SYNC_SCHEDULER_ENABLED: z
+    .string()
+    .default('false')
+    .transform((v) => v === 'true' || v === '1'),
 });
 
 export type Env = z.infer<typeof EnvSchema>;
