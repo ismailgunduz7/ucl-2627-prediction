@@ -5,8 +5,9 @@ import BallLoader from '@/components/BallLoader.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import CaptainBadge from '@/components/CaptainBadge.vue';
 import { api } from '@/lib/api';
+import { groupMatchweeks, matchweekTitle, type MatchweekMenu } from '@/lib/matchweeks';
 
-interface Mw { id: string; label: string; status: string; opened: boolean }
+interface Mw { id: string; label: string; status: string; opened: boolean; menu: MatchweekMenu }
 type Outcome = 'home' | 'draw' | 'away';
 interface Side {
   teamId: string; name: string; shortName: string; tierId: number; score: number | null;
@@ -29,6 +30,7 @@ let poller: number | undefined;
 
 const PICK_LABEL: Record<Outcome, string> = { home: 'MS1', draw: 'MS0', away: 'MS2' };
 
+const weekGroups = computed(() => groupMatchweeks(matchweeks.value));
 const fixtures = computed(() => data.value?.fixtures ?? []);
 const liveOnes = computed(() => fixtures.value.filter((f) => f.status === 'live'));
 const mineCount = computed(() => fixtures.value.filter(isMine).length);
@@ -104,11 +106,15 @@ watch(liveOnes, schedulePoll);
       <template #actions>
         <Select
           v-model="selectedMw"
-          :options="matchweeks"
+          :options="weekGroups"
+          option-group-label="label"
+          option-group-children="items"
           option-label="label"
-          option-value="id"
-          style="min-width: 160px"
-        />
+          option-value="value"
+          style="min-width: 200px"
+        >
+          <template #value="{ value }">{{ matchweekTitle(matchweeks, value) || 'Hafta seç' }}</template>
+        </Select>
       </template>
     </PageHeader>
 

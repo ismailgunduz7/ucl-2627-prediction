@@ -15,8 +15,9 @@ import CaptainBadge from '@/components/CaptainBadge.vue';
 import FixtureLine from '@/components/FixtureLine.vue';
 import OctopusMark from '@/components/OctopusMark.vue';
 import { JOKER_ICONS, JOKER_NAMES } from '@/lib/jokers';
+import { groupMatchweeks, matchweekTitle, type MatchweekMenu } from '@/lib/matchweeks';
 
-interface Mw { id: string; label: string; status: string; editable: boolean; opened: boolean; locked: boolean }
+interface Mw { id: string; label: string; status: string; editable: boolean; opened: boolean; locked: boolean; menu: MatchweekMenu }
 interface SquadClub { teamId: string; tierId: number; name: string; shortName: string; eliminated: boolean }
 interface Lineup { benchTeamId: string; captainTeamId: string; saved: boolean; lockAt: string | null; locked: boolean; opened: boolean; editable: boolean }
 interface ScoreLine { teamId: string; name: string; basePoints: number; benched: boolean; captain: boolean; multiplier: number; contributed: number }
@@ -75,7 +76,7 @@ const currentMw = computed(() => matchweeks.value.find((m) => m.id === selectedM
 
 /**
  * Weeks worth picking from: everything already under way plus the one still
- * open for edits, newest first. Weeks further out have nothing to show yet.
+ * open for edits. Weeks further out have nothing to show yet.
  */
 const pickableMatchweeks = computed(() => {
   const all = matchweeks.value;
@@ -84,8 +85,9 @@ const pickableMatchweeks = computed(() => {
     if (m.opened || m.editable) last = i;
   });
   if (last < 0) last = 0;
-  return all.slice(0, last + 1).reverse();
+  return all.slice(0, last + 1);
 });
+const weekGroups = computed(() => groupMatchweeks(pickableMatchweeks.value));
 const editable = computed(() => lineup.value?.editable ?? false);
 const isComplete = computed(() => currentMw.value?.status === 'complete');
 const benchBoost = computed(() => activeJoker.value?.code === 'bench_boost');
@@ -319,7 +321,17 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
   <div class="page-stack">
     <PageHeader title="Bu hafta" subtitle="Kaptanını seç, birini yedeğe çek, joker oyna.">
       <template #actions>
-        <Select v-model="selectedMw" :options="pickableMatchweeks" option-label="label" option-value="id" style="min-width: 150px" />
+        <Select
+          v-model="selectedMw"
+          :options="weekGroups"
+          option-group-label="label"
+          option-group-children="items"
+          option-label="label"
+          option-value="value"
+          style="min-width: 190px"
+        >
+          <template #value="{ value }">{{ matchweekTitle(matchweeks, value) || 'Hafta seç' }}</template>
+        </Select>
       </template>
     </PageHeader>
 

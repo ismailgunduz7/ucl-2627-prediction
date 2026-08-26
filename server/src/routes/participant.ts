@@ -30,6 +30,7 @@ import {
 import { getBriefing, getOpenPicks } from '../services/briefing-service.ts';
 import { getWeekPredictions, savePrediction } from '../services/prediction-service.ts';
 import { getWeekFixtures } from '../services/fixture-service.ts';
+import { matchweekMenuEntry } from '../domain/matchweek-menu.ts';
 import type { JokerCode } from '../domain/joker.ts';
 import { query } from '../db/pool.ts';
 import { SQUAD_SIZE } from '../domain/constants.ts';
@@ -100,11 +101,19 @@ participantRoutes.get('/tournament/status', async (c) => {
     matchweeks: mwRows.rows.map((mw) => {
       const ls = lockStateFor(mw, now);
       const edit = lineupEditability(ordered, mw.id, now);
+      const menu = matchweekMenuEntry({
+        id: mw.id,
+        act: mw.act,
+        sortOrder: mw.sort_order,
+        label: mw.label,
+      });
       return {
         id: mw.id,
         act: mw.act,
         sortOrder: mw.sort_order,
         label: mw.label,
+        // How a week picker should file this week (§10.1).
+        menu,
         status: mw.status,
         firstKickoffAt: mw.first_kickoff_at ? new Date(mw.first_kickoff_at).toISOString() : null,
         lockAt: ls.lockAt?.toISOString() ?? null,

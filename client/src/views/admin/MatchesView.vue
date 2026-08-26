@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { ref, onMounted, watch } from 'vue';
+import { ref, computed, onMounted, watch } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import Select from 'primevue/select';
 import InputNumber from 'primevue/inputnumber';
@@ -8,16 +8,18 @@ import Tag from 'primevue/tag';
 import { api, ApiRequestError } from '@/lib/api';
 import PageHeader from '@/components/PageHeader.vue';
 import BallLoader from '@/components/BallLoader.vue';
+import { groupMatchweeks, matchweekTitle, type MatchweekMenu } from '@/lib/matchweeks';
 
 interface MatchRow {
   id: string; matchweek_id: string; status: string;
   home_name: string; home_short: string; away_name: string; away_short: string;
   home_score: number | null; away_score: number | null; is_manual_override: boolean;
 }
-interface MwOption { id: string; label: string }
+interface MwOption { id: string; label: string; menu: MatchweekMenu }
 
 const toast = useToast();
 const matchweeks = ref<MwOption[]>([]);
+const weekGroups = computed(() => groupMatchweeks(matchweeks.value));
 const selectedMw = ref<string | null>(null);
 const matches = ref<MatchRow[]>([]);
 const loading = ref(false);
@@ -29,9 +31,11 @@ const statusOptions = [
 ];
 
 async function loadMatchweeks() {
-  const res = await api.get<{ matchweeks: { id: string; label: string }[] }>('/api/tournament/status');
-  matchweeks.value = res.matchweeks.map((m) => ({ id: m.id, label: m.label }));
-  if (!selectedMw.value && matchweeks.value.length) selectedMw.value = matchweeks.value[0]!.id;
+  const res = await api.get<{ matchweeks: MwOption[] }>('/api/tournament/status');
+  matchweeks.value = res.matchweeks.map((m) => ({ id: m.id, label: m.label, menu: m.menu }));
+  if (!selectedMw.value && weekGroups.value.length) {
+    selectedMw.value = weekGroups.value[0]!.items[0]!.value;
+  }
 }
 async function loadMatches() {
   if (!selectedMw.value) return;
@@ -75,7 +79,18 @@ watch(selectedMw, loadMatches);
   <div class="page-stack">
     <PageHeader title="Maçlar" subtitle="Bir maçı bitirdiğinde kulüp puanları otomatik hesaplanır. Elle girdiğin sonucu sync ezmez.">
       <template #actions>
-        <Select v-model="selectedMw" :options="matchweeks" option-label="label" option-value="id" placeholder="Hafta" style="min-width: 150px" />
+        <Select
+          v-model="selectedMw"
+          :options="weekGroups"
+          option-group-label="label"
+          option-group-children="items"
+          option-label="label"
+          option-value="value"
+          placeholder="Hafta"
+          style="min-width: 200px"
+        >
+          <template #value="{ value }">{{ matchweekTitle(matchweeks, value) || 'Hafta' }}</template>
+        </Select>
       </template>
     </PageHeader>
 

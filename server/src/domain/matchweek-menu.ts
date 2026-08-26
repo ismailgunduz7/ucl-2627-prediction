@@ -1,0 +1,85 @@
+/**
+ * How matchweeks are offered in a week picker.
+ *
+ * A season reads backwards in a menu: the final first, the league phase last,
+ * because the week someone wants is nearly always the most recent one. Two-
+ * legged rounds are one group with two entries rather than two flat options
+ * called "1. maç" and "2. maç", and inside a round the first legs come before
+ * the return legs, the order they are played.
+ *
+ * Matchweek ids are code-owned (`mw-<n>` for league weeks, `<stage>` or
+ * `<stage>-leg<n>` for knockout), so the grouping is derived from them. An id
+ * we do not recognise falls back to its stored label as its own group, which
+ * keeps an unexpected row visible instead of hiding it.
+ */
+
+export interface MatchweekMenuEntry {
+  /** Heading the week sits under. */
+  group: string;
+  /** What the week is called inside that heading. */
+  option: string;
+  /** Ascending: 0 is the top of the menu. */
+  groupOrder: number;
+  /** Ascending within the group. */
+  optionOrder: number;
+}
+
+interface KnockoutRound {
+  label: string;
+  /** Menu order, newest round first. */
+  order: number;
+}
+
+const KNOCKOUT_ROUNDS: Record<string, KnockoutRound> = {
+  final: { label: 'Final', order: 0 },
+  sf: { label: 'Yarı final', order: 1 },
+  qf: { label: 'Çeyrek final', order: 2 },
+  r16: { label: 'Son 16', order: 3 },
+  playoff: { label: 'Play-off', order: 4 },
+};
+
+/** The league phase sits under every knockout round. */
+const LEAGUE_GROUP = 'Lig aşaması';
+const LEAGUE_GROUP_ORDER = 5;
+const UNKNOWN_GROUP_ORDER = 6;
+
+const LEG_LABELS: Record<number, string> = { 1: 'İlk maçlar', 2: 'Rövanş maçları' };
+
+export interface MatchweekMenuInput {
+  id: string;
+  act: string;
+  sortOrder: number;
+  label: string;
+}
+
+export function matchweekMenuEntry(mw: MatchweekMenuInput): MatchweekMenuEntry {
+  if (mw.act === 'league_phase') {
+    return {
+      group: LEAGUE_GROUP,
+      option: mw.label,
+      groupOrder: LEAGUE_GROUP_ORDER,
+      // Newest week at the top of its group, like the rounds above it.
+      optionOrder: -mw.sortOrder,
+    };
+  }
+
+  const match = /^([a-z0-9]+)(?:-leg(\d+))?$/.exec(mw.id);
+  const round = match ? KNOCKOUT_ROUNDS[match[1]!] : undefined;
+  if (!round) {
+    return { group: mw.label, option: mw.label, groupOrder: UNKNOWN_GROUP_ORDER, optionOrder: mw.sortOrder };
+  }
+
+  const leg = match?.[2] ? Number(match[2]) : 0;
+  return {
+    group: round.label,
+    // A one-legged round names itself rather than saying "İlk maçlar".
+    option: leg === 0 ? round.label : (LEG_LABELS[leg] ?? `${leg}. maç`),
+    groupOrder: round.order,
+    optionOrder: leg,
+  };
+}
+
+/** Menu order for a whole list: groups first, then entries inside each group. */
+export function compareMatchweekMenu(a: MatchweekMenuEntry, b: MatchweekMenuEntry): number {
+  return a.groupOrder - b.groupOrder || a.optionOrder - b.optionOrder;
+}

@@ -691,6 +691,8 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 
 Open picks were folded into `/hafta` rather than the standings page, since that is where the picks themselves are made.
 
+**Week pickers** (weekly hub, fixtures, admin matches) all read the season backwards, because the week someone wants is nearly always the most recent one: the final first, then the semi-finals, quarter-finals, round of 16 and play-off, then the league phase from week 8 down to week 1. A two-legged round is **one heading with two entries** — `İlk maçlar` above `Rövanş maçları`, the order they are played — rather than two flat options ending in "1. maç" and "2. maç". Each leg is still its own matchweek (§2.4), so bench, captain, jokers and the coupon continue to lock per leg. The grouping is derived from the matchweek id on the server and served with the week, so every picker files a week the same way.
+
 **Hub must show:** crest wall (bench muted unless boosted + chip), lock countdown, briefing with a difficulty band, bench/captain, joker controls with confirm-on-bench-conflict, the Ahtapot Paul coupon, provisional points, wrap card when complete. Multi-live and live deltas are still to come.
 
 ### 10.2 Admin
