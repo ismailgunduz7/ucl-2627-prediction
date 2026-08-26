@@ -10,7 +10,7 @@ Working conventions for contributors (commits, git workflow, design language, te
 
 Phases 0–6 are built and running against a Supabase database. What follows is the full specification; this section records where reality currently stands so nobody has to infer it from the code.
 
-**Built and verified:** auth and admin-provisioned accounts · pots, clubs, matchweeks, matches, config · permanent squad with one-club-per-pot enforced in the database · club-layer scoring with the per-pot rules editor · provider sync behind a swappable interface with manual-override protection and an audit log · weekly bench/captain with the `T0 − 5m` lock and the M+1 gate · the four jokers with one-per-week activation and cancel/refund · provisional scoring on read and finals on completion · leaderboard, league table, per-player and per-club points breakdowns · the league→knockout act transition (eliminations, top-8 bonus, joker refresh, act transfer) and the knockout bracket through the final with advancement and medals · the background sync job with adaptive cadence and backoff · Ahtapot Paul, the weekly 1X2 coupon (§18.9).
+**Built and verified:** auth and admin-provisioned accounts · pots, clubs, matchweeks, matches, config · permanent squad with one-club-per-pot enforced in the database · club-layer scoring with the per-pot rules editor · provider sync behind a swappable interface with manual-override protection and an audit log · weekly bench/captain with the `T0 − 5m` lock and the M+1 gate · the four jokers with one-per-week activation and cancel/refund · provisional scoring on read and finals on completion · leaderboard, league table, per-player and per-club points breakdowns · the league→knockout act transition (eliminations, top-8 bonus, joker refresh, act transfer) and the knockout bracket through the final with advancement and medals · the background sync job with adaptive cadence and backoff · Ahtapot Paul, the weekly 1X2 coupon (§18.9) · the fixtures and multi-live page (§18.5).
 
 **Deliberate deviations from the spec, all temporary:**
 
@@ -19,7 +19,7 @@ Phases 0–6 are built and running against a Supabase database. What follows is 
 - Level knockout aggregates are settled by a **shootout seeded from the tie id** rather than real penalty data (§2.4), so recalculation always reaches the same winner.
 - `scoring_flags.knockout_time_basis` (§4.4) is **stored but not read**: knockout ties resolve on the 90-minute score. Either wire it up or drop the knob.
 
-**Not built yet:** season replay, the fixtures and multi-live page, the live delta feed, rank movement on the wrap card, and admin screens for config / joker inventory / override history. See §13 Phase 7.
+**Not built yet:** season replay, the live delta feed, rank movement on the wrap card, and admin screens for config / joker inventory / override history. See §13 Phase 7.
 
 ---
 
@@ -686,7 +686,7 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 | `/kurallar` | Rules matrix, joker explanations, pots and their clubs | built |
 | `/oyuncu/:id` | Season breakdown per matchweek, down to the rule lines | built |
 | `/takim/:id` | Club matches and points, expandable to rule lines | built |
-| `/fikstur` | Multi-live + fixtures | pending |
+| `/fikstur` | Multi-live + fixtures | built |
 | `/sezon` | Season replay | pending |
 
 Open picks were folded into `/hafta` rather than the standings page, since that is where the picks themselves are made.
@@ -788,7 +788,7 @@ UI copy is Turkish; code identifiers are English. The interface is dark-only, bu
 Ordered by what blocks a real season most.
 
 1. **Production deploy configuration.**
-2. **Fixtures + multi-live page** `/fikstur` (§18.5) and the **live delta feed** (§18.6).
+2. **Live delta feed** (§18.6) — the compact event stream on the hub. The fixtures and multi-live page it was paired with is built (§18.5).
 3. **Season replay** `/sezon` (§18.8).
 4. **Wrap card rank movement** (§18.3), plus the bye and top-8 bonus lines.
 5. **Admin screens** for tournament config, joker inventory repair and match override history — the APIs exist for the first and last, the second needs both. The one config knob with a real home already has a field on the scoring rules screen (§18.9).
@@ -888,6 +888,8 @@ From `T0(M)`: peers see bench, captain, and joker **if present**. No joker → s
 ### 18.5 Multi-live tracker
 
 All live CL matches; user clubs pinned; tolerate provider delay.
+
+*Built* as `/fikstur`: the selected matchweek's full fixture list grouped by day, any match in play pinned at the top of the page as a live count and marked in its row. The participant's own clubs carry an accent and their captain or bench role, and each shows what it has earned from that match — definitive once finished, drafted from the current score while live (§4.3 Option A). A match already called on the coupon shows that call, green or red once the result is in (§18.9). The page reads only our own tables and re-reads them once a minute while anything is live, so participant traffic never reaches the provider (§5.6); a "son güncelleme HH:MM" line from the last successful sync says how fresh the data is.
 
 ### 18.6 Anlık delta
 

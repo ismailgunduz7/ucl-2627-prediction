@@ -29,6 +29,7 @@ import {
 } from '../services/joker-service.ts';
 import { getBriefing, getOpenPicks } from '../services/briefing-service.ts';
 import { getWeekPredictions, savePrediction } from '../services/prediction-service.ts';
+import { getWeekFixtures } from '../services/fixture-service.ts';
 import type { JokerCode } from '../domain/joker.ts';
 import { query } from '../db/pool.ts';
 import { SQUAD_SIZE } from '../domain/constants.ts';
@@ -164,6 +165,13 @@ participantRoutes.get('/matchweeks/:id/score', async (c) => {
   const score = await getParticipantWeekScore(auth.sub, c.req.param('id'));
   if (!score) return c.json({ score: null });
   return c.json({ score });
+});
+
+// --- Fixtures + multi-live (§18.5) ----------------------------------------
+participantRoutes.get('/matchweeks/:id/fixtures', async (c) => {
+  const auth = c.get('auth');
+  const fixtures = await getWeekFixtures(auth.sub, c.req.param('id'));
+  return c.json(fixtures);
 });
 
 // --- Ahtapot Paul: 1X2 predictions (§18.9) --------------------------------
