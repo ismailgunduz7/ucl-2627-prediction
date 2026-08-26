@@ -14,7 +14,7 @@ Phases 0–6 are built and running against a Supabase database. What follows is 
 
 **Deliberate deviations from the spec, all temporary:**
 
-- The 36 clubs and their pots are **placeholder data** from a previous season, because the 2026–27 draw has not happened (§2.3). Reseed when it does.
+- The 36 clubs and their pots are the **real 2026–27 field** (UEFA's confirmed draw pots, 26 Aug 2026), but the **fixture list is a random draw** under the competition's own constraints — two opponents per pot, one home one away, never a compatriot, eight full matchdays on the real calendar — because UEFA publishes the actual fixtures only after the draw ceremony (§2.3). Reseed the fixtures (keeping the clubs) when the real list lands.
 - A **mock provider** drives the fixtures off a simulated clock so the pipeline can be exercised before real data exists (§5.1). The football-data.org client is written and behind the same interface, but nothing maps to it until clubs carry real provider ids. The background sync job stays parked for as long as the mock is the configured provider.
 - Level knockout aggregates are settled by a **shootout seeded from the tie id** rather than real penalty data (§2.4), so recalculation always reaches the same winner.
 
@@ -79,7 +79,7 @@ At the league-phase draw, UEFA assigns clubs to **four pots** (Pot 1–4). In th
 
 When the official draw is published, seed `teams` with pot assignments. Until then, use placeholder pots and swap via admin/seed update.
 
-*Current state:* seeded with a placeholder field of 36 clubs from the previous season, nine per pot, in `server/src/data/mock-teams.ts`. Pot placement there is illustrative only.
+*Current state:* seeded with the **official 2026–27 pots** as UEFA confirmed them on 26 August 2026, in `server/src/data/teams-2627.ts` — nine clubs per pot with their associations, which drive the no-compatriot draw rule. The fixture list is a random draw from `server/src/domain/schedule.ts` (seedable via `SEED_DRAW_SEED`) until UEFA publishes the real one; provider ids stay unmapped until then, so the mock provider keeps driving the season.
 
 ### 2.4 Knockout phase
 
@@ -764,7 +764,7 @@ UI copy is Turkish; code identifiers are English. The interface is dark-only, bu
 ### Phase 1 — Domain skeleton ✅
 
 - Pots, 36 clubs, matchweeks registry, matches, config, permanent squad + selection lock, admin user create.
-- Clubs are placeholder data pending the official draw (§2.3). A mock league fixture list is generated so locks and scoring have something to work on.
+- Clubs were placeholder data until UEFA confirmed the 2026–27 pots, which are now seeded (§2.3); a generated fixture list gives locks and scoring something to work on until the real one is published.
 
 ### Phase 2 — Club scoring + rules UI ✅
 
@@ -797,7 +797,7 @@ Ordered by what blocks a real season most. Shipped from this list already: the l
 
 1. **Production deploy configuration.**
 2. Remaining edge-case tests from §11: provider score correction after a finish, a postponed match holding its week open, and the top-8 bonus.
-3. **Final pot seed** once UEFA publishes the 2026–27 draw, plus provider id mapping so the real feed takes over from the mock.
+3. **Real fixture list** once UEFA publishes it (the pots are already the official 2026–27 field; today's fixtures are a constraint-true random draw), plus provider id mapping so the real feed takes over from the mock.
 
 ---
 

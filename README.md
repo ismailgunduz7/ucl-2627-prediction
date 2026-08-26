@@ -16,9 +16,10 @@ real match results. See [PLAN.md](PLAN.md) for the authoritative product spec.
 > a season replay that opens once the final is played.
 >
 > What is left is tracked as Phase 7 in [PLAN.md](PLAN.md) §13 — production
-> deploy configuration, deeper edge-case tests, and reseeding the clubs once
-> UEFA publishes the 2026–27 draw. Until then the app runs on placeholder
-> clubs driven by a mock provider.
+> deploy configuration, deeper edge-case tests, and swapping the randomly
+> drawn fixtures for UEFA's real list once it is published. The clubs and
+> pots are already the official 2026–27 field; the mock provider drives the
+> season until real provider ids are mapped.
 
 ## Stack
 
@@ -49,14 +50,17 @@ npm run migrate
 # 4. Seed the first admin account (there is no public self-registration)
 npm run seed --workspace server
 
-# 5. Seed the domain mockup: pots, 36 placeholder clubs, config, and 8 league
-#    matchweeks with a mock fixture list (re-run with SEED_FORCE=1 to reset)
+# 5. Seed the domain: the official 2026–27 pots, config, and 8 league
+#    matchweeks with a randomly drawn fixture list on the real calendar.
+#    SEED_FORCE=1 wipes the whole season (accounts stay) and reseeds;
+#    SEED_DRAW_SEED=<n> reproduces a specific draw.
 npm run seed:domain --workspace server
 ```
 
-> The 2026–27 participants aren't known yet (qualifying is ongoing), so the
-> domain seed uses a **placeholder** 36-club field from last season, split into
-> four pots. Reseed after UEFA publishes the official draw (PLAN.md §2.3).
+> The clubs and pots are the **official 2026–27 field** (UEFA, 26 Aug 2026).
+> The fixture list is a **random draw** under the real constraints — two
+> opponents per pot, one home one away, never a same-country pairing — until
+> UEFA publishes the actual fixtures (PLAN.md §2.3).
 
 The seed creates an admin (default `admin` / `changeme123` — override with
 `SEED_ADMIN_USERNAME` / `SEED_ADMIN_PASSWORD`) and a default competition. **Change
@@ -93,7 +97,7 @@ give it.
 | `npm run migrate`                | Apply pending SQL migrations             |
 | `npm run migrate:status -w server` | Show applied/pending migrations        |
 | `npm run seed --workspace server` | Seed first admin + default competition  |
-| `npm run seed:domain --workspace server` | Seed pots, mock clubs, matchweeks + fixtures |
+| `npm run seed:domain --workspace server` | Seed the 2026–27 pots, matchweeks + a drawn fixture list |
 | `npm run test`                   | Run server unit tests (node:test)        |
 
 ## Environment variables

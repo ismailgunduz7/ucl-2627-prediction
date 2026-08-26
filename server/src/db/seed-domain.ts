@@ -1,34 +1,91 @@
 /**
- * Domain seed (Phase 1 mockup): pots, 36 placeholder clubs, config defaults, the
- * 8 league-phase matchweeks, and a mock fixture list (circle-method schedule)
- * with kickoff times so lock logic and later scoring have real data to work on.
+ * Domain seed for the 2026–27 season: pots and the REAL 36-club field from
+ * UEFA's confirmed draw pots (data/teams-2627.ts), config defaults, the eight
+ * league matchweeks on the REAL matchday calendar, and a random fixture list
+ * drawn under the competition's own constraints (domain/schedule.ts) — two
+ * opponents per pot, one home one away, never a compatriot — standing in until
+ * UEFA publishes the actual fixtures.
  *
- * Idempotent: skips if pots already exist. Re-run with SEED_FORCE=1 to wipe and
- * reseed the domain (this also clears user squads via cascade — dev only).
- *
- * The clubs and pot placement are PLACEHOLDER (see data/mock-teams.ts); reseed
- * after the official 2026–27 draw (§2.3).
+ * Idempotent: skips if pots already exist. Re-run with SEED_FORCE=1 to wipe the
+ * WHOLE season — matches, scores, lineups, jokers, predictions, transfers, the
+ * knockout bracket and the sync log — while keeping user accounts. Squads must
+ * be re-picked; joker inventories are re-granted at Act I; the act returns to
+ * the league phase. SEED_DRAW_SEED=<n> reproduces a specific draw.
  */
+import type { PoolClient } from 'pg';
 import { withTransaction, query, closePool } from './pool.ts';
-import { MOCK_POTS, POT_NAMES } from '../data/mock-teams.ts';
-import { generateLeagueSchedule } from '../domain/schedule.ts';
+import { POTS_2627, POT_NAMES } from '../data/teams-2627.ts';
+import {
+  generateLeagueDraw,
+  validateLeagueDraw,
+  LEAGUE_ROUNDS,
+  type DrawTeam,
+} from '../domain/schedule.ts';
 import { DEFAULT_CONFIG } from '../services/tournament-config-service.ts';
 import { seedScoringRules } from './seed-rules.ts';
 
-const LEAGUE_MATCHDAYS = 8;
-// Mock MW1 first kickoff (UTC). Future-dated so the mock selection window is open.
-const MW1_FIRST_KICKOFF = new Date('2026-09-15T16:45:00.000Z');
+/**
+ * The real league-phase calendar (UEFA, 26 Aug 2026). Kickoffs in UTC: 18:45 /
+ * 21:00 CEST until the October clock change, CET afterwards. The final
+ * matchday is played as one simultaneous round, like the real thing.
+ */
+const MATCHDAYS: { days: string[]; early: string; late: string; simultaneous?: boolean }[] = [
+  { days: ['2026-09-08', '2026-09-09', '2026-09-10'], early: '16:45', late: '19:00' },
+  { days: ['2026-10-13', '2026-10-14'], early: '16:45', late: '19:00' },
+  { days: ['2026-10-20', '2026-10-21'], early: '16:45', late: '19:00' },
+  { days: ['2026-11-03', '2026-11-04'], early: '17:45', late: '20:00' },
+  { days: ['2026-11-24', '2026-11-25'], early: '17:45', late: '20:00' },
+  { days: ['2026-12-08', '2026-12-09'], early: '17:45', late: '20:00' },
+  { days: ['2027-01-19', '2027-01-20'], early: '17:45', late: '20:00' },
+  { days: ['2027-01-27'], early: '20:00', late: '20:00', simultaneous: true },
+];
 
-/** Kickoff for match #m (0-based) within matchweek `round` (1-based). */
-function kickoffFor(round: number, matchIndex: number): Date {
-  const weekOffsetMs = (round - 1) * 7 * 24 * 60 * 60 * 1000;
-  const dayOffsetMs = (matchIndex < 9 ? 0 : 1) * 24 * 60 * 60 * 1000;
-  const base = new Date(MW1_FIRST_KICKOFF.getTime() + weekOffsetMs + dayOffsetMs);
-  // Alternate 16:45 / 19:00 UTC; keep match #0 at the earliest slot.
-  const hour = matchIndex % 2 === 0 ? 16 : 19;
-  const minute = matchIndex % 2 === 0 ? 45 : 0;
-  base.setUTCHours(hour, minute, 0, 0);
-  return base;
+/** Kickoff for match #idx (0-based) of matchweek `round` (1-based). */
+function kickoffFor(round: number, idx: number): Date {
+  const md = MATCHDAYS[round - 1]!;
+  const perDay = Math.ceil(18 / md.days.length);
+  const day = md.days[Math.min(Math.floor(idx / perDay), md.days.length - 1)]!;
+  // Two early kickoffs per evening, the rest in the prime slot; the last
+  // matchday kicks off everywhere at once.
+  const time = md.simultaneous ? md.early : idx % perDay < 2 ? md.early : md.late;
+  return new Date(`${day}T${time}:00.000Z`);
+}
+
+/** Everything a new season must not inherit. Accounts and config knobs stay. */
+async function wipeSeason(client: PoolClient): Promise<void> {
+  console.log('SEED_FORCE=1 → wiping the season (accounts and settings stay)...');
+  await client.query(
+    `TRUNCATE match_predictions, matchweek_lineups, joker_activations,
+              player_matchday_scores, team_point_entries, act_transfers,
+              match_override_audits, knockout_ties, matches, team_selections,
+              sync_runs
+     RESTART IDENTITY CASCADE`,
+  );
+  await client.query('DELETE FROM matchweeks');
+  await client.query('DELETE FROM teams');
+  await client.query('DELETE FROM tiers');
+  // Back to Act I; other knobs (rule values, joker defaults, provider) stay.
+  await client.query(
+    `INSERT INTO tournament_config (key, value) VALUES ('current_act', '"league_phase"'::jsonb)
+     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
+  );
+}
+
+/** Re-grant every participant the Act I joker inventory (§3.6). */
+async function regrantJokers(client: PoolClient): Promise<void> {
+  const cfg = await client.query<{ value: typeof DEFAULT_CONFIG.joker_inventory_defaults }>(
+    `SELECT value FROM tournament_config WHERE key = 'joker_inventory_defaults'`,
+  );
+  const grant = cfg.rows[0]?.value.league_phase ?? DEFAULT_CONFIG.joker_inventory_defaults.league_phase;
+  for (const [code, count] of Object.entries(grant)) {
+    await client.query(
+      `INSERT INTO joker_inventory (user_id, joker_type_code, remaining_count)
+       SELECT u.id, $1, $2 FROM users u WHERE NOT u.is_admin
+       ON CONFLICT (user_id, joker_type_code)
+       DO UPDATE SET remaining_count = EXCLUDED.remaining_count, updated_at = now()`,
+      [code, count],
+    );
+  }
 }
 
 async function main(): Promise<void> {
@@ -39,14 +96,22 @@ async function main(): Promise<void> {
     return;
   }
 
+  // Draw outside the transaction: pure computation, and a draw failure should
+  // not leave a half-wiped season behind.
+  const drawTeams: DrawTeam[] = ([1, 2, 3, 4] as const).flatMap((pot) =>
+    POTS_2627[pot].map((t) => ({ pot, country: t.country })),
+  );
+  const drawSeed = process.env.SEED_DRAW_SEED
+    ? Number(process.env.SEED_DRAW_SEED)
+    : Math.floor(Math.random() * 2 ** 31);
+  const schedule = generateLeagueDraw(drawTeams, drawSeed);
+  const violations = validateLeagueDraw(drawTeams, schedule);
+  if (violations.length > 0) {
+    throw new Error(`draw failed its own validation:\n  - ${violations.join('\n  - ')}`);
+  }
+
   await withTransaction(async (client) => {
-    if (hasData) {
-      console.log('SEED_FORCE=1 → wiping domain (matches, matchweeks, teams, tiers)...');
-      await client.query('TRUNCATE matches, team_selections RESTART IDENTITY CASCADE');
-      await client.query('DELETE FROM matchweeks');
-      await client.query('DELETE FROM teams');
-      await client.query('DELETE FROM tiers');
-    }
+    if (hasData) await wipeSeason(client);
 
     // 1. Pots (tiers)
     for (const pot of [1, 2, 3, 4] as const) {
@@ -56,10 +121,10 @@ async function main(): Promise<void> {
       ]);
     }
 
-    // 2. Teams (flattened pot 1..4 order → index 0..35 for the scheduler)
+    // 2. Teams, flattened pot 1..4 — the same order the draw was made in.
     const teamIds: string[] = [];
     for (const pot of [1, 2, 3, 4] as const) {
-      for (const t of MOCK_POTS[pot]) {
+      for (const t of POTS_2627[pot]) {
         const { rows } = await client.query<{ id: string }>(
           `INSERT INTO teams (name, short_name, tier_id, country) VALUES ($1, $2, $3, $4) RETURNING id`,
           [t.name, t.shortName, pot, t.country],
@@ -67,9 +132,9 @@ async function main(): Promise<void> {
         teamIds.push(rows[0]!.id);
       }
     }
-    console.log(`Seeded ${teamIds.length} teams across 4 pots.`);
+    console.log(`Seeded ${teamIds.length} clubs across 4 pots (2026–27 field).`);
 
-    // 3. Config defaults
+    // 3. Config defaults (existing values win — a reseed keeps admin tuning)
     for (const [key, value] of Object.entries(DEFAULT_CONFIG)) {
       await client.query(
         `INSERT INTO tournament_config (key, value) VALUES ($1, $2)
@@ -82,7 +147,7 @@ async function main(): Promise<void> {
     await seedScoringRules(client);
 
     // 4. League matchweeks MW1..8
-    for (let round = 1; round <= LEAGUE_MATCHDAYS; round++) {
+    for (let round = 1; round <= LEAGUE_ROUNDS; round++) {
       await client.query(
         `INSERT INTO matchweeks (id, act, sort_order, label, status)
          VALUES ($1, 'league_phase', $2, $3, 'upcoming')`,
@@ -90,11 +155,9 @@ async function main(): Promise<void> {
       );
     }
 
-    // 5. Mock fixtures via circle method; track earliest kickoff per matchweek.
-    const schedule = generateLeagueSchedule(teamIds.length, LEAGUE_MATCHDAYS);
+    // 5. Fixtures on the real matchday calendar; earliest kickoff per week.
     const firstKickoff = new Map<string, Date>();
     const perRoundIndex = new Map<number, number>();
-
     for (const fx of schedule) {
       const idx = perRoundIndex.get(fx.round) ?? 0;
       perRoundIndex.set(fx.round, idx + 1);
@@ -116,13 +179,16 @@ async function main(): Promise<void> {
         [kickoff, mwId],
       );
     }
-    // Stable mock external ids so the mock provider (Phase 3) can map fixtures
-    // back through the same external_id path the real provider uses.
+    // Stable mock external ids so the mock provider can keep driving the season
+    // through the same external_id path the real provider will use.
     await client.query(`UPDATE teams SET external_id = 'mock:' || id::text WHERE external_id IS NULL`);
     await client.query(`UPDATE matches SET external_id = 'mock:' || id::text WHERE external_id IS NULL`);
 
-    console.log(`Seeded ${schedule.length} mock fixtures across ${LEAGUE_MATCHDAYS} matchweeks.`);
-    console.log(`MW1 first kickoff (mock): ${firstKickoff.get('mw-1')?.toISOString()}`);
+    // 7. Fresh Act I joker grant for every participant (§3.6).
+    await regrantJokers(client);
+
+    console.log(`Seeded ${schedule.length} fixtures across ${LEAGUE_ROUNDS} matchweeks (draw seed ${drawSeed}).`);
+    console.log(`MW1 first kickoff: ${firstKickoff.get('mw-1')?.toISOString()}`);
   });
 
   console.log('✓ Domain seed complete.');
