@@ -300,6 +300,8 @@ export interface OverrideAudit {
   action: string;
   changedFields: Record<string, { from: unknown; to: unknown }>;
   adminUserId: string | null;
+  /** Who did it, by name — null if the account was deleted since. */
+  adminName: string | null;
   createdAt: string;
 }
 
@@ -309,10 +311,14 @@ export async function getMatchAudits(matchId: string): Promise<OverrideAudit[]> 
     action: string;
     changed_fields: Record<string, { from: unknown; to: unknown }>;
     admin_user_id: string | null;
+    admin_name: string | null;
     created_at: Date;
   }>(
-    `SELECT id, action, changed_fields, admin_user_id, created_at
-     FROM match_override_audits WHERE match_id = $1 ORDER BY created_at DESC`,
+    `SELECT a.id, a.action, a.changed_fields, a.admin_user_id,
+            u.display_name AS admin_name, a.created_at
+     FROM match_override_audits a
+     LEFT JOIN users u ON u.id = a.admin_user_id
+     WHERE a.match_id = $1 ORDER BY a.created_at DESC`,
     [matchId],
   );
   return rows.map((r) => ({
@@ -320,6 +326,7 @@ export async function getMatchAudits(matchId: string): Promise<OverrideAudit[]> 
     action: r.action,
     changedFields: r.changed_fields,
     adminUserId: r.admin_user_id,
+    adminName: r.admin_name,
     createdAt: new Date(r.created_at).toISOString(),
   }));
 }

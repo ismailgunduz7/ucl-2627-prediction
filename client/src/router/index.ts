@@ -31,6 +31,7 @@ const routes: RouteRecordRaw[] = [
   { path: `${ADMIN_BASE}/kurallar`, name: 'admin-rules', component: () => import('@/views/admin/RulesView.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
   { path: `${ADMIN_BASE}/maclar`, name: 'admin-matches', component: () => import('@/views/admin/MatchesView.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
   { path: `${ADMIN_BASE}/sync`, name: 'admin-sync', component: () => import('@/views/admin/SyncView.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
+  { path: `${ADMIN_BASE}/ayarlar`, name: 'admin-config', component: () => import('@/views/admin/ConfigView.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
 
   { path: '/:pathMatch(.*)*', redirect: '/' },
 ];

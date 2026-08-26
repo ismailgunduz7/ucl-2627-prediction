@@ -39,6 +39,25 @@ export async function getActiveJoker(userId: string, mwId: string): Promise<Acti
   return rows[0] ? { code: rows[0].joker_type_code, payload: rows[0].payload } : null;
 }
 
+/**
+ * Admin repair (§9.3): set a user's remaining count for one joker directly.
+ * Bypasses the activate/cancel bookkeeping on purpose — this is the tool for
+ * when that bookkeeping and reality have drifted apart.
+ */
+export async function setInventoryCount(
+  userId: string,
+  code: JokerCode,
+  remaining: number,
+): Promise<void> {
+  await query(
+    `INSERT INTO joker_inventory (user_id, joker_type_code, remaining_count)
+     VALUES ($1, $2, $3)
+     ON CONFLICT (user_id, joker_type_code)
+     DO UPDATE SET remaining_count = EXCLUDED.remaining_count, updated_at = now()`,
+    [userId, code, remaining],
+  );
+}
+
 /** Seed a new participant's inventory from the Act I defaults (§3.6). */
 export async function grantInitialInventory(userId: string): Promise<void> {
   const defaults = await getConfigValue('joker_inventory_defaults');

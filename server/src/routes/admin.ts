@@ -24,6 +24,8 @@ import { runSync, listSyncRuns } from '../services/score-sync-service.ts';
 import { getSyncSchedulerStatus } from '../services/sync-scheduler.ts';
 import { progressSeason } from '../services/act-service.ts';
 import { getLeagueStandings } from '../services/standings-service.ts';
+import { getInventory, setInventoryCount } from '../services/joker-service.ts';
+import type { JokerCode } from '../domain/joker.ts';
 
 // All admin routes require a valid access token AND the admin role.
 export const adminRoutes = new Hono<{ Variables: AuthVariables }>();
@@ -90,6 +92,29 @@ adminRoutes.delete('/users/:id', async (c) => {
   const auth = c.get('auth');
   await authService.deleteUser(c.req.param('id'), auth.sub);
   return c.json({ ok: true });
+});
+
+// --- Joker inventory repair (§9.3) ----------------------------------------
+adminRoutes.get('/users/:id/jokers', async (c) => {
+  const inventory = await getInventory(c.req.param('id'));
+  return c.json({ inventory });
+});
+
+const JOKER_CODES = ['weekly_swap', 'triple_boost', 'clean_sheet_shield', 'bench_boost'] as const;
+const JokerInventorySchema = z.object({
+  counts: z.record(z.enum(JOKER_CODES), z.number().int().min(0).max(99)),
+});
+
+adminRoutes.put('/users/:id/jokers', async (c) => {
+  const body = JokerInventorySchema.safeParse(await c.req.json().catch(() => null));
+  if (!body.success) throw ApiError.badRequest('Geçersiz joker sayıları', 'invalid_body');
+  const userId = c.req.param('id');
+  const user = await query('SELECT 1 FROM users WHERE id = $1', [userId]);
+  if (user.rowCount === 0) throw ApiError.badRequest('Kullanıcı bulunamadı', 'user_not_found');
+  for (const [code, remaining] of Object.entries(body.data.counts)) {
+    await setInventoryCount(userId, code as JokerCode, remaining);
+  }
+  return c.json({ inventory: await getInventory(userId) });
 });
 
 // --- Teams ----------------------------------------------------------------

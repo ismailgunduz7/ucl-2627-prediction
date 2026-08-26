@@ -3,7 +3,7 @@ import { computed, onMounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import Button from 'primevue/button';
 import Toast from 'primevue/toast';
-import { Home, Users, CalendarDays, BookOpen, LayoutGrid, Network, Calculator, Flag, RefreshCw, Menu, X, LogOut, Table, ListOrdered } from '@lucide/vue';
+import { Home, Users, CalendarDays, BookOpen, LayoutGrid, Network, Calculator, Flag, RefreshCw, Menu, X, LogOut, Table, ListOrdered, Settings } from '@lucide/vue';
 import { useAuthStore } from '@/stores/auth';
 import AppCursor from '@/components/AppCursor.vue';
 import StarBall from '@/components/StarBall.vue';
@@ -33,6 +33,7 @@ const adminNav = [
   { to: '/yonetim/kurallar', label: 'Kurallar', icon: Calculator },
   { to: '/yonetim/maclar', label: 'Maçlar', icon: Flag },
   { to: '/yonetim/sync', label: 'Sync', icon: RefreshCw },
+  { to: '/yonetim/ayarlar', label: 'Ayarlar', icon: Settings },
 ];
 
 const navItems = computed(() => (auth.isAdmin ? adminNav : participantNav));

@@ -10,9 +10,12 @@ import Checkbox from 'primevue/checkbox';
 import Select from 'primevue/select';
 import Tag from 'primevue/tag';
 import Dialog from 'primevue/dialog';
+import InputNumber from 'primevue/inputnumber';
 import { api, ApiRequestError } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
+import { JOKER_NAMES } from '@/lib/jokers';
 import PageHeader from '@/components/PageHeader.vue';
+import JokerIcon from '@/components/JokerIcon.vue';
 
 interface User { id: string; username: string; display_name: string; is_admin: boolean; competition_id: string | null }
 interface Competition { id: string; name: string }
@@ -85,6 +88,41 @@ async function submitPassword() {
     pwSaving.value = false;
   }
 }
+// Joker inventory repair: read the live counts, let the admin set them flat.
+const jokerDialog = ref(false);
+const jokerTarget = ref<User | null>(null);
+const jokerCounts = ref<Record<string, number>>({});
+const jokerSaving = ref(false);
+const JOKER_CODES = ['weekly_swap', 'triple_boost', 'clean_sheet_shield', 'bench_boost'];
+
+async function openJokers(u: User) {
+  jokerTarget.value = u;
+  jokerCounts.value = {};
+  jokerDialog.value = true;
+  try {
+    const res = await api.get<{ inventory: { code: string; remaining: number }[] }>(
+      `/api/admin/users/${u.id}/jokers`,
+    );
+    jokerCounts.value = Object.fromEntries(res.inventory.map((i) => [i.code, i.remaining]));
+  } catch (e) {
+    jokerDialog.value = false;
+    toast.add({ severity: 'error', summary: 'Hata', detail: msg(e), life: 4000 });
+  }
+}
+async function submitJokers() {
+  if (!jokerTarget.value) return;
+  jokerSaving.value = true;
+  try {
+    await api.put(`/api/admin/users/${jokerTarget.value.id}/jokers`, { counts: jokerCounts.value });
+    toast.add({ severity: 'success', summary: 'Joker hakları güncellendi', life: 2500 });
+    jokerDialog.value = false;
+  } catch (e) {
+    toast.add({ severity: 'error', summary: 'Kaydedilemedi', detail: msg(e), life: 4000 });
+  } finally {
+    jokerSaving.value = false;
+  }
+}
+
 function openDelete(u: User) { delTarget.value = u; delDialog.value = true; }
 async function submitDelete() {
   if (!delTarget.value) return;
@@ -166,6 +204,16 @@ onMounted(load);
           <template #body="{ data }">
             <div style="display: flex; gap: 0.25rem">
               <Button
+                v-if="!data.is_admin"
+                icon="pi pi-bolt"
+                severity="secondary"
+                text
+                rounded
+                :aria-label="`${data.display_name} joker haklarını düzenle`"
+                title="Joker hakları"
+                @click="openJokers(data)"
+              />
+              <Button
                 icon="pi pi-key"
                 severity="secondary"
                 text
@@ -200,6 +248,32 @@ onMounted(load);
         <Button label="Kaydet" icon="pi pi-check" :disabled="pwValue.length < 8" :loading="pwSaving" @click="submitPassword" />
       </template>
     </Dialog>
+    <Dialog v-model:visible="jokerDialog" modal header="Joker hakları" :style="{ width: '400px' }">
+      <p class="text-muted" style="margin: 0 0 0.9rem">
+        <strong>{{ jokerTarget?.display_name }}</strong> için kalan hakları doğrudan yazarsın —
+        aktivasyon geçmişine dokunmaz.
+      </p>
+      <div class="joker-rows">
+        <label v-for="code in JOKER_CODES" :key="code" class="joker-row">
+          <span class="joker-row-name"><JokerIcon :code="code" :size="16" /> {{ JOKER_NAMES[code] }}</span>
+          <InputNumber
+            v-model="jokerCounts[code]"
+            :min="0"
+            :max="99"
+            :use-grouping="false"
+            show-buttons
+            button-layout="horizontal"
+            :input-style="{ width: '2.8rem', textAlign: 'center' }"
+            decrement-button-class="p-button-secondary"
+            increment-button-class="p-button-secondary"
+          />
+        </label>
+      </div>
+      <template #footer>
+        <Button label="Vazgeç" text @click="jokerDialog = false" />
+        <Button label="Kaydet" icon="pi pi-check" :loading="jokerSaving" @click="submitJokers" />
+      </template>
+    </Dialog>
     <Dialog v-model:visible="delDialog" modal header="Kullanıcıyı sil" :style="{ width: '380px' }">
       <p style="margin: 0">
         <strong>{{ delTarget?.display_name }}</strong> kalıcı olarak silinsin mi? Kadrosu ve puanları da gider.
@@ -232,4 +306,7 @@ onMounted(load);
   justify-content: flex-end;
   margin-top: 1rem;
 }
+.joker-rows { display: flex; flex-direction: column; gap: 0.6rem; }
+.joker-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+.joker-row-name { display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 600; font-size: 0.92rem; }
 </style>

@@ -18,7 +18,7 @@ Phases 0–6 are built and running against a Supabase database. What follows is 
 - A **mock provider** drives the fixtures off a simulated clock so the pipeline can be exercised before real data exists (§5.1). The football-data.org client is written and behind the same interface, but nothing maps to it until clubs carry real provider ids. The background sync job stays parked for as long as the mock is the configured provider.
 - Level knockout aggregates are settled by a **shootout seeded from the tie id** rather than real penalty data (§2.4), so recalculation always reaches the same winner.
 
-**Not built yet:** admin screens for config / joker inventory / override history. See §13 Phase 7.
+**Not built yet:** nothing user-facing is missing from the spec any more. What remains in §13 Phase 7 is production deploy configuration, deeper edge-case tests, and the real-data reseed once UEFA publishes the draw.
 
 ---
 
@@ -704,8 +704,7 @@ The grouping — the round a week belongs to, its place in the menu, what its le
 
 ### 10.2 Admin
 
-- Users (create accounts), competitions, rules, matches/overrides, sync, recalculate — all built.
-- Config editor, joker repair and override history — pending (§13 Phase 7).
+- Users (create accounts, password resets, joker-inventory repair), competitions, rules, matches with overrides and their audit history, sync, recalculate, and the settings page (provider, joker grants, deadline banner window, manual season progression) — all built.
 
 UI copy is Turkish; code identifiers are English. The interface is dark-only, built on the design tokens and PrimeVue preset described in [AGENTS.md](AGENTS.md).
 
@@ -794,12 +793,11 @@ UI copy is Turkish; code identifiers are English. The interface is dark-only, bu
 
 ### Phase 7 — Remaining work
 
-Ordered by what blocks a real season most. Shipped from this list already: the live delta feed (§18.6), the season replay (§18.8), the wrap card's rank movement with the bye and bonus lines (§18.3), and the knockout time-basis question (§4.4), settled by dropping the unused flag.
+Ordered by what blocks a real season most. Shipped from this list already: the live delta feed (§18.6), the season replay (§18.8), the wrap card's rank movement with the bye and bonus lines (§18.3), the admin screens for config, joker-inventory repair and override history, and the knockout time-basis question (§4.4), settled by dropping the unused flag.
 
 1. **Production deploy configuration.**
-2. **Admin screens** for tournament config, joker inventory repair and match override history — the APIs exist for the first and last, the second needs both. The one config knob with a real home already has a field on the scoring rules screen (§18.9).
-3. Remaining edge-case tests from §11: provider score correction after a finish, a postponed match holding its week open, and the top-8 bonus.
-4. **Final pot seed** once UEFA publishes the 2026–27 draw, plus provider id mapping so the real feed takes over from the mock.
+2. Remaining edge-case tests from §11: provider score correction after a finish, a postponed match holding its week open, and the top-8 bonus.
+3. **Final pot seed** once UEFA publishes the 2026–27 draw, plus provider id mapping so the real feed takes over from the mock.
 
 ---
 
