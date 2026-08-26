@@ -14,6 +14,7 @@ import BallLoader from '@/components/BallLoader.vue';
 import JokerIcon from '@/components/JokerIcon.vue';
 import CaptainBadge from '@/components/CaptainBadge.vue';
 import FixtureLine from '@/components/FixtureLine.vue';
+import OctopusMark from '@/components/OctopusMark.vue';
 
 interface RuleEntry { ruleCode: string; ruleLabel: string; points: number }
 interface ClubFixture {
@@ -28,6 +29,7 @@ interface ClubBreakdown {
 interface WeekBreakdown {
   matchweekId: string; label: string; status: string; final: boolean;
   total: number; jokerCode: string | null; clubs: ClubBreakdown[];
+  predictions: { settled: number; correct: number; points: number };
 }
 interface PlayerPoints {
   player: { id: string; displayName: string; totalPoints: number };
@@ -164,6 +166,12 @@ watch(() => route.params.id, (id) => id && load(id as string));
                   </li>
                 </ul>
               </div>
+
+              <div v-if="w.predictions.correct" class="club-row paul-row">
+                <span class="paul-name"><OctopusMark :size="17" /> Ahtapot Paul</span>
+                <span class="text-muted">{{ w.predictions.correct }}/{{ w.predictions.settled }} doğru</span>
+                <strong class="text-positive">{{ signed(w.predictions.points) }}</strong>
+              </div>
             </div>
           </AccordionContent>
         </AccordionPanel>
@@ -182,6 +190,9 @@ watch(() => route.params.id, (id) => id && load(id as string));
 .club-list { display: flex; flex-direction: column; gap: 0.65rem; }
 .club-row { background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0.7rem 0.85rem; }
 .club-row.muted { opacity: 0.6; }
+.paul-row { display: flex; align-items: center; gap: 0.75rem; }
+.paul-row .paul-name { display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 600; }
+.paul-row strong { margin-left: auto; }
 .club-top { display: flex; align-items: center; gap: 0.7rem; }
 .club-id { display: inline-flex; text-decoration: none; }
 .crest-xs { width: 28px; height: 28px; font-size: 0.7rem; }

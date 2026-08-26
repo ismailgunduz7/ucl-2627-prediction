@@ -10,7 +10,7 @@ Working conventions for contributors (commits, git workflow, design language, te
 
 Phases 0–6 are built and running against a Supabase database. What follows is the full specification; this section records where reality currently stands so nobody has to infer it from the code.
 
-**Built and verified:** auth and admin-provisioned accounts · pots, clubs, matchweeks, matches, config · permanent squad with one-club-per-pot enforced in the database · club-layer scoring with the per-pot rules editor · provider sync behind a swappable interface with manual-override protection and an audit log · weekly bench/captain with the `T0 − 5m` lock and the M+1 gate · the four jokers with one-per-week activation and cancel/refund · provisional scoring on read and finals on completion · leaderboard, league table, per-player and per-club points breakdowns · the league→knockout act transition (eliminations, top-8 bonus, joker refresh, act transfer) and the knockout bracket through the final with advancement and medals · the background sync job with adaptive cadence and backoff.
+**Built and verified:** auth and admin-provisioned accounts · pots, clubs, matchweeks, matches, config · permanent squad with one-club-per-pot enforced in the database · club-layer scoring with the per-pot rules editor · provider sync behind a swappable interface with manual-override protection and an audit log · weekly bench/captain with the `T0 − 5m` lock and the M+1 gate · the four jokers with one-per-week activation and cancel/refund · provisional scoring on read and finals on completion · leaderboard, league table, per-player and per-club points breakdowns · the league→knockout act transition (eliminations, top-8 bonus, joker refresh, act transfer) and the knockout bracket through the final with advancement and medals · the background sync job with adaptive cadence and backoff · Ahtapot Paul, the weekly 1X2 coupon (§18.9).
 
 **Deliberate deviations from the spec, all temporary:**
 
@@ -810,6 +810,7 @@ Ordered by what blocks a real season most.
 8. League → knockout: mark league eliminations; jokers refresh; optional same-pot permanent transfer committed immediately, locked at first KO week lock; swap/act-transfer interaction per §3.6–3.7.
 9. Full path in scope; one-time `league_top8_bonus` for clubs finishing league positions 1–8 (idle play-off weeks score 0, no per-week bye award); no qualifying; no betting; no random mode.
 10. Crest wall + boosted chip; season replay; selection lock = MW1 lineup lock.
+11. Ahtapot Paul: one MS1/MS0/MS2 call per match of the week, locked with the lineup, each correct call worth the configured points inside that week's total.
 
 ---
 
@@ -899,3 +900,13 @@ Four crests; bench muted **unless** `bench_boost` (then equal weight + **boosted
 ### 18.8 Season replay
 
 Final rank/total; best/worst week; joker usage; captain hit rate; act transfer committed vs expired; cumulative points timeline.
+
+### 18.9 Ahtapot Paul (1X2 predictions)
+
+A side game on top of the squad: for **every match of the matchweek** — not only the ones a participant's clubs play — they call the outcome as **MS1 / MS0 / MS2** (home / draw / away). Each correct call is worth `prediction_points_per_correct` (seeded 3, admin-editable), and those points join that week's participant total, so there is one score and one leaderboard.
+
+- **One deadline.** The coupon locks with the lineup, at `T0 − 5 minutes` of the week's first kickoff (§3.4). Weeks open for editing under the M+1 rule are open for predictions too.
+- **Picks are stored per match**, as the outcome seen from the home side, so a provider reschedule cannot silently flip a call.
+- **Settlement follows the club layer** (§4.3 Option A): a finished match settles definitively, a live match counts on its current score, and a postponed or cancelled match counts for nobody. The week's tally therefore climbs live and is frozen by `finalizeMatchweek` along with the rest of the week.
+- **Clicking the live pick again clears it**; there is no separate save.
+- Named for Paul the octopus. Lucide has no octopus, so the mark is drawn in `OctopusMark.vue` on the same grid and stroke as the rest of the icon set.

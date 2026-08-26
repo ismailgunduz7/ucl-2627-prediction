@@ -16,6 +16,8 @@ export const DEFAULT_CONFIG = {
     knockout: { weekly_swap: 2, triple_boost: 1, clean_sheet_shield: 2, bench_boost: 1 },
   } as Record<'league_phase' | 'knockout', JokerInventoryDefaults>,
   deadline_drama_window_seconds: 7200,
+  /** Ahtapot Paul: points for each correct 1X2 call (§18.9). */
+  prediction_points_per_correct: 3,
   feature_flags: {} as Record<string, boolean>,
   sync_provider: 'mock' as 'mock' | 'football_data',
 };

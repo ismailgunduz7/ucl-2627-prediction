@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue';
 import { Zap, Shield, Repeat, Armchair } from '@lucide/vue';
 import { api } from '@/lib/api';
 import PageHeader from '@/components/PageHeader.vue';
+import OctopusMark from '@/components/OctopusMark.vue';
 import BallLoader from '@/components/BallLoader.vue';
 
 interface RuleRow { code: string; category: string; label: string; points: Record<number, number> }
@@ -10,6 +11,7 @@ interface Pot { tierId: number; tierName: string; teams: { id: string; name: str
 
 const rules = ref<RuleRow[]>([]);
 const pots = ref<Pot[]>([]);
+const predictionPoints = ref(3);
 const loading = ref(true);
 
 const categoryLabel: Record<string, string> = { match: 'Maç', league: 'Lig', knockout: 'Eleme' };
@@ -24,11 +26,12 @@ const jokers = [
 onMounted(async () => {
   try {
     const [r, t] = await Promise.all([
-      api.get<{ rules: RuleRow[] }>('/api/scoring-rules'),
+      api.get<{ rules: RuleRow[]; predictionPointsPerCorrect: number }>('/api/scoring-rules'),
       api.get<{ pots: Pot[] }>('/api/teams'),
     ]);
     rules.value = r.rules;
     pots.value = t.pots;
+    predictionPoints.value = r.predictionPointsPerCorrect;
   } finally {
     loading.value = false;
   }
@@ -87,6 +90,14 @@ onMounted(async () => {
       </section>
 
       <section class="surface-card card-pad">
+        <div class="section-title paul-title"><OctopusMark :size="19" /> Ahtapot Paul</div>
+        <p class="text-muted" style="margin: 0">
+          Haftanın her maçı için MS1, MS0 ya da MS2 dersin. Tutan her tahmin {{ predictionPoints }} puan yazar ve
+          haftalık toplamına eklenir. Kupon, dizilimle aynı anda kilitlenir.
+        </p>
+      </section>
+
+      <section class="surface-card card-pad">
         <div class="section-title">Potlar ve kulüpler</div>
         <div class="pot-grid">
           <div v-for="p in pots" :key="p.tierId" class="pot-box">
@@ -106,6 +117,7 @@ onMounted(async () => {
 .rules th, .rules td { padding: 0.6rem 0.75rem; text-align: center; border-bottom: 1px solid var(--color-border); }
 .rules thead th { background: var(--color-bg-subtle); font-size: 0.82rem; font-weight: 700; color: var(--color-text-secondary); }
 .rules tbody tr:last-child td { border-bottom: none; }
+.paul-title { display: flex; align-items: center; gap: 0.5rem; }
 .joker-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 0.9rem; }
 .joker-card { background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0.9rem; display: flex; flex-direction: column; gap: 0.45rem; }
 .joker-head { display: flex; align-items: center; gap: 0.5rem; color: var(--color-primary); }

@@ -38,6 +38,8 @@ export interface WeekBreakdown {
   total: number;
   jokerCode: string | null;
   clubs: ClubBreakdown[];
+  /** Ahtapot Paul's share of the week, already inside `total` (§18.9). */
+  predictions: { settled: number; correct: number; points: number };
 }
 
 export interface PlayerPoints {
@@ -164,6 +166,7 @@ export async function getPlayerPoints(
     final: score.final,
     total: score.total,
     jokerCode: score.jokerCode ?? null,
+    predictions: score.predictions,
     clubs: score.lines.map((l) => ({
       teamId: l.teamId,
       name: l.name,

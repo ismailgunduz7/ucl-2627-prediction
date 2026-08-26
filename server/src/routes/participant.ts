@@ -28,6 +28,7 @@ import {
   getInventory,
 } from '../services/joker-service.ts';
 import { getBriefing, getOpenPicks } from '../services/briefing-service.ts';
+import { getWeekPredictions, savePrediction } from '../services/prediction-service.ts';
 import type { JokerCode } from '../domain/joker.ts';
 import { query } from '../db/pool.ts';
 import { SQUAD_SIZE } from '../domain/constants.ts';
@@ -64,8 +65,11 @@ participantRoutes.get('/teams/:id', async (c) => {
 
 // --- Scoring rules matrix (read-only) ------------------------------------
 participantRoutes.get('/scoring-rules', async (c) => {
-  const rules = await getRulesMatrix();
-  return c.json({ rules });
+  const [rules, predictionPointsPerCorrect] = await Promise.all([
+    getRulesMatrix(),
+    getConfigValue('prediction_points_per_correct'),
+  ]);
+  return c.json({ rules, predictionPointsPerCorrect });
 });
 
 // --- Tournament status ----------------------------------------------------
@@ -160,6 +164,32 @@ participantRoutes.get('/matchweeks/:id/score', async (c) => {
   const score = await getParticipantWeekScore(auth.sub, c.req.param('id'));
   if (!score) return c.json({ score: null });
   return c.json({ score });
+});
+
+// --- Ahtapot Paul: 1X2 predictions (§18.9) --------------------------------
+participantRoutes.get('/matchweeks/:id/predictions', async (c) => {
+  const auth = c.get('auth');
+  const predictions = await getWeekPredictions(auth.sub, c.req.param('id'));
+  return c.json(predictions);
+});
+
+const PredictionSchema = z.object({
+  matchId: z.string().uuid(),
+  // null clears a call the participant no longer wants to make.
+  pick: z.enum(['home', 'draw', 'away']).nullable(),
+});
+
+participantRoutes.put('/matchweeks/:id/predictions', async (c) => {
+  const auth = c.get('auth');
+  const body = PredictionSchema.safeParse(await c.req.json().catch(() => null));
+  if (!body.success) throw ApiError.badRequest('Geçersiz tahmin isteği', 'invalid_body');
+  const predictions = await savePrediction(
+    auth.sub,
+    c.req.param('id'),
+    body.data.matchId,
+    body.data.pick,
+  );
+  return c.json(predictions);
 });
 
 // --- Jokers (§3.6) --------------------------------------------------------

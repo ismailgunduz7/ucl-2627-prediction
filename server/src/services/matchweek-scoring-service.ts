@@ -5,6 +5,8 @@ import { scoreMatchDraft } from '../domain/scoring.ts';
 import { resolveLineup, type EffectiveClub } from './lineup-service.ts';
 import { getActiveJoker } from './joker-service.ts';
 import { getTierRules } from './rule-loader.ts';
+import { getPredictionTally } from './prediction-service.ts';
+import type { PredictionTally } from '../domain/prediction.ts';
 
 /**
  * Club-layer points for a matchweek, per team id: definitive finished lines plus
@@ -100,6 +102,8 @@ export interface ParticipantWeekScore {
   final: boolean;
   /** active joker code for the week, if any. */
   jokerCode: string | null;
+  /** Ahtapot Paul's haul for the week, already included in `total` (§18.9). */
+  predictions: PredictionTally;
 }
 
 function decorateLines(lines: ClubLine[], squad: EffectiveClub[]): ParticipantWeekLine[] {
@@ -121,6 +125,7 @@ export async function computeParticipantMatchweek(
 
   const teamPoints = await getTeamPointsForMatchweek(mwId);
   const joker = await getActiveJoker(userId, mwId);
+  const predictions = await getPredictionTally(userId, mwId);
 
   // clean_sheet_shield: bump the target club's points by the shield delta (§3.6).
   if (joker?.code === 'clean_sheet_shield') {
@@ -144,10 +149,11 @@ export async function computeParticipantMatchweek(
     matchweekId: mwId,
     benchTeamId: lineup.benchTeamId,
     captainTeamId: lineup.captainTeamId,
-    total: result.total,
+    total: result.total + predictions.points,
     lines: decorateLines(result.lines, lineup.squad),
     final: false,
     jokerCode: joker?.code ?? null,
+    predictions,
   };
 }
 
@@ -174,6 +180,8 @@ export async function getParticipantWeekScore(
       total: finalRow.rows[0].points,
       final: true,
       jokerCode: b.jokerCode ?? null,
+      // Weeks finalised before Ahtapot Paul existed carry no tally.
+      predictions: b.predictions ?? { settled: 0, correct: 0, points: 0 },
     };
   }
   return computeParticipantMatchweek(userId, mwId);

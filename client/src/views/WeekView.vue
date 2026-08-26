@@ -12,18 +12,36 @@ import PageHeader from '@/components/PageHeader.vue';
 import BallLoader from '@/components/BallLoader.vue';
 import JokerIcon from '@/components/JokerIcon.vue';
 import CaptainBadge from '@/components/CaptainBadge.vue';
+import FixtureLine from '@/components/FixtureLine.vue';
+import OctopusMark from '@/components/OctopusMark.vue';
 import { JOKER_ICONS, JOKER_NAMES } from '@/lib/jokers';
 
 interface Mw { id: string; label: string; status: string; editable: boolean; opened: boolean; locked: boolean }
 interface SquadClub { teamId: string; tierId: number; name: string; shortName: string; eliminated: boolean }
 interface Lineup { benchTeamId: string; captainTeamId: string; saved: boolean; lockAt: string | null; locked: boolean; opened: boolean; editable: boolean }
 interface ScoreLine { teamId: string; name: string; basePoints: number; benched: boolean; captain: boolean; multiplier: number; contributed: number }
-interface WeekScore { total: number; final: boolean; lines: ScoreLine[]; jokerCode: string | null }
+interface WeekScore { total: number; final: boolean; lines: ScoreLine[]; jokerCode: string | null; predictions: { settled: number; correct: number; points: number } }
 interface Inventory { code: string; name: string; remaining: number }
 interface ActiveJoker { code: string; payload: Record<string, unknown> }
 interface BriefingClub { teamId: string; name: string; fixtures: { opponentName: string; opponentTierId: number; home: boolean }[]; difficulty: string | null }
 interface OpenPick { userId: string; displayName: string; benchName: string; captainName: string; jokerCode: string | null }
 interface Pot { tierId: number; teams: { id: string; name: string; eliminated: boolean; isActive: boolean }[] }
+type Pick = 'home' | 'draw' | 'away';
+interface PredictionMatch {
+  matchId: string; homeName: string; awayName: string; kickoffAt: string | null; status: string;
+  homeScore: number | null; awayScore: number | null; pick: Pick | null; result: Pick | null;
+}
+interface WeekPredictions {
+  matches: PredictionMatch[]; editable: boolean; lockAt: string | null;
+  pointsPerCorrect: number; tally: { settled: number; correct: number; points: number };
+}
+
+/** MS1 / MS0 / MS2, written the way a coupon writes them. */
+const PICK_OPTIONS: { value: Pick; label: string }[] = [
+  { value: 'home', label: 'MS1' },
+  { value: 'draw', label: 'MS0' },
+  { value: 'away', label: 'MS2' },
+];
 
 const toast = useToast();
 
@@ -37,6 +55,7 @@ const activeJoker = ref<ActiveJoker | null>(null);
 const briefing = ref<BriefingClub[]>([]);
 const openPicks = ref<{ available: boolean; picks: OpenPick[] }>({ available: false, picks: [] });
 const pots = ref<Pot[]>([]);
+const predictions = ref<WeekPredictions | null>(null);
 const loading = ref(true);
 const busy = ref(false);
 const now = ref(Date.now());
@@ -247,18 +266,46 @@ async function loadAll() {
 async function loadWeek() {
   if (!selectedMw.value) return;
   const id = selectedMw.value;
-  const [lu, sc, jk, br, op] = await Promise.all([
+  const results = await Promise.all([
     api.get<{ lineup: Lineup | null; squad: SquadClub[] }>(`/api/matchweeks/${id}/lineup`),
     api.get<{ score: WeekScore | null }>(`/api/matchweeks/${id}/score`),
     api.get<{ inventory: Inventory[]; active: ActiveJoker | null }>(`/api/matchweeks/${id}/jokers`),
     api.get<{ briefing: BriefingClub[] }>(`/api/matchweeks/${id}/briefing`),
     api.get<{ available: boolean; picks: OpenPick[] }>(`/api/matchweeks/${id}/open-picks`),
+    api.get<WeekPredictions>(`/api/matchweeks/${id}/predictions`),
   ]);
+  const [lu, sc, jk, br, op, pr] = results;
   lineup.value = lu.lineup; squad.value = lu.squad; score.value = sc.score;
   inventory.value = jk.inventory; activeJoker.value = jk.active;
-  briefing.value = br.briefing; openPicks.value = op;
+  briefing.value = br.briefing; openPicks.value = op; predictions.value = pr;
   benchId.value = lu.lineup?.benchTeamId ?? null;
   captainId.value = lu.lineup?.captainTeamId ?? null;
+}
+
+/** Clicking the live pick again takes it back. */
+async function pickOutcome(m: PredictionMatch, value: Pick) {
+  if (!predictions.value?.editable || busy.value) return;
+  const next = m.pick === value ? null : value;
+  const previous = m.pick;
+  m.pick = next; // optimistic, so the coupon answers the click at once
+  busy.value = true;
+  try {
+    predictions.value = await api.put<WeekPredictions>(
+      `/api/matchweeks/${selectedMw.value}/predictions`,
+      { matchId: m.matchId, pick: next },
+    );
+  } catch (e) {
+    m.pick = previous;
+    toast.add({ severity: 'error', summary: 'Tahmin kaydedilemedi', detail: msg(e), life: 4000 });
+  } finally {
+    busy.value = false;
+  }
+}
+
+function pickState(m: PredictionMatch, value: Pick) {
+  if (m.pick !== value) return '';
+  if (!m.result) return 'on';
+  return m.result === value ? 'hit' : 'miss';
 }
 
 function msg(e: unknown) { return e instanceof ApiRequestError ? e.message : 'Beklenmeyen hata'; }
@@ -418,6 +465,44 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
         </div>
       </section>
 
+      <section v-if="predictions?.matches.length" class="surface-card card-pad">
+        <div class="section-title paul-head">
+          <span class="paul-name"><OctopusMark :size="20" /> Ahtapot Paul</span>
+          <span v-if="predictions.tally.settled" class="paul-tally">
+            {{ predictions.tally.correct }}/{{ predictions.tally.settled }}
+            <strong class="text-positive">+{{ predictions.tally.points }}</strong>
+          </span>
+        </div>
+
+        <div class="paul-list">
+          <div v-for="m in predictions.matches" :key="m.matchId" class="paul-row">
+            <FixtureLine
+              class="paul-fixture"
+              :team-name="m.homeName"
+              :opponent-name="m.awayName"
+              :home="true"
+              :team-score="m.homeScore"
+              :opponent-score="m.awayScore"
+            />
+            <div class="paul-picks">
+              <button
+                v-for="opt in PICK_OPTIONS"
+                :key="opt.value"
+                type="button"
+                class="pick-btn press"
+                :class="pickState(m, opt.value)"
+                :disabled="!predictions.editable"
+                :aria-pressed="m.pick === opt.value"
+                :aria-label="`${m.homeName} - ${m.awayName}: ${opt.label}`"
+                @click="pickOutcome(m, opt.value)"
+              >
+                {{ opt.label }}
+              </button>
+            </div>
+          </div>
+        </div>
+      </section>
+
       <section v-if="score" class="surface-card card-pad">
         <div class="section-title" style="display: flex; justify-content: space-between; align-items: center">
           <span>{{ isComplete ? 'Hafta kapanışı' : 'Anlık puan' }}
@@ -438,6 +523,15 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
               <td class="line-points">
                 <span v-if="sittingOut(l)">—</span>
                 <span v-else>{{ l.basePoints }} → <strong>{{ l.contributed >= 0 ? '+' : '' }}{{ l.contributed }}</strong></span>
+              </td>
+            </tr>
+            <tr v-if="score.predictions.correct" class="paul-line">
+              <td>
+                <span class="line-club"><OctopusMark :size="16" /> Ahtapot Paul</span>
+              </td>
+              <td class="line-points">
+                {{ score.predictions.correct }} doğru →
+                <strong>+{{ score.predictions.points }}</strong>
               </td>
             </tr>
           </tbody>
@@ -562,6 +656,35 @@ watch(selectedMw, () => { if (!loading.value) loadWeek(); });
 .lines td { height: 2.9rem; padding: 0 0.35rem; border-bottom: 1px solid var(--color-border); font-size: var(--text-sm); }
 .line-club { display: inline-flex; align-items: center; gap: 0.5rem; }
 .line-points { text-align: right; white-space: nowrap; }
+.paul-line td { color: var(--color-text-secondary); }
+
+.paul-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
+.paul-name { display: inline-flex; align-items: center; gap: 0.5rem; }
+.paul-tally { font-size: var(--text-sm); font-weight: 700; color: var(--color-text-muted); }
+.paul-list { display: flex; flex-direction: column; }
+.paul-row {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-4);
+  padding: 0.6rem 0; border-bottom: 1px solid var(--color-border); flex-wrap: wrap;
+}
+.paul-row:last-child { border-bottom: none; }
+.paul-fixture { font-size: var(--text-sm); }
+.paul-picks { display: flex; gap: 0.4rem; margin-left: auto; }
+.pick-btn {
+  min-width: 52px; height: 34px; padding: 0 0.6rem;
+  border-radius: var(--radius-pill); border: 1.5px solid var(--color-border-control);
+  background: var(--color-bg-subtle); color: var(--color-text-secondary);
+  font: inherit; font-size: var(--text-xs); font-weight: 700; cursor: pointer;
+  transition: background var(--dur-fast) var(--ease-out), color var(--dur-fast) var(--ease-out),
+    border-color var(--dur-fast) var(--ease-out), transform var(--dur-fast) var(--ease-out);
+}
+.pick-btn:hover:not(:disabled) { color: var(--color-text); border-color: var(--color-primary); }
+.pick-btn:disabled { cursor: default; }
+.pick-btn.on { background: var(--color-primary-soft); border-color: var(--color-primary); color: #fff; }
+.pick-btn.hit { background: var(--color-success-soft); border-color: var(--color-success); color: var(--color-success); }
+.pick-btn.miss { background: var(--color-danger-soft); border-color: var(--color-danger); color: var(--color-danger); }
+@media (pointer: coarse) {
+  .pick-btn { height: 44px; min-width: 60px; }
+}
 .lines tr:last-child td { border-bottom: none; }
 .lines tr.muted td { color: var(--color-text-muted); }
 .swap-list { display: flex; flex-direction: column; gap: 0.45rem; max-height: 320px; overflow-y: auto; }
