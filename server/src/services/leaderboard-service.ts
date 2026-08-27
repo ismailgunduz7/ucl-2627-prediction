@@ -1,4 +1,5 @@
 import { query } from '../db/pool.ts';
+import { rankOf } from '../domain/ranking.ts';
 import { computeParticipantMatchweek } from './matchweek-scoring-service.ts';
 
 export interface RankMovement {
@@ -9,10 +10,13 @@ export interface RankMovement {
 
 /**
  * Where a participant stood after a completed matchweek versus after the one
- * before it (§18.3, the wrap card's rank delta). Uses FINAL scores only, over
- * completed weeks in play order, with the leaderboard's own tie-break (points
- * in the week itself). The display-only alphabetical tie-break never changes a
- * rank number under standard competition ranking, so it is not needed here.
+ * before it (§18.3, the wrap card's rank delta). FINAL scores only, over
+ * completed weeks in play order.
+ *
+ * Ranking goes through `rankOf` for the same reason the leaderboard does: a
+ * tie-break orders tied rows on a page but must never hand them different rank
+ * numbers, or the week wrap and the leaderboard disagree about where a player
+ * finished.
  */
 export async function getRankMovement(
   competitionId: string,
@@ -38,23 +42,14 @@ export async function getRankMovement(
 
   const rankAfter = (weekIndex: number): number | null => {
     const included = new Set(order.slice(0, weekIndex + 1));
-    const tieWeek = order[weekIndex]!;
-    const totals = new Map<string, { total: number; tie: number }>();
+    const totals = new Map<string, number>();
     for (const r of scores.rows) {
       if (!included.has(r.matchweek_id)) continue;
-      const t = totals.get(r.user_id) ?? { total: 0, tie: 0 };
-      t.total += r.points;
-      if (r.matchweek_id === tieWeek) t.tie = r.points;
-      totals.set(r.user_id, t);
+      totals.set(r.user_id, (totals.get(r.user_id) ?? 0) + r.points);
     }
     const mine = totals.get(userId);
-    if (!mine) return null;
-    let ahead = 0;
-    for (const [id, t] of totals) {
-      if (id === userId) continue;
-      if (t.total > mine.total || (t.total === mine.total && t.tie > mine.tie)) ahead++;
-    }
-    return ahead + 1;
+    if (mine === undefined) return null;
+    return rankOf(mine, totals.values());
   };
 
   const rank = rankAfter(idx);
@@ -83,8 +78,11 @@ export interface LeaderboardEntry {
 /**
  * Competition leaderboard (§4.8). Sums each participant's FINAL completed-week
  * scores plus a PROVISIONAL computed total for any in-progress week. Admins are
- * excluded. Standard competition ranking (1,2,2,4); tie-break = points in the
- * most recent completed matchweek, then display_name.
+ * excluded.
+ *
+ * Ranks are standard competition ranking (1, 2, 2, 4). Points in the most
+ * recent completed matchweek and then display_name decide the order tied rows
+ * are LISTED in, never the rank they are given.
  */
 export async function getLeaderboard(competitionId: string): Promise<LeaderboardEntry[]> {
   const participants = await query<{ id: string; display_name: string }>(
@@ -172,13 +170,8 @@ export async function getLeaderboard(competitionId: string): Promise<Leaderboard
     return a.displayName.localeCompare(b.displayName, 'tr');
   });
 
-  // Standard competition ranking (ties share a rank; next rank skips).
-  const ranked: LeaderboardEntry[] = [];
-  for (let i = 0; i < entries.length; i++) {
-    const e = entries[i]!;
-    const prev = ranked[i - 1];
-    const rank = prev && prev.total === e.total ? prev.rank : i + 1;
-    ranked.push({ ...e, rank });
-  }
-  return ranked;
+  // Standard competition ranking. The sort above only decides display order;
+  // the number itself comes from the shared helper (§4.8).
+  const totals = entries.map((e) => e.total);
+  return entries.map((e) => ({ ...e, rank: rankOf(e.total, totals) }));
 }

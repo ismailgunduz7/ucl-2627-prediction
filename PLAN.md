@@ -410,8 +410,8 @@ Incremental path: on match upsert, update that match's club lines (or live draft
 
 - **Scope:** leaderboards list only **participants** of the requesting user's competition. `is_admin` users are **excluded** from every participant leaderboard and never counted in ranks (§3.1).
 - Primary: sum of **final** `player_matchday_scores.points`, plus **live/provisional** computed total for any in-progress **or still-incomplete** matchweek; including an earlier week awaiting a postponed match (§4.5, Option A).
-- Tie-break: higher points in the most recent **completed** matchweek, then alphabetical `display_name`.
-- Display ranks use standard competition ranking (“1224”).
+- Display ranks use standard competition ranking (“1224”): everyone level on the primary total shares a rank, and the next distinct total skips the places the tie consumed.
+- Tie-break: higher points in the most recent **completed** matchweek, then alphabetical `display_name`. This decides the order tied rows are **listed** in and never splits a shared rank, so the number on the leaderboard is the number the weekly rank delta reports.
 
 ---
 
@@ -885,7 +885,7 @@ Before lock on the hub: list the user's four clubs' fixtures (opponent, home/awa
 
 When matchweek auto-completes (§4.6): week total, per-club lines (bench “puan yazılmadı” unless boosted; a bye club shows “maç yok · 0”; show `league_top8_bonus` line if awarded that week), captain/joker callout, rank delta. In-app only; share image optional later.
 
-*Built* into the hub's week section: on a completed week the header carries the rank after that week with an arrow against the week before (the season's first week just states the rank), each club line unfolds its rule chips from the delta feed (which is where a `league_top8_bonus` or `round_advance` line shows itself) and a club that had no fixture says "maç yok · 0" instead of pretending it played. The rank delta is computed from final scores only, over completed weeks in play order, with the leaderboard's own tie-break.
+*Built* into the hub's week section: on a completed week the header carries the rank after that week with an arrow against the week before (the season's first week just states the rank), each club line unfolds its rule chips from the delta feed (which is where a `league_top8_bonus` or `round_advance` line shows itself) and a club that had no fixture says "maç yok · 0" instead of pretending it played. The rank delta is computed from final scores only, over completed weeks in play order, through the same ranking helper the leaderboard uses.
 
 ### 18.4 Open picks
 
