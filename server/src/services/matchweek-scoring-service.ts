@@ -6,7 +6,7 @@ import { resolveLineup, type EffectiveClub } from './lineup-service.ts';
 import { getActiveJoker } from './joker-service.ts';
 import { getTierRules } from './rule-loader.ts';
 import { getPredictionTally } from './prediction-service.ts';
-import type { PredictionTally } from '../domain/prediction.ts';
+import { normalizeTally, type PredictionTally } from '../domain/prediction.ts';
 
 /**
  * Club-layer points for a matchweek, per team id: definitive finished lines plus
@@ -191,8 +191,9 @@ export async function getParticipantWeekScore(
       total: finalRow.rows[0].points,
       final: true,
       jokerCode: b.jokerCode ?? null,
-      // Weeks finalised before Ahtapot Paul existed carry no tally.
-      predictions: b.predictions ?? { settled: 0, correct: 0, points: 0 },
+      // Weeks finalised before Ahtapot Paul existed carry no tally at all, and
+      // ones finalised before the provisional count existed carry a partial one.
+      predictions: normalizeTally(b.predictions),
     };
   }
   return computeParticipantMatchweek(userId, mwId);

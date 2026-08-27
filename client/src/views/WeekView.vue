@@ -22,7 +22,8 @@ interface Mw { id: string; label: string; status: string; editable: boolean; ope
 interface SquadClub { teamId: string; tierId: number; name: string; shortName: string; eliminated: boolean }
 interface Lineup { benchTeamId: string; captainTeamId: string; saved: boolean; lockAt: string | null; locked: boolean; opened: boolean; editable: boolean }
 interface ScoreLine { teamId: string; name: string; basePoints: number; benched: boolean; captain: boolean; multiplier: number; contributed: number }
-interface WeekScore { total: number; final: boolean; lines: ScoreLine[]; jokerCode: string | null; predictions: { settled: number; correct: number; points: number } }
+interface PredictionTally { settled: number; correct: number; points: number; provisional: number }
+interface WeekScore { total: number; final: boolean; lines: ScoreLine[]; jokerCode: string | null; predictions: PredictionTally }
 interface Inventory { code: string; name: string; remaining: number }
 interface ActiveJoker { code: string; payload: Record<string, unknown> }
 interface BriefingClub { teamId: string; name: string; fixtures: { opponentName: string; opponentTierId: number; home: boolean }[]; difficulty: string | null }
@@ -35,7 +36,7 @@ interface PredictionMatch {
 }
 interface WeekPredictions {
   matches: PredictionMatch[]; editable: boolean; lockAt: string | null;
-  pointsPerCorrect: number; tally: { settled: number; correct: number; points: number };
+  pointsPerCorrect: number; tally: PredictionTally;
 }
 interface DeltaEvent { ruleCode: string; label: string; points: number; provisional: boolean }
 interface ClubDeltas { teamId: string; name: string; shortName: string; captain: boolean; events: DeltaEvent[] }
@@ -534,6 +535,11 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
           <span v-if="predictions.tally.settled" class="paul-tally">
             {{ predictions.tally.correct }}/{{ predictions.tally.settled }}
             <strong class="text-positive">+{{ predictions.tally.points }}</strong>
+            <span
+              v-if="predictions.tally.provisional"
+              class="live-chip"
+              :title="`${predictions.tally.provisional} maç sürüyor, bu sayı değişebilir`"
+            ><span class="dot" />canlı</span>
           </span>
         </div>
 
@@ -820,7 +826,7 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
 
 .paul-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; }
 .paul-name { display: inline-flex; align-items: center; gap: 0.5rem; }
-.paul-tally { font-size: var(--text-sm); font-weight: 700; color: var(--color-text-muted); }
+.paul-tally { display: inline-flex; align-items: center; gap: 0.4rem; font-size: var(--text-sm); font-weight: 700; color: var(--color-text-muted); }
 .paul-list { display: flex; flex-direction: column; }
 .paul-row {
   display: flex; align-items: center; justify-content: space-between; gap: var(--space-4);

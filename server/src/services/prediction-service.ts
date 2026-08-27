@@ -78,7 +78,7 @@ async function picksOf(userId: string, matchIds: string[]): Promise<Map<string, 
 
 /**
  * Results so far. A live match counts on its current score, the same way club
- * points are drafted while a match is in play (§4.3 Option A); a cancelled or
+ * points are drafted while a match is in play (§4.3 Option A). A cancelled or
  * postponed match never counts.
  */
 function resultsOf(matches: MatchRow[]): Map<string, Outcome | null> {
@@ -88,6 +88,11 @@ function resultsOf(matches: MatchRow[]): Map<string, Outcome | null> {
       m.status === 'finished' || m.status === 'live' ? outcomeOf(m.home_score, m.away_score) : null,
     ]),
   );
+}
+
+/** The matches whose result can still change before the whistle. */
+function liveIdsOf(matches: MatchRow[]): Set<string> {
+  return new Set(matches.filter((m) => m.status === 'live').map((m) => m.id));
 }
 
 export async function getWeekPredictions(userId: string, mwId: string): Promise<WeekPredictions> {
@@ -117,7 +122,7 @@ export async function getWeekPredictions(userId: string, mwId: string): Promise<
     editable: editability.editable,
     lockAt: editability.lockAt?.toISOString() ?? null,
     pointsPerCorrect,
-    tally: tallyPredictions(picks, results, pointsPerCorrect),
+    tally: tallyPredictions(picks, results, pointsPerCorrect, liveIdsOf(matches)),
   };
 }
 
@@ -165,5 +170,5 @@ export async function getPredictionTally(userId: string, mwId: string): Promise<
     getConfigValue('prediction_points_per_correct'),
   ]);
   const picks = await picksOf(userId, matches.map((m) => m.id));
-  return tallyPredictions(picks, resultsOf(matches), pointsPerCorrect);
+  return tallyPredictions(picks, resultsOf(matches), pointsPerCorrect, liveIdsOf(matches));
 }
