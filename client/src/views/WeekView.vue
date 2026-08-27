@@ -77,6 +77,9 @@ const dragOverBench = ref(false);
 const swapDialog = ref(false);
 const swapFrom = ref<SquadClub | null>(null);
 const benchConflict = ref(false);
+// The lineup the user was trying to save when the shield got in the way;
+// re-applied after they confirm, since the view resets to the stored state.
+const pendingLineup = ref<{ bench: string; captain: string } | null>(null);
 
 
 const currentMw = computed(() => matchweeks.value.find((m) => m.id === selectedMw.value) ?? null);
@@ -218,6 +221,7 @@ async function persist(force = false) {
     await loadWeek();
   } catch (e) {
     if (e instanceof ApiRequestError && e.code === 'joker_bench_conflict' && !force) {
+      pendingLineup.value = { bench: benchId.value!, captain: captainId.value! };
       benchConflict.value = true;
       await loadWeek();
     } else {
@@ -238,7 +242,15 @@ function onDropPitch(targetTeamId: string) {
 
 async function confirmBenchConflict() {
   benchConflict.value = false;
+  const pending = pendingLineup.value;
+  pendingLineup.value = null;
   await cancelJoker(true);
+  // loadWeek reset the roles while the dialog was open; put the intended
+  // lineup back before saving, or the confirm would save the old one.
+  if (pending) {
+    benchId.value = pending.bench;
+    captainId.value = pending.captain;
+  }
   await persist(true);
 }
 
