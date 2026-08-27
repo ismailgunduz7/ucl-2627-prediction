@@ -47,7 +47,7 @@ async function load() {
     await Promise.all([store.loadTeams(), store.loadStatus(), store.loadSquad()]);
     for (const entry of store.squad) picks.value[entry.tierId] = entry.teamId;
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Bir sorun oldu', detail: msg(e), life: 4000 });
+    toast.add({ severity: 'error', summary: 'Kadro yüklenemedi', detail: msg(e), life: 4000 });
   } finally {
     loading.value = false;
   }
@@ -58,7 +58,7 @@ function select(tierId: number, teamId: string) {
   picks.value[tierId] = picks.value[tierId] === teamId ? null : teamId;
 }
 
-// A removed club may carry an active joker; the server answers 409 and asks
+// A removed club may carry an active joker. The server answers 409 and waits
 // for a confirmation before cancelling and refunding it.
 const jokerConflict = ref<{ teamName: string; jokerName: string } | null>(null);
 
@@ -136,7 +136,7 @@ onUnmounted(() => window.clearInterval(timer));
             :disabled="locked"
             @click="select(pot.tierId, team.id)"
           >
-            <span class="crest">{{ initials(team.name) }}</span>
+            <span class="crest crest-sm">{{ initials(team.name) }}</span>
             <span class="team-meta">
               <span class="team-name">{{ team.name }}</span>
               <span v-if="team.country" class="text-muted" style="font-size: var(--text-2xs)">{{ team.country }}</span>
@@ -217,18 +217,6 @@ onUnmounted(() => window.clearInterval(timer));
 .team-row.disabled {
   cursor: not-allowed;
   opacity: 0.65;
-}
-.crest {
-  width: 34px;
-  height: 34px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
-  color: #fff;
-  display: grid;
-  place-items: center;
-  font-size: var(--text-2xs);
-  font-weight: 800;
-  flex-shrink: 0;
 }
 .team-meta {
   display: flex;

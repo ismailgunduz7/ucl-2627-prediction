@@ -33,7 +33,7 @@ authRoutes.post('/login', async (c) => {
   if (!rate.allowed) {
     c.header('Retry-After', String(rate.retryAfterSeconds));
     throw ApiError.tooManyRequests(
-      `Çok fazla deneme, ${Math.ceil(rate.retryAfterSeconds / 60)} dakika sonra tekrar deneyin`,
+      `Çok fazla deneme yaptın, ${Math.ceil(rate.retryAfterSeconds / 60)} dakika sonra tekrar dene`,
       rate.retryAfterSeconds,
     );
   }

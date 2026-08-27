@@ -4,7 +4,7 @@ import { pairSeeds, resolveTie, type TieLeg } from '../domain/knockout.ts';
 import type { StandingRow } from '../domain/standings.ts';
 
 /**
- * Knockout path (PLAN.md §2.4): play-offs for ranks 9–24, then the round of 16
+ * Knockout path (PLAN.md §2.4): play-offs for ranks 9-24, then the round of 16
  * (joined by the top eight), quarter-finals, semi-finals and the final. Every
  * leg is its own matchweek so bench, captain and jokers lock per leg.
  */
@@ -75,7 +75,7 @@ export async function firstKnockoutMatchweekId(): Promise<string | null> {
   return rows[0]?.id ?? null;
 }
 
-/** Builds the play-off ties from ranks 9–24 and their two legs (§2.4). */
+/** Builds the play-off ties from ranks 9-24 and their two legs (§2.4). */
 export async function createPlayoffRound(standings: StandingRow[]): Promise<void> {
   await ensureKnockoutMatchweeks();
   const seeds = standings.filter((r) => r.rank >= 9 && r.rank <= 24);

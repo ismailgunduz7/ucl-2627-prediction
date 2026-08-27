@@ -79,7 +79,7 @@ onMounted(async () => {
 
     <div v-else-if="data && !data.finished" class="surface-card card-pad not-yet">
       <TrophyMark :size="42" class="not-yet-mark" />
-      <p style="margin: 0">Final daha oynanmadı. Kupa sahibini bulunca sezonun filmi burada.</p>
+      <p style="margin: 0">Final daha oynanmadı. Kupa sahibini bulunca sezonun filmi burada olacak.</p>
     </div>
 
     <template v-else-if="data">
@@ -130,8 +130,8 @@ onMounted(async () => {
           <span class="stat-num">{{ data.captainHits }}/{{ data.captainWeeks }}</span>
           <small class="text-muted">kaptanın haftanın en iyisi çıktı</small>
         </div>
-        <div class="surface-card card-pad stat">
-          <span class="stat-num">{{ data.transfer === 'committed' ? '✓' : '–' }}</span>
+        <div v-if="data.transfer !== 'unavailable'" class="surface-card card-pad stat">
+          <span class="stat-num">{{ data.transfer === 'committed' ? '✓' : '-' }}</span>
           <small class="text-muted">{{ data.transfer === 'committed' ? 'eleme transferini kullandın' : 'eleme transferine dokunmadın' }}</small>
         </div>
       </div>

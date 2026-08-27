@@ -190,7 +190,7 @@ export interface CreateUserInput {
 export async function createUser(input: CreateUserInput): Promise<PublicUser> {
   const isAdmin = input.isAdmin ?? false;
   if (!isAdmin && !input.competitionId) {
-    throw ApiError.badRequest('Katılımcı bir yarışmaya atanmalı', 'competition_required');
+    throw ApiError.badRequest('Katılımcıyı bir yarışmaya atamalısın', 'competition_required');
   }
   const passwordHash = await hashPassword(input.password);
   try {
@@ -240,7 +240,7 @@ export async function setUserPassword(userId: string, newPassword: string): Prom
  */
 export async function deleteUser(userId: string, actingAdminId: string): Promise<void> {
   if (userId === actingAdminId) {
-    throw ApiError.badRequest('Kendi hesabınızı silemezsiniz', 'cannot_delete_self');
+    throw ApiError.badRequest('Kendi hesabını silemezsin', 'cannot_delete_self');
   }
   await withTransaction(async (client) => {
     const target = await client.query<{ is_admin: boolean }>(

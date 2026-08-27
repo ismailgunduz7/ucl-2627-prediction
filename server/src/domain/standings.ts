@@ -1,7 +1,7 @@
 /**
- * League-phase table (PLAN.md §2.2). This is the REAL football table (three
- * points for a win, one for a draw), not the fantasy scoring. It decides who
- * finishes 1–8 (straight to the round of 16), 9–24 (play-offs) and 25–36
+ * League-phase table (PLAN.md §2.2). This is the REAL football table, three
+ * points for a win and one for a draw, not the fantasy scoring. It decides who
+ * finishes 1-8 (straight to the round of 16), 9-24 (play-offs) and 25-36
  * (eliminated), so it must follow the competition's own rules.
  */
 
@@ -36,8 +36,8 @@ const DRAW_POINTS = 1;
 
 /**
  * Build the table from finished league-phase matches. Teams with no matches yet
- * still appear (all zeros). Ordering: points, goal difference, goals scored,
- * then name, the same shape UEFA uses before its later tie-breaks.
+ * still appear (all zeros). Ordering is points, goal difference, goals scored,
+ * then name. That is the same shape UEFA uses before its later tie-breaks.
  */
 export function computeStandings(
   teams: StandingTeam[],

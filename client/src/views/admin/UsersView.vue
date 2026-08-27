@@ -39,7 +39,7 @@ const form = ref({ username: '', password: '', displayName: '', isAdmin: false, 
 const canSubmit = computed(
   () => form.value.username.length >= 3 && form.value.password.length >= 8 && form.value.displayName.length >= 1 && (form.value.isAdmin || form.value.competitionId !== null),
 );
-const compName = (id: string | null) => (id ? competitions.value.find((c) => c.id === id)?.name ?? '–' : '–');
+const compName = (id: string | null) => (id ? competitions.value.find((c) => c.id === id)?.name ?? '-' : '-');
 
 async function load() {
   loading.value = true;
@@ -51,7 +51,7 @@ async function load() {
     users.value = u.users;
     competitions.value = c.competitions;
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Hata', detail: msg(e), life: 4000 });
+    toast.add({ severity: 'error', summary: 'Liste yüklenemedi', detail: msg(e), life: 4000 });
   } finally {
     loading.value = false;
   }
@@ -69,7 +69,7 @@ async function create() {
     form.value = { username: '', password: '', displayName: '', isAdmin: false, competitionId: null };
     await load();
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Hata', detail: msg(e), life: 4000 });
+    toast.add({ severity: 'error', summary: 'Kullanıcı oluşturulamadı', detail: msg(e), life: 4000 });
   } finally {
     saving.value = false;
   }
@@ -83,12 +83,12 @@ async function submitPassword() {
     toast.add({ severity: 'success', summary: 'Şifre güncellendi', life: 2500 });
     pwDialog.value = false;
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Hata', detail: msg(e), life: 4000 });
+    toast.add({ severity: 'error', summary: 'Şifre güncellenemedi', detail: msg(e), life: 4000 });
   } finally {
     pwSaving.value = false;
   }
 }
-// Joker inventory repair: read the live counts, let the admin set them flat.
+// Joker inventory repair: read the live counts, let the admin overwrite them.
 const jokerDialog = ref(false);
 const jokerTarget = ref<User | null>(null);
 const jokerCounts = ref<Record<string, number>>({});
@@ -106,7 +106,7 @@ async function openJokers(u: User) {
     jokerCounts.value = Object.fromEntries(res.inventory.map((i) => [i.code, i.remaining]));
   } catch (e) {
     jokerDialog.value = false;
-    toast.add({ severity: 'error', summary: 'Hata', detail: msg(e), life: 4000 });
+    toast.add({ severity: 'error', summary: 'Joker hakları okunamadı', detail: msg(e), life: 4000 });
   }
 }
 async function submitJokers() {
@@ -240,7 +240,8 @@ onMounted(load);
 
     <Dialog v-model:visible="pwDialog" modal header="Şifre değiştir" :style="{ width: '380px' }">
       <p class="text-muted" style="margin: 0 0 0.75rem">
-        <strong>{{ pwTarget?.display_name }}</strong> için yeni şifre. Açık oturumları kapanır.
+        <strong>{{ pwTarget?.display_name }}</strong> için yeni şifre. Açık oturumları kapanır ve
+        yeniden giriş yapması gerekir.
       </p>
       <Password v-model="pwValue" :feedback="false" toggle-mask autocomplete="new-password" placeholder="Yeni şifre" />
       <template #footer>
@@ -250,8 +251,8 @@ onMounted(load);
     </Dialog>
     <Dialog v-model:visible="jokerDialog" modal header="Joker hakları" :style="{ width: '400px' }">
       <p class="text-muted" style="margin: 0 0 0.9rem">
-        <strong>{{ jokerTarget?.display_name }}</strong> için kalan hakları doğrudan yazarsın;
-        aktivasyon geçmişine dokunmaz.
+        <strong>{{ jokerTarget?.display_name }}</strong> için kalan hakları doğrudan yaz. Daha önce
+        oynadığı jokerler olduğu gibi kalır.
       </p>
       <div class="joker-rows">
         <label v-for="code in JOKER_CODES" :key="code" class="joker-row">
@@ -276,7 +277,8 @@ onMounted(load);
     </Dialog>
     <Dialog v-model:visible="delDialog" modal header="Kullanıcıyı sil" :style="{ width: '380px' }">
       <p style="margin: 0">
-        <strong>{{ delTarget?.display_name }}</strong> kalıcı olarak silinsin mi? Kadrosu ve puanları da gider.
+        <strong>{{ delTarget?.display_name }}</strong> silinsin mi? Kadrosu ve topladığı puanlar da
+        gider, geri getirmenin yolu yok.
       </p>
       <template #footer>
         <Button label="Vazgeç" text @click="delDialog = false" />

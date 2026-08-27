@@ -31,7 +31,7 @@ test('shield: GA=0 → no delta (normal CS already scored)', () => {
 });
 
 test('shield: GA=1 → add CS and suppress the one conceded (§3.6)', () => {
-  // Pot 1: cs=2, concededPerGoal=-1 → delta = 2 − (−1) = 3.
+  // Pot 1: cs=2, concededPerGoal=-1 → delta = 2 - (-1) = 3.
   assert.equal(computeShieldDelta([1], 2, -1), 3);
 });
 

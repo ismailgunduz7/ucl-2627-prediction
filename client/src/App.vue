@@ -32,7 +32,7 @@ const adminNav = [
   { to: '/yonetim/yarismalar', label: 'Yarışmalar', icon: Network },
   { to: '/yonetim/kurallar', label: 'Kurallar', icon: Calculator },
   { to: '/yonetim/maclar', label: 'Maçlar', icon: Flag },
-  { to: '/yonetim/sync', label: 'Sync', icon: RefreshCw },
+  { to: '/yonetim/sync', label: 'Skor Çekme', icon: RefreshCw },
   { to: '/yonetim/ayarlar', label: 'Ayarlar', icon: Settings },
 ];
 

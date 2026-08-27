@@ -31,11 +31,11 @@ export function remapRole(teamId: string, swap: WeeklySwap | null): string {
  * | GA | Effect                                                        |
  * |----|---------------------------------------------------------------|
  * | 0  | Normal CS already in the club layer → no delta.               |
- * | 1  | Count as CS (+cs) AND suppress that 1 conceded (−conceded).    |
+ * | 1  | Count as CS (+cs) AND suppress that 1 conceded (-conceded).    |
  * | ≥2 | Shield breaks → no delta.                                     |
  *
  * `concededPerGoal` is the (usually negative) per-goal value; suppressing it
- * adds `−concededPerGoal`. Applied per match the club played this matchweek.
+ * adds `-concededPerGoal`. Applied per match the club played this matchweek.
  */
 export function computeShieldDelta(
   matchesGoalsAgainst: number[],

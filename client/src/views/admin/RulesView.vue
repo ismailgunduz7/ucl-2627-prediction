@@ -29,7 +29,7 @@ async function load() {
     rules.value = res.rules;
     predictionPoints.value = cfg.config.prediction_points_per_correct;
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Hata', detail: msg(e), life: 4000 });
+    toast.add({ severity: 'error', summary: 'Kurallar yüklenemedi', detail: msg(e), life: 4000 });
   } finally {
     loading.value = false;
   }
@@ -57,9 +57,9 @@ async function recalculate() {
   recalculating.value = true;
   try {
     const res = await api.post<{ matchesScored: number }>('/api/admin/recalculate');
-    toast.add({ severity: 'success', summary: 'Yeniden hesaplandı', detail: `${res.matchesScored} maç puanlandı`, life: 3500 });
+    toast.add({ severity: 'success', summary: `${res.matchesScored} maç yeniden puanlandı`, life: 3500 });
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Hata', detail: msg(e), life: 4000 });
+    toast.add({ severity: 'error', summary: 'Yeniden hesaplanamadı', detail: msg(e), life: 4000 });
   } finally {
     recalculating.value = false;
   }
@@ -70,7 +70,7 @@ onMounted(load);
 
 <template>
   <div class="page-stack">
-    <PageHeader title="Puanlama kuralları" subtitle="Her kuralın puanını pot pot ayarla; cezalar eksi yazılır.">
+    <PageHeader title="Puanlama kuralları" subtitle="Her kuralın puanını pot pot ayarla. Cezalar eksi yazılır.">
       <template #actions>
         <div style="display: flex; gap: 0.5rem">
           <Button label="Yeniden hesapla" icon="pi pi-refresh" severity="secondary" outlined :loading="recalculating" @click="recalculate" />

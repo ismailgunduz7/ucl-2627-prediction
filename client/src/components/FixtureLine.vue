@@ -3,8 +3,9 @@ import { computed } from 'vue';
 
 /**
  * One fixture written the way it is played: home side first, away side second.
- * That ordering is what says where the club played, so the line carries no
- * venue icon, and neither side is emphasised, since bold here would read as "won".
+ * That ordering is what tells you where the club played, so the line needs no
+ * venue icon. Neither side is emphasised either, because bold would read as
+ * "this one won".
  */
 const props = defineProps<{
   teamName: string;
@@ -28,7 +29,7 @@ const rightScore = computed(() => (props.home ? props.opponentScore : props.team
   <span class="fixture">
     <span class="side">{{ left }}</span>
     <span class="score">
-      <template v-if="played">{{ leftScore }}–{{ rightScore }}</template>
+      <template v-if="played">{{ leftScore }}-{{ rightScore }}</template>
       <template v-else>vs</template>
     </span>
     <span class="side">{{ right }}</span>

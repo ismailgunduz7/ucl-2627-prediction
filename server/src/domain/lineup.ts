@@ -24,16 +24,16 @@ export function validateLineup(
 ): { ok: true } | { ok: false; error: LineupError } {
   const ids = new Set(squad.map((s) => s.teamId));
   if (!ids.has(benchTeamId)) {
-    return { ok: false, error: { code: 'bench_not_in_squad', message: 'Bench kulübü kadroda değil' } };
+    return { ok: false, error: { code: 'bench_not_in_squad', message: 'Yedeğe çektiğin kulüp kadroda değil' } };
   }
   if (!ids.has(captainTeamId)) {
-    return { ok: false, error: { code: 'captain_not_in_squad', message: 'Kaptan kadroda değil' } };
+    return { ok: false, error: { code: 'captain_not_in_squad', message: 'Kaptan yaptığın kulüp kadroda değil' } };
   }
   // A benched club can never hold the captaincy except under bench_boost (§3.5).
   if (!benchBoost && captainTeamId === benchTeamId) {
     return {
       ok: false,
-      error: { code: 'captain_on_bench', message: 'Benchteki kulüp kaptan olamaz' },
+      error: { code: 'captain_on_bench', message: 'Yedekteki kulüp kaptan olamaz' },
     };
   }
   return { ok: true };
@@ -89,7 +89,7 @@ export interface MatchweekScoreResult {
 }
 
 /**
- * Compute a participant's matchweek total (§4.1 resolution order steps 3–6).
+ * Compute a participant's matchweek total (§4.1 resolution order steps 3-6).
  * Integer points only; captain multiplier is ×2 or ×3.
  */
 export function computeMatchweekScore(input: MatchweekScoreInput): MatchweekScoreResult {

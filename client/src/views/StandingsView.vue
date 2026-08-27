@@ -33,7 +33,7 @@ onMounted(async () => {
 
 <template>
   <div class="page-stack">
-    <PageHeader title="Lig tablosu" subtitle="Lig aşaması sonunda ilk 8 doğrudan son 16'ya, 9–24 play-off oynar." />
+    <PageHeader title="Lig tablosu" subtitle="Lig aşaması sonunda ilk 8 doğrudan son 16'ya, 9-24 play-off oynar." />
 
     <BallLoader v-if="loading" />
     <Message v-else-if="!rows.length" severity="secondary" :closable="false">Henüz maç oynanmadı.</Message>

@@ -4,7 +4,8 @@
  * Since there is no public self-registration (§3.1), the very first admin must be
  * seeded so they can then create everyone else via the admin API.
  *
- * Configure via env (falls back to dev defaults; CHANGE THESE for production):
+ * Configure via env. The fallbacks are dev defaults, so CHANGE THEM before any
+ * real deployment:
  *   SEED_ADMIN_USERNAME, SEED_ADMIN_PASSWORD, SEED_ADMIN_DISPLAY_NAME,
  *   SEED_COMPETITION_NAME
  *
@@ -35,7 +36,7 @@ async function main(): Promise<void> {
 
   const existing = await query(`SELECT id FROM users WHERE lower(username) = lower($1)`, [username]);
   if (existing.rows.length > 0) {
-    console.log(`Admin "${username}" already exists, skipping.`);
+    console.log(`Admin "${username}" already exists. Nothing to do.`);
     return;
   }
 

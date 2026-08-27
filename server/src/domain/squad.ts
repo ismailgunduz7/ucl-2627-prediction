@@ -28,8 +28,8 @@ export interface SquadValidationFail {
  * Validates a permanent squad pick (§3.2): exactly SQUAD_SIZE clubs, no
  * duplicates, all active, and exactly one club per pot covering every pot.
  *
- * Note: eliminated clubs are allowed on the PERMANENT squad (§2.5); they simply
- * score 0. Elimination only filters the swap/act-transfer pickers (§3.6–3.7).
+ * Note: eliminated clubs are allowed on the PERMANENT squad (§2.5). They simply
+ * score 0. Elimination only filters the swap and act-transfer pickers (§3.6-3.7).
  */
 export function validateSquadSelection(
   teams: SelectableTeam[],

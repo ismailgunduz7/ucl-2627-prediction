@@ -71,14 +71,14 @@ onMounted(async () => {
                   class="club-link"
                   :title="clubOf(e, pot)!.name"
                 >{{ clubOf(e, pot)!.shortName }}</RouterLink>
-                <span v-else class="text-muted">–</span>
+                <span v-else class="text-muted">-</span>
               </td>
               <td class="total-cell">
                 <strong>{{ e.total }}</strong>
                 <span
                   v-if="e.provisionalPoints !== 0"
                   class="live-part"
-                  title="Oynanan maçlardan gelen pay; maçlar bitince kesinleşir"
+                  title="Oynanan maçlardan gelen pay. Maçlar bitince kesinleşir"
                 >
                   <span class="dot" aria-hidden="true" />{{ signed(e.provisionalPoints) }} canlı
                 </span>

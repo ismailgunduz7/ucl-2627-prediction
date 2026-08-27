@@ -55,7 +55,7 @@ watch(() => route.params.id, (id) => id && load(id as string));
 
     <template v-else-if="detail">
       <section class="surface-card card-pad team-head">
-        <span class="crest">{{ initials(detail.team.name) }}</span>
+        <span class="crest crest-xl">{{ initials(detail.team.name) }}</span>
         <div style="flex: 1">
           <h1 style="margin: 0; font-size: var(--text-xl)">{{ detail.team.name }}</h1>
           <div class="tag-row" style="margin-top: 0.4rem">
@@ -96,7 +96,7 @@ watch(() => route.params.id, (id) => id && load(id as string));
                 <strong v-if="m.points !== null" :class="m.points >= 0 ? 'text-positive' : 'text-negative'">
                   {{ m.points > 0 ? '+' : '' }}{{ m.points }}
                 </strong>
-                <span v-else class="text-muted">–</span>
+                <span v-else class="text-muted">-</span>
               </td>
             </tr>
             <tr v-if="openMatch === m.matchId" class="entry-row">
@@ -121,11 +121,6 @@ watch(() => route.params.id, (id) => id && load(id as string));
 
 <style scoped>
 .team-head { display: flex; align-items: center; gap: 1.1rem; }
-.crest {
-  width: 60px; height: 60px; border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
-  color: #fff; display: grid; place-items: center; font-weight: 800;
-}
 .total { text-align: center; }
 .total-num { font-size: 2rem; font-weight: 800; color: var(--color-primary); line-height: 1; }
 .matches { width: 100%; border-collapse: collapse; }

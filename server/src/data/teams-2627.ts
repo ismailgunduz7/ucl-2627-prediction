@@ -1,5 +1,5 @@
 /**
- * The REAL 2026–27 league-phase field, as confirmed by UEFA on 26 August 2026
+ * The REAL 2026-27 league-phase field, as confirmed by UEFA on 26 August 2026
  * ("Champions League: League phase draw pots confirmed", uefa.com). Pots are
  * the official draw pots; countries drive the no-compatriot draw rule (§2.3).
  *

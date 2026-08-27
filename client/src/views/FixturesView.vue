@@ -60,7 +60,7 @@ function dayLabel(iso: string) {
   return new Date(iso).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
 }
 function timeLabel(iso: string | null) {
-  return iso ? new Date(iso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '–';
+  return iso ? new Date(iso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-';
 }
 function syncLabel(iso: string | null) {
   return iso ? new Date(iso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : null;
@@ -86,8 +86,8 @@ async function loadFixtures() {
 }
 
 /**
- * While a match is in play the page refreshes itself from our own API, never
- * from the provider; only the sync job talks to that.
+ * While a match is in play the page refreshes itself from our own API. It never
+ * calls the provider. Only the sync job does that.
  */
 function schedulePoll() {
   window.clearInterval(poller);
@@ -170,7 +170,7 @@ watch(liveOnes, schedulePoll);
 
             <span class="fx-score">
               <template v-if="f.home.score !== null && f.away.score !== null">
-                {{ f.home.score }}–{{ f.away.score }}
+                {{ f.home.score }}-{{ f.away.score }}
               </template>
               <template v-else>vs</template>
             </span>
@@ -193,8 +193,8 @@ watch(liveOnes, schedulePoll);
                 :class="f.result ? (f.result === f.pick ? 'hit' : 'miss') : ''"
               >{{ PICK_LABEL[f.pick] }}</span>
             </span>
-            </div>
-          </section>
+          </div>
+        </section>
       </template>
     </template>
   </div>

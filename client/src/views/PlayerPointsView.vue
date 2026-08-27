@@ -112,7 +112,7 @@ watch(() => route.params.id, (id) => id && load(id as string));
                 v-if="isPlayed(w) && !w.final"
                 severity="info"
                 value="kesinleşmedi"
-                title="Hafta bitmedi; puanlar değişebilir"
+                title="Hafta bitmedi, puanlar hâlâ değişebilir"
               />
               <Tag v-else-if="!isPlayed(w)" severity="secondary" value="oynanmadı" />
               <span v-if="isPlayed(w)" class="week-total" :class="w.total >= 0 ? 'text-positive' : 'text-negative'">
@@ -195,7 +195,6 @@ watch(() => route.params.id, (id) => id && load(id as string));
 .paul-row strong { margin-left: auto; }
 .club-top { display: flex; align-items: center; gap: 0.7rem; }
 .club-id { display: inline-flex; text-decoration: none; }
-.crest-xs { width: 28px; height: 28px; font-size: 0.7rem; }
 .club-mid { flex: 1; display: flex; flex-direction: column; gap: 0.2rem; min-width: 0; font-size: 0.88rem; }
 .no-fixture { font-size: 0.85rem; }
 .club-pts { display: flex; align-items: baseline; gap: 0.45rem; margin-left: auto; font-weight: 800; white-space: nowrap; }

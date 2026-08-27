@@ -41,8 +41,8 @@ export async function getActiveJoker(userId: string, mwId: string): Promise<Acti
 
 /**
  * Admin repair (§9.3): set a user's remaining count for one joker directly.
- * Bypasses the activate/cancel bookkeeping on purpose; this is the tool for
- * when that bookkeeping and reality have drifted apart.
+ * It bypasses the activate/cancel bookkeeping on purpose. This is the tool you
+ * reach for when that bookkeeping and reality have drifted apart.
  */
 export async function setInventoryCount(
   userId: string,
@@ -101,7 +101,7 @@ async function validatePayload(
     const fromClub = permanent.find((c) => c.teamId === fromTeamId);
     if (!fromClub) throw ApiError.badRequest('Çıkacak kulüp kadroda değil', 'invalid_from');
     if (permanent.some((c) => c.teamId === toTeamId)) {
-      throw ApiError.badRequest('Zaten kadroda olan kulüp seçilemez', 'to_in_squad');
+      throw ApiError.badRequest('Bu kulüp zaten kadronda', 'to_in_squad');
     }
     const to = await query<{ tier_id: number; is_active: boolean; eliminated_at: Date | null }>(
       'SELECT tier_id, is_active, eliminated_at FROM teams WHERE id = $1',
@@ -111,7 +111,7 @@ async function validatePayload(
     if (!toRow) throw ApiError.badRequest('Geçersiz kulüp', 'invalid_to');
     if (toRow.tier_id !== fromClub.tierId) throw ApiError.badRequest('Aynı pottan olmalı', 'wrong_pot');
     if (!toRow.is_active || toRow.eliminated_at) {
-      throw ApiError.badRequest('Bu kulüp seçilemez (elenmiş/pasif)', 'to_ineligible');
+      throw ApiError.badRequest('Elenmiş kulüp seçilemez', 'to_ineligible');
     }
     return { fromTeamId, toTeamId };
   }
@@ -125,7 +125,7 @@ async function validatePayload(
     throw ApiError.badRequest('Hedef kulüp kadroda değil', 'target_not_in_squad');
   }
   if (teamId === lineup.benchTeamId) {
-    throw ApiError.badRequest('Benchteki kulüp hedeflenemez', 'target_on_bench');
+    throw ApiError.badRequest('Yedekteki kulübe kalkan takılamaz', 'target_on_bench');
   }
   return { teamId };
 }
@@ -141,7 +141,7 @@ export async function activate(
 
   const existing = await getActiveJoker(userId, mwId);
   if (existing) {
-    throw ApiError.badRequest('Bu hafta zaten bir joker aktif; önce onu iptal et', 'joker_already_active');
+    throw ApiError.badRequest('Bu hafta zaten bir joker oynadın. Önce onu geri al', 'joker_already_active');
   }
 
   const normalized = await validatePayload(userId, mwId, code, payload);
@@ -152,7 +152,7 @@ export async function activate(
        WHERE user_id = $1 AND joker_type_code = $2 AND remaining_count > 0`,
       [userId, code],
     );
-    if (dec.rowCount === 0) throw ApiError.badRequest('Bu jokerden kalmadı', 'no_inventory');
+    if (dec.rowCount === 0) throw ApiError.badRequest('Bu jokerden hakkın kalmadı', 'no_inventory');
 
     try {
       await client.query(
@@ -163,7 +163,7 @@ export async function activate(
     } catch (err) {
       if (err && typeof err === 'object' && 'code' in err && err.code === '23505') {
         // Partial unique index: a second live joker for the same week (§8.1).
-        throw ApiError.badRequest('Bu hafta zaten bir joker aktif', 'joker_already_active');
+        throw ApiError.badRequest('Bu hafta zaten bir joker oynadın', 'joker_already_active');
       }
       throw err;
     }

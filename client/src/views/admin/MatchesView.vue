@@ -45,7 +45,7 @@ async function loadMatches() {
     const res = await api.get<{ matches: MatchRow[] }>(`/api/admin/matches?matchweek=${encodeURIComponent(selectedMw.value)}`);
     matches.value = res.matches;
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Hata', detail: msg(e), life: 4000 });
+    toast.add({ severity: 'error', summary: 'Maçlar yüklenemedi', detail: msg(e), life: 4000 });
   } finally {
     loading.value = false;
   }
@@ -54,7 +54,7 @@ async function saveResult(m: MatchRow) {
   savingId.value = m.id;
   try {
     await api.put(`/api/admin/matches/${m.id}/result`, { homeScore: m.home_score, awayScore: m.away_score, status: m.status });
-    toast.add({ severity: 'success', summary: 'Kaydedildi', life: 2000 });
+    toast.add({ severity: 'success', summary: 'Skor kaydedildi', life: 2000 });
     await loadMatches();
   } catch (e) {
     toast.add({ severity: 'error', summary: 'Kaydedilemedi', detail: msg(e), life: 4000 });
@@ -65,14 +65,14 @@ async function saveResult(m: MatchRow) {
 async function clearOverride(m: MatchRow) {
   try {
     await api.post(`/api/admin/matches/${m.id}/clear-override`);
-    toast.add({ severity: 'success', summary: 'Override kaldırıldı', life: 2000 });
+    toast.add({ severity: 'success', summary: 'Sonuç sağlayıcıya bırakıldı', life: 2000 });
     await loadMatches();
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Hata', detail: msg(e), life: 4000 });
+    toast.add({ severity: 'error', summary: 'Geri alınamadı', detail: msg(e), life: 4000 });
   }
 }
 
-// Override history (§5.3): who touched this match, when, and what changed.
+// Who touched this match by hand, when, and what they changed (§5.3).
 interface Audit {
   id: string;
   action: string;
@@ -94,7 +94,7 @@ const VALUE_LABEL: Record<string, string> = {
   scheduled: 'planlandı', live: 'canlı', finished: 'bitti', postponed: 'ertelendi', cancelled: 'iptal',
 };
 function auditValue(v: unknown) {
-  if (v === null || v === undefined) return '–';
+  if (v === null || v === undefined) return '-';
   return VALUE_LABEL[String(v)] ?? String(v);
 }
 function auditWhen(iso: string) {
@@ -111,7 +111,7 @@ async function openAudits(m: MatchRow) {
     audits.value = res.audits;
   } catch (e) {
     auditDialog.value = false;
-    toast.add({ severity: 'error', summary: 'Hata', detail: msg(e), life: 4000 });
+    toast.add({ severity: 'error', summary: 'Geçmiş açılamadı', detail: msg(e), life: 4000 });
   } finally {
     auditLoading.value = false;
   }
@@ -123,7 +123,7 @@ watch(selectedMw, loadMatches);
 
 <template>
   <div class="page-stack">
-    <PageHeader title="Maçlar" subtitle="Maçı bitti'ye çektiğin anda puanları işlenir. Elle girdiğin sonucu sync ezmez.">
+    <PageHeader title="Maçlar" subtitle="Bir maçı bitti yaptığın anda puanları işlenir. Elle girdiğin skoru sağlayıcı bir daha ezmez.">
       <template #actions>
         <Select
           v-model="selectedMw"
@@ -148,23 +148,34 @@ watch(selectedMw, loadMatches);
           <span class="side home">{{ m.home_name }}</span>
           <div class="score">
             <InputNumber v-model="m.home_score" :min="0" :use-grouping="false" :input-style="{ width: '2.6rem', textAlign: 'center' }" />
-            <span class="text-muted">–</span>
+            <span class="text-muted">-</span>
             <InputNumber v-model="m.away_score" :min="0" :use-grouping="false" :input-style="{ width: '2.6rem', textAlign: 'center' }" />
           </div>
           <span class="side away">{{ m.away_name }}</span>
         </div>
         <div class="controls">
           <Select v-model="m.status" :options="statusOptions" option-label="label" option-value="value" class="status-select" />
-          <Tag v-if="m.is_manual_override" severity="warn" value="elle girildi" />
-          <Button v-if="m.is_manual_override" label="Geri al" size="small" severity="secondary" text @click="clearOverride(m)" />
+          <span v-if="m.is_manual_override" class="override-mark">
+            <Tag severity="warn" value="elle girildi" />
+            <Button
+              icon="pi pi-undo"
+              size="small"
+              severity="secondary"
+              text
+              rounded
+              :aria-label="`${m.home_name} - ${m.away_name}: skoru sağlayıcıya geri bırak`"
+              title="Skoru sağlayıcıya geri bırak"
+              @click="clearOverride(m)"
+            />
+          </span>
           <Button
             icon="pi pi-history"
             size="small"
             severity="secondary"
             text
             rounded
-            :aria-label="`${m.home_name} - ${m.away_name} müdahale geçmişi`"
-            title="Müdahale geçmişi"
+            :aria-label="`${m.home_name} - ${m.away_name}: elle yapılan değişiklikler`"
+            title="Elle yapılan değişiklikler"
             @click="openAudits(m)"
           />
           <Button label="Kaydet" size="small" :loading="savingId === m.id" @click="saveResult(m)" />
@@ -176,15 +187,15 @@ watch(selectedMw, loadMatches);
     <Dialog
       v-model:visible="auditDialog"
       modal
-      :header="auditTarget ? `${auditTarget.home_name} – ${auditTarget.away_name}` : 'Müdahale geçmişi'"
+      :header="auditTarget ? `${auditTarget.home_name} - ${auditTarget.away_name}` : 'Elle yapılan değişiklikler'"
       :style="{ width: '460px' }"
     >
       <BallLoader v-if="auditLoading" />
-      <p v-else-if="!audits.length" class="text-muted" style="margin: 0">Bu maça elle dokunulmamış.</p>
+      <p v-else-if="!audits.length" class="text-muted" style="margin: 0">Bu maça kimse elle dokunmamış.</p>
       <ul v-else class="audit-list">
         <li v-for="a in audits" :key="a.id" class="audit-row">
           <div class="audit-head">
-            <b>{{ a.action === 'clear_override' ? 'Override kaldırıldı' : 'Sonuç elle girildi' }}</b>
+            <b>{{ a.action === 'clear_override' ? 'Sağlayıcıya bırakıldı' : 'Skor elle girildi' }}</b>
             <span class="text-muted">{{ a.adminName ?? 'silinmiş hesap' }} · {{ auditWhen(a.createdAt) }}</span>
           </div>
           <div v-if="Object.keys(a.changedFields).length" class="audit-changes">
@@ -206,6 +217,7 @@ watch(selectedMw, loadMatches);
 .side.home { text-align: right; }
 .score { display: flex; align-items: center; gap: 0.4rem; }
 .controls { display: flex; align-items: center; gap: 0.5rem; flex-wrap: wrap; justify-content: flex-end; }
+.override-mark { display: inline-flex; align-items: center; gap: 0.15rem; }
 .audit-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.7rem; }
 .audit-row { border: 1px solid var(--color-border); border-radius: var(--radius-sm); background: var(--color-surface-2); padding: 0.6rem 0.75rem; }
 .audit-head { display: flex; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; font-size: 0.88rem; }

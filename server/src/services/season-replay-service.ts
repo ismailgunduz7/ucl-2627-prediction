@@ -3,9 +3,9 @@ import { getLeaderboard } from './leaderboard-service.ts';
 
 /**
  * Season replay (§18.8): the end-of-season retrospective. Everything is read
- * from what the season already wrote (final week scores, joker activations,
- * the act transfer row), so the replay is a pure summary, not a recompute.
- * It unlocks when the final's matchweek completes.
+ * from what the season already wrote: final week scores, joker activations, the
+ * act transfer row. The replay only summarises, it never recomputes. It unlocks
+ * when the final's matchweek completes.
  */
 
 export interface ReplayWeek {

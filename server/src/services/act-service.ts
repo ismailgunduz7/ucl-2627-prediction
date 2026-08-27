@@ -68,7 +68,7 @@ export async function completeLeaguePhaseIfDue(): Promise<{ ran: boolean }> {
 
   await setConfigValue('current_act', 'knockout');
 
-  // 6. Seed the play-off ties from ranks 9–24.
+  // 6. Seed the play-off ties from ranks 9-24.
   await createPlayoffRound(standings);
 
   return { ran: true };
@@ -119,7 +119,7 @@ async function refreshJokerInventory(client: PoolClient): Promise<void> {
   }
 }
 
-// --- Act transfer (§3.7 steps 4–8) ----------------------------------------
+// --- Act transfer (§3.7 steps 4-8) ----------------------------------------
 
 export interface ActTransferState {
   status: 'available' | 'committed' | 'expired' | 'unavailable';
@@ -146,9 +146,9 @@ async function getTransferRow(userId: string): Promise<TransferRow | null> {
 
 /**
  * The squad as it stood BEFORE the committed transfer. The transfer is always
- * expressed against this squad (its options, its from club, and any re-apply),
- * so updating a committed transfer swaps the original club back out instead of
- * chasing the club that replaced it.
+ * expressed against this squad: its options, its outgoing club, and any
+ * re-apply. That way updating a committed transfer swaps the original club back
+ * out instead of chasing the club that replaced it.
  */
 async function getOriginalSquad(userId: string, row: TransferRow | null): Promise<EffectiveClub[]> {
   const squad = await getPermanentSquad(userId);
@@ -196,7 +196,8 @@ export async function getActTransfer(userId: string): Promise<ActTransferState> 
 
 /**
  * Same-pot, still-alive alternatives per ORIGINAL squad club. The committed
- * destination club stays eligible in its pot; it is the current selection.
+ * destination club stays eligible in its own pot, since it is what is currently
+ * selected.
  */
 async function buildOptions(userId: string, row: TransferRow | null): Promise<ActTransferState['options']> {
   const squad = await getOriginalSquad(userId, row);
@@ -232,7 +233,7 @@ export async function setActTransfer(
   cancelJokers = false,
 ): Promise<ActTransferState> {
   const current = await getTransferRow(userId);
-  if (!current) throw ApiError.badRequest('Transfer hakkın yok', 'no_transfer_grant');
+  if (!current) throw ApiError.badRequest('Transfer hakkın bulunmuyor', 'no_transfer_grant');
   if (current.status === 'expired') {
     throw ApiError.forbidden('Transfer penceresi kapandı', 'transfer_expired');
   }
@@ -276,9 +277,9 @@ export async function setActTransfer(
     throw ApiError.badRequest('Elenmiş kulüp seçilemez', 'to_ineligible');
   }
 
-  // A club leaving the effective squad may carry an active joker, a shield on
-  // it, say (§3.6, §11.25). Confirm first; on confirm, cancel with a refund.
-  // (An active weekly swap was already rejected above.)
+  // A club leaving the effective squad may carry an active joker, a shield for
+  // instance (§3.6, §11.25). Ask first, then cancel it with a refund once the
+  // user confirms. An active weekly swap was already rejected above.
   const currentSquad = await getPermanentSquad(userId);
   const nextIds = new Set(original.map((c) => c.teamId).filter((id) => id !== effectiveFrom));
   nextIds.add(toTeamId);
@@ -319,7 +320,7 @@ export async function setActTransfer(
     );
     if (applied.rowCount === 0) {
       // The squad moved between validation and the write (e.g. two tabs).
-      throw ApiError.badRequest('Kadro bu arada değişti, tekrar dene', 'transfer_conflict');
+      throw ApiError.badRequest('Kadron bu arada değişmiş, tekrar dene', 'transfer_conflict');
     }
     await client.query(
       `UPDATE act_transfers SET status = 'committed', from_team_id = $1, to_team_id = $2

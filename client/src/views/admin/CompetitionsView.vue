@@ -22,7 +22,7 @@ async function load() {
     const res = await api.get<{ competitions: Competition[] }>('/api/admin/competitions');
     competitions.value = res.competitions;
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Hata', detail: msg(e), life: 4000 });
+    toast.add({ severity: 'error', summary: 'Yarışmalar yüklenemedi', detail: msg(e), life: 4000 });
   } finally {
     loading.value = false;
   }
@@ -36,7 +36,7 @@ async function create() {
     toast.add({ severity: 'success', summary: 'Yarışma eklendi', life: 2500 });
     await load();
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Hata', detail: msg(e), life: 4000 });
+    toast.add({ severity: 'error', summary: 'Yarışma eklenemedi', detail: msg(e), life: 4000 });
   } finally {
     saving.value = false;
   }
@@ -47,7 +47,7 @@ onMounted(load);
 
 <template>
   <div class="page-stack">
-    <PageHeader title="Yarışmalar" subtitle="Yarışmalar sadece kimin kiminle göründüğünü belirler; kurallar herkes için ortaktır." />
+    <PageHeader title="Yarışmalar" subtitle="Bir yarışma sadece kimin kimin sıralamasında göründüğünü belirler. Kurallar ve puanlar herkes için ortak." />
 
     <section class="surface-card card-pad">
       <form style="display: flex; gap: 0.6rem; flex-wrap: wrap" @submit.prevent="create">

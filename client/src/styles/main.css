@@ -35,7 +35,7 @@
   --color-warning: #fbbf24;
   --color-warning-soft: #3a2a08;
 
-  /* Type scale: 12 13 14 16 18 22 28 36 px. */
+  /* Type scale, in px: 12 13 14 16 18 22 28 36. */
   --text-2xs: 0.75rem;
   --text-xs: 0.8125rem;
   --text-sm: 0.875rem;
@@ -520,7 +520,9 @@ table,
   color: var(--color-text-muted);
 }
 
-/* ---- Crests ---- */
+/* ---- Crests ----
+   One badge, one gradient, five sizes. Views pick a size class and never
+   redeclare the look. */
 .crest {
   border-radius: 50%;
   background: linear-gradient(135deg, var(--color-primary-strong), var(--color-accent));
@@ -530,7 +532,13 @@ table,
   font-weight: 800;
   letter-spacing: 0.02em;
   box-shadow: var(--shadow-sm);
+  flex-shrink: 0;
 }
+.crest-xs { width: 28px; height: 28px; font-size: 0.7rem; }
+.crest-sm { width: 34px; height: 34px; font-size: var(--text-2xs); }
+.crest-md { width: 46px; height: 46px; font-size: var(--text-2xs); }
+.crest-lg { width: 58px; height: 58px; font-size: 0.8rem; }
+.crest-xl { width: 64px; height: 64px; font-size: var(--text-sm); }
 
 /* ---- PrimeVue overrides ---- */
 .p-card {
@@ -626,7 +634,9 @@ table,
 }
 .login-card { width: 100%; max-width: 400px; animation: pop-in 0.4s ease both; }
 .login-brand { text-align: center; margin-bottom: 1rem; }
-.login-mark { width: 56px; height: 56px; color: #fff; margin-bottom: 0.6rem; }
+.login-mark { width: 56px; height: 56px; color: var(--color-text); margin-bottom: 0.6rem; }
+.login-title { margin: 0; font-size: var(--text-xl); font-weight: 800; letter-spacing: -0.02em; }
+.login-season { margin: 0.35rem 0 0; color: var(--color-primary-hover); font-size: var(--text-sm); font-weight: 600; }
 
 /* ---- Responsive ---- */
 @media (max-width: 900px) {
@@ -634,4 +644,12 @@ table,
   .nav-toggle { display: inline-flex !important; }
   .app-main { padding: 1.1rem 1rem max(2rem, env(safe-area-inset-bottom)); }
   .user-chip { display: none; }
+}
+
+/* The drawer belongs to the hamburger, and the hamburger is mobile-only. Widen
+   the window with the menu open and it has to go with it. */
+@media (min-width: 901px) {
+  .mobile-nav,
+  .mobile-nav.is-open,
+  .mobile-nav-backdrop { display: none; }
 }

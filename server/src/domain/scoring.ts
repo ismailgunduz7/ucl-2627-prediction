@@ -1,9 +1,9 @@
 /**
  * Pure club-layer match scoring (PLAN.md §4.2, §4.3).
  *
- * `scoreMatchDraft` treats a scoreline as if the match ended now; the same
- * rules apply to a finished match and to a live provisional draft (§4.3, the
- * shared idea). The only difference elsewhere is whether the result is stored.
+ * `scoreMatchDraft` treats a scoreline as if the match had ended now. The same
+ * rules apply to a finished match and to a live provisional draft (§4.3). The
+ * only difference elsewhere is whether the result gets stored.
  * This function has no DB or time dependency, so it is fully unit-testable.
  */
 
@@ -64,8 +64,8 @@ function sideLines(
     }
   }
 
-  // Clean sheet (GA = 0). Shield (§3.6) may later treat GA = 1 as CS; that is a
-  // participant-layer adjustment applied on top, not here.
+  // Clean sheet (GA = 0). Shield (§3.6) may later treat GA = 1 as a clean sheet
+  // too, but that is a participant-layer adjustment applied on top, not here.
   if (goalsAgainst === 0) {
     const cs = ruleValue(rules, tierId, 'clean_sheet');
     if (cs !== 0) {

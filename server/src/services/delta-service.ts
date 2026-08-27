@@ -7,17 +7,17 @@ import { shieldDeltaForTarget } from './matchweek-scoring-service.ts';
 
 /**
  * The live delta feed (§18.6): the week's point events for the participant's
- * SCORING clubs, one line per rule (`+3 galibiyet`, `−1 gol yedi`) with the
- * captain's multiplier as its own line. Finished matches contribute definitive
- * lines; live matches contribute drafts marked provisional, computed with the
- * same rules (§4.3 Option A). Read entirely from our own tables (§5.6).
+ * SCORING clubs, one line per rule (`+3 galibiyet`, `-1 gol yedi`), with the
+ * captain's multiplier as a line of its own. Finished matches contribute
+ * definitive lines. Live matches contribute drafts marked provisional, scored
+ * with the same rules (§4.3 Option A). It all comes from our own tables (§5.6).
  */
 
 export interface DeltaEvent {
   ruleCode: string;
   label: string;
   points: number;
-  /** From a match still in play; the number can move until it finishes. */
+  /** From a match still in play, so the number can move until it finishes. */
   provisional: boolean;
 }
 
@@ -142,7 +142,7 @@ export async function getWeekDeltas(userId: string, mwId: string): Promise<WeekD
     }
   }
 
-  // The captain's bonus as its own line: base × (multiplier − 1).
+  // The captain's bonus as a line of its own: base x (multiplier - 1).
   const multiplier = joker?.code === 'triple_boost' ? 3 : 2;
   const captainEvents = eventsByTeam.get(lineup.captainTeamId);
   if (captainEvents && captainEvents.length > 0) {

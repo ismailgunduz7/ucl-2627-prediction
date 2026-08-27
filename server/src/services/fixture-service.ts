@@ -9,7 +9,7 @@ import { compareMatchweekMenu, legHeading, matchweekMenuEntry } from '../domain/
 /**
  * The matchweek seen as a fixture list (§18.5): every match of the week, the
  * participant's own clubs marked, and what each of those clubs has earned so
- * far. Read entirely from our own tables; participant traffic never reaches
+ * far. It all comes from our own tables, so participant traffic never reaches
  * the provider (§5.6).
  */
 
@@ -56,8 +56,8 @@ export interface WeekFixtures {
 
 /**
  * A whole round as one page: a league week is a single section, a two-legged
- * tie is two: the first legs, then the returns. Each leg keeps its own joker
- * context, since a leg is still its own matchweek (§2.4).
+ * tie is two, the first legs and then the returns. Each leg keeps its own joker
+ * context, because a leg is still its own matchweek (§2.4).
  */
 export interface RoundFixtures {
   roundKey: string;

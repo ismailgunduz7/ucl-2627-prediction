@@ -14,7 +14,7 @@ test('MW1 editable well before its lock', () => {
   assert.equal(e.locked, false);
 });
 
-test('MW1 locks at T0 − 5 minutes', () => {
+test('MW1 locks at T0 - 5 minutes', () => {
   const justBefore = lineupEditability(ordered, 'mw-1', new Date('2026-09-15T18:54:00Z'));
   assert.equal(justBefore.locked, false);
   const atLock = lineupEditability(ordered, 'mw-1', new Date('2026-09-15T18:55:00Z'));

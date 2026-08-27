@@ -51,8 +51,8 @@ export interface PlayerPoints {
  * Full season breakdown for one participant: every matchweek, the clubs that
  * scored, and the individual rule lines behind each club's points.
  *
- * Visibility follows the competition scope: you can only open players from
- * your own competition, and admins are not participants.
+ * Visibility follows the competition scope. You can only open players from your
+ * own competition, and admins are not participants at all.
  */
 export async function getPlayerPoints(
   playerId: string,

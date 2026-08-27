@@ -8,7 +8,7 @@ import type { RuleDirection } from '../data/scoring-rules.ts';
  * - flat: must be equal across all pots.
  *
  * Returns null if the direction holds, or a human-readable warning otherwise.
- * This is a WARNING, not a hard rejection; admins may still save (§4.2).
+ * This is a warning, not a rejection. The admin can still save (§4.2).
  */
 export function checkRuleDirection(
   direction: RuleDirection,

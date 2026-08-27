@@ -1,9 +1,9 @@
 /**
  * Login rate limiter (PLAN.md §12): sliding window per (IP + username).
  *
- * On limit we return 429 + Retry-After; there is NO permanent account lockout
- * (that would let anyone lock out a known username as a DoS). A successful login
- * resets the counter for that key. In-memory is fine for a single-node private
+ * Hitting the limit gets you a 429 with Retry-After and nothing more. There is
+ * no permanent account lockout, because that would let anyone freeze a known
+ * username at will. A successful login resets the counter for that key. In-memory is fine for a single-node private
  * league; swap for a shared store (Redis) if the API is scaled horizontally.
  */
 const WINDOW_MS = 15 * 60 * 1000; // 15 minutes

@@ -27,10 +27,6 @@ const squadComplete = computed(() => squad.value.length === 4);
 const myRank = computed(() => leaderboard.value.find((e) => e.userId === auth.user?.id) ?? null);
 const topThree = computed(() => leaderboard.value.slice(0, 3));
 
-function initials(name: string) {
-  return name.split(' ').map((w) => w[0]).slice(0, 3).join('').toUpperCase();
-}
-
 onMounted(async () => {
   try {
     const [status, sq, lb] = await Promise.all([
@@ -78,7 +74,7 @@ onMounted(async () => {
         <template v-if="squadComplete">
           <div class="crest-row">
             <RouterLink v-for="s in squad" :key="s.teamId" :to="`/takim/${s.teamId}`" class="crest-mini">
-              <span class="crest" :class="{ elim: s.eliminated }">{{ s.shortName }}</span>
+              <span class="crest crest-md" :class="{ elim: s.eliminated }">{{ s.shortName }}</span>
               <small>{{ s.name }}</small>
             </RouterLink>
           </div>
@@ -97,7 +93,7 @@ onMounted(async () => {
         <h2 class="section-title" style="margin: 0 0 0.75rem">{{ currentMw?.label ?? 'Hafta' }}</h2>
         <template v-if="currentMw">
           <div class="week-score">
-            <span class="big-num">{{ weekTotal ?? '–' }}</span>
+            <span class="big-num">{{ weekTotal ?? '-' }}</span>
             <span class="text-muted">{{ weekFinal ? 'kesin puan' : 'anlık puan' }}</span>
           </div>
           <RouterLink to="/hafta">
@@ -171,18 +167,6 @@ onMounted(async () => {
 .crest-mini small {
   font-size: var(--text-2xs);
   line-height: 1.15;
-}
-.crest {
-  width: 46px;
-  height: 46px;
-  border-radius: 50%;
-  background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
-  color: #fff;
-  display: grid;
-  place-items: center;
-  font-size: var(--text-2xs);
-  font-weight: 800;
-  box-shadow: var(--shadow-sm);
 }
 .crest.elim {
   filter: grayscale(1);

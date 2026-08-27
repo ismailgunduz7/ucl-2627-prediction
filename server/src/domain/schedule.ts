@@ -1,6 +1,6 @@
 /**
- * Random league-phase draw under the competition's own constraints (§2.2–2.3):
- * every club meets exactly two clubs from each pot (one at home, one away),
+ * Random league-phase draw under the competition's own constraints (§2.2-2.3):
+ * every club meets exactly two clubs from each pot, one at home and one away,
  * never a club from its own country, never the same opponent twice, and the
  * 144 matches fold into eight matchdays with every club playing exactly once
  * per matchday. Stands in for UEFA's real fixture list until it is published;
@@ -10,8 +10,8 @@
  * (host and return) that never meet twice; a pot against itself is a
  * fixed-point-free, 2-cycle-free permutation. The matchday split is then a
  * 1-factorization of the resulting 8-regular graph, found by most-constrained-
- * first backtracking with random restarts, plus a fresh opponent draw when a
- * graph refuses to factor.
+ * first backtracking with random restarts. A graph that refuses to factor gets
+ * a fresh opponent draw.
  */
 
 export interface DrawTeam {
@@ -229,7 +229,7 @@ export function generateLeagueDraw(teams: DrawTeam[], seed?: number): DrawFixtur
       }
     }
   }
-  throw new Error('could not produce a valid draw; check the country distribution');
+  throw new Error('could not produce a valid draw. Check the country distribution');
 }
 
 /**

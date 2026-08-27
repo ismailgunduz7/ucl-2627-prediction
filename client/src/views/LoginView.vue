@@ -39,8 +39,8 @@ async function submit() {
     <div class="login-card">
       <div class="login-brand">
         <StarBall class="login-mark" />
-        <h1 style="margin: 0; color: #fff; font-size: var(--text-xl)">Şampiyonlar Ligi Fantazi</h1>
-        <p style="margin: 0.35rem 0 0; color: #c7d2fe">2026/27 sezonu · giriş yap</p>
+        <h1 class="login-title">Şampiyonlar Ligi Fantazi</h1>
+        <p class="login-season">2026-27 sezonu</p>
       </div>
       <Card>
         <template #content>

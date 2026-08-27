@@ -1,16 +1,16 @@
 /**
- * Domain seed for the 2026–27 season: pots and the REAL 36-club field from
+ * Domain seed for the 2026-27 season: pots and the REAL 36-club field from
  * UEFA's confirmed draw pots (data/teams-2627.ts), config defaults, the eight
  * league matchweeks on the REAL matchday calendar, and a random fixture list
- * drawn under the competition's own constraints in domain/schedule.ts (two
- * opponents per pot, one home one away, never a compatriot), standing in until
- * UEFA publishes the actual fixtures.
+ * drawn under the competition's own constraints in domain/schedule.ts. Those
+ * are two opponents per pot, one at home and one away, and never a compatriot.
+ * The draw stands in until UEFA publishes the actual fixtures.
  *
  * Idempotent: skips if pots already exist. Re-run with SEED_FORCE=1 to wipe the
- * WHOLE season (matches, scores, lineups, jokers, predictions, transfers, the
- * knockout bracket and the sync log) while keeping user accounts. Squads must
- * be re-picked; joker inventories are re-granted at Act I; the act returns to
- * the league phase. SEED_DRAW_SEED=<n> reproduces a specific draw.
+ * WHOLE season while keeping user accounts: matches, scores, lineups, jokers,
+ * predictions, transfers, the knockout bracket and the sync log. Squads then
+ * have to be re-picked, joker inventories are re-granted at Act I, and the act
+ * returns to the league phase. SEED_DRAW_SEED=<n> reproduces a specific draw.
  */
 import type { PoolClient } from 'pg';
 import { withTransaction, query, closePool } from './pool.ts';
@@ -121,7 +121,7 @@ async function main(): Promise<void> {
       ]);
     }
 
-    // 2. Teams, flattened pot 1..4, the same order the draw was made in.
+    // 2. Teams, flattened pot 1..4, in the order the draw was made.
     const teamIds: string[] = [];
     for (const pot of [1, 2, 3, 4] as const) {
       for (const t of POTS_2627[pot]) {
@@ -132,9 +132,9 @@ async function main(): Promise<void> {
         teamIds.push(rows[0]!.id);
       }
     }
-    console.log(`Seeded ${teamIds.length} clubs across 4 pots (2026–27 field).`);
+    console.log(`Seeded ${teamIds.length} clubs across 4 pots (2026-27 field).`);
 
-    // 3. Config defaults (existing values win, so a reseed keeps admin tuning)
+    // 3. Config defaults. Existing values win, so a reseed keeps admin tuning.
     for (const [key, value] of Object.entries(DEFAULT_CONFIG)) {
       await client.query(
         `INSERT INTO tournament_config (key, value) VALUES ($1, $2)

@@ -82,9 +82,9 @@ async function teamName(teamId: string): Promise<string | null> {
 }
 
 /**
- * Everyone's picks for a matchweek, the viewer's own row included, visible
- * only from kickoff (§3.6, §18.4). Returns available=false before the week has
- * started. Joker omitted when none used.
+ * Everyone's picks for a matchweek, the viewer's own row included. Nothing is
+ * visible before kickoff (§3.6, §18.4), when it returns available=false. The
+ * joker field is omitted for anyone who played none.
  */
 export async function getOpenPicks(
   competitionId: string,

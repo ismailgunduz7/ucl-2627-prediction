@@ -28,9 +28,9 @@ interface FdMatch {
 
 /**
  * Real provider using football-data.org API v4 (§5.1). Server-side only; the
- * token never reaches clients (§5.6). All participant reads come from our DB;
- * only this sync path calls the provider, so user concurrency never trips the
- * provider rate limit.
+ * token never reaches clients (§5.6). Participants read from our own database
+ * and this sync path is the only thing that calls the provider, so no amount of
+ * user traffic can trip the provider's rate limit.
  *
  * Note: this maps provider ids as `fd:<id>`. It only resolves to our rows once
  * `teams.external_id` is seeded with matching `fd:` ids after the official draw;

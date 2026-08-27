@@ -41,7 +41,7 @@ const jokers = [
     code: 'weekly_swap',
     name: 'Haftalık değişim',
     icon: Repeat,
-    desc: 'Bir kulübün yerine aynı pottan, kadroda olmayan ve elenmemiş bir kulüp yalnızca o haftalık alınır. Gelen kulüp yedeğe çekilemez; çıkan kulüp kaptansa kaptanlık gelene geçer. Hafta bitince kadro kendiliğinden eski haline döner.',
+    desc: 'Bir kulübün yerine aynı pottan, kadroda olmayan ve elenmemiş bir kulüp yalnızca o haftalık alınır. Gelen kulüp yedeğe çekilemez. Çıkan kulüp kaptansa kaptanlık gelen kulübe geçer. Hafta bitince kadro kendiliğinden eski haline döner.',
   },
 ];
 
@@ -82,11 +82,11 @@ onMounted(async () => {
         <div class="section-title">Kadro</div>
         <p>
           Her pottan bir kulüp seçilerek dört kulüplük kadro kurulur. Kadro ilk haftanın kilidine
-          kadar serbestçe değiştirilebilir; sonrasında sezon boyunca sabittir ve tek kalıcı
+          kadar serbestçe değiştirilebilir, sonrasında sezon boyunca sabit kalır. Tek kalıcı
           değişiklik hakkı lig aşaması bitince tanınır. Her hafta dört kulüpten biri yedeğe
           çekilir, sahada kalan üçten birine kaptanlık verilir. Yedeğe çekilen kulübün puanı o
-          hafta yazılmaz; kaptanın puanı ikiyle çarpılır. Elenen kulüp kadrodan düşmez, ancak
-          maçı olmadığı için puan da getirmez.
+          hafta yazılmaz, kaptanın puanı ise ikiyle çarpılır. Elenen kulüp kadrodan düşmez ama
+          maçı kalmadığı için puan da getirmez.
         </p>
       </section>
 
@@ -103,7 +103,7 @@ onMounted(async () => {
       <section class="surface-card card-pad">
         <div class="section-title">Puan tablosu</div>
         <p>
-          Aynı sonuç, zayıf pottaki bir kulüp için daha değerlidir; güçlü bir kulübün kötü sonucu
+          Aynı sonuç, zayıf pottaki bir kulüp için daha değerlidir. Güçlü bir kulübün kötü sonucu
           ise daha ağır cezalandırılır. Bir kulüp aynı hafta iki maç oynarsa ikisinin puanı da
           yazılır.
         </p>
@@ -134,7 +134,7 @@ onMounted(async () => {
         <div class="section-title">Jokerler</div>
         <p>
           Haftada en fazla bir joker oynanabilir. Kilitten önce vazgeçilirse hak iade edilir.
-          Haklar lig aşamasının başında verilir; lig bitince eleme turları için yeniden dağıtılır.
+          Haklar lig aşamasının başında verilir, lig bitince eleme turları için yeniden dağıtılır.
         </p>
         <div class="joker-grid stagger">
           <div v-for="j in jokers" :key="j.code" class="joker-card">
@@ -151,13 +151,18 @@ onMounted(async () => {
       <section class="surface-card card-pad">
         <div class="section-title">Lig bitince</div>
         <p>
-          Lig aşaması tamamlandığında 25–36. sıradaki kulüpler elenir. İlk sekize giren kulüpler
+          Lig aşaması tamamlandığında 25-36. sıradaki kulüpler elenir. İlk sekize giren kulüpler
           play-off oynamadan son 16'ya geçer ve boşta geçirecekleri haftalar için tek seferlik
-          "Lig ilk 8 bonusu" alır. Joker hakları eleme turları için yeniden dağıtılır. Ayrıca bir
-          transfer hakkı tanınır: kadrodan bir kulüp, aynı pottan başka bir kulüple <b>kalıcı
-          olarak</b> değiştirilebilir. Pencere ilk eleme haftasının kilidine kadar açıktır; bu
-          süre içinde seçim istenildiği kadar güncellenebilir, kullanılmazsa yanar. Eleme
-          turlarında her ayak kendi haftasıdır: diziliş, joker ve kupon ayak ayak kilitlenir.
+          "Lig ilk 8 bonusu" alır.
+        </p>
+        <p>
+          Joker hakları eleme turları için yeniden dağıtılır. Ayrıca bir transfer hakkı tanınır:
+          kadrodan bir kulüp, aynı pottan başka bir kulüple <b>kalıcı olarak</b> değiştirilebilir.
+          Pencere ilk eleme haftasının kilidine kadar açık kalır, bu süre içinde seçim istenildiği
+          kadar güncellenebilir. Kullanılmayan hak yanar.
+        </p>
+        <p>
+          Eleme turlarında her ayak kendi haftasıdır. Diziliş, joker ve kupon ayak ayak kilitlenir.
         </p>
       </section>
 
@@ -165,9 +170,9 @@ onMounted(async () => {
         <div class="section-title">Ahtapot Paul</div>
         <p>
           Haftanın her maçı için ev sahibi galibiyeti (MS1), beraberlik (MS0) ya da deplasman
-          galibiyeti (MS2) tahmini yapılabilir; maçın oyuncunun kendi kulüplerine ait olması
+          galibiyeti (MS2) tahmini yapılabilir. Maçın oyuncunun kendi kulüplerine ait olması
           gerekmez. Tutan her tahmin {{ predictionPoints }} puan kazandırır ve haftalık toplama
-          eklenir. Kupon, dizilişle aynı anda kilitlenir. Seçili tahmine yeniden basıldığında
+          eklenir. Kupon dizilişle aynı anda kilitlenir. Seçili tahmine yeniden basıldığında
           tahmin geri alınır.
         </p>
       </section>

@@ -33,7 +33,7 @@ const ACTS: { key: Act; label: string }[] = [
   { key: 'knockout', label: 'Eleme turları' },
 ];
 const providerOptions = [
-  { label: 'Mock (simülasyon)', value: 'mock' },
+  { label: 'Simülasyon', value: 'mock' },
   { label: 'football-data.org', value: 'football_data' },
 ];
 
@@ -72,15 +72,15 @@ async function save() {
   }
 }
 
-/** Manual fallback: run the same progression the sync normally triggers. */
+/** Manual fallback: run the same progression a score pull normally triggers. */
 async function advanceSeason() {
   advancing.value = true;
   try {
     await api.post('/api/admin/acts/advance');
-    toast.add({ severity: 'success', summary: 'Sezon ilerleyişi kontrol edildi', life: 3000 });
+    toast.add({ severity: 'success', summary: 'Sezon kontrol edildi', life: 3000 });
     await load();
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Olmadı', detail: msg(e), life: 4000 });
+    toast.add({ severity: 'error', summary: 'Sezon kontrol edilemedi', detail: msg(e), life: 4000 });
   } finally {
     advancing.value = false;
   }
@@ -112,9 +112,9 @@ onMounted(load);
             style="min-width: 220px"
           />
           <p class="text-muted note">
-            Arka plan yoklaması bu sağlayıcıyı okur; mock seçiliyken kendini durdurur çünkü simüle
-            saati sen veriyorsun. football-data.org için sunucuda
-            <code>FOOTBALL_DATA_API_TOKEN</code> tanımlı olmalı.
+            Skorlar buradan geliyor. Simülasyondayken arka plan işi beklemeye geçer, çünkü saati
+            sen veriyorsun. football-data.org için sunucuda <code>FOOTBALL_DATA_API_TOKEN</code>
+            tanımlı olmalı.
           </p>
         </div>
       </section>
@@ -122,8 +122,9 @@ onMounted(load);
       <section class="surface-card card-pad">
         <div class="section-title">Joker hakları</div>
         <p class="text-muted note" style="margin-bottom: 1rem">
-          Lig değerleri yeni hesap açılırken verilir; eleme değerleri lig biterken herkese yeniden
-          dağıtılır. Var olan envanterlere dokunmaz; onun yeri Kullanıcılar sayfası.
+          Lig değerleri yeni açılan hesaplara verilir. Eleme değerleri lig biterken herkese
+          yeniden dağıtılır. Buradaki değişiklik kimsenin elindeki hakları değiştirmez, tek tek
+          düzeltmek için Kullanıcılar sayfasına bak.
         </p>
         <div style="overflow-x: auto">
           <table class="grants">
@@ -169,7 +170,7 @@ onMounted(load);
             show-buttons
             :input-style="{ width: '6rem' }"
           />
-          <p class="text-muted note">Kilide bu kadar süre kala haftalık sayfadaki sayaç uyarıya döner.</p>
+          <p class="text-muted note">Kilide bu kadar kalınca haftalık sayfadaki sayaç uyarı rengine geçer.</p>
         </div>
       </section>
 
@@ -178,11 +179,12 @@ onMounted(load);
         <div class="row">
           <Tag :value="config.current_act === 'league_phase' ? 'Lig aşaması' : 'Eleme turları'" />
           <p class="text-muted note">
-            Sezon kendi kendine ilerler: lig bitince elemeler kurulur, biten turlar bağlanır. Sync
-            gecikmişse aynı kontrolü buradan elle tetikleyebilirsin.
+            Sezon kendi kendine ilerliyor. Lig bitince eleme turları kuruluyor, biten turların
+            galipleri bir sonrakine yazılıyor. Skorlar geciktiyse aynı kontrolü buradan elle
+            çalıştırabilirsin.
           </p>
           <Button
-            label="İlerleyişi kontrol et"
+            label="Sezonu kontrol et"
             icon="pi pi-forward"
             severity="secondary"
             outlined

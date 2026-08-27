@@ -217,7 +217,7 @@ export async function setLineup(
   captainTeamId: string,
 ): Promise<ResolvedLineup> {
   const squad = await getEffectiveSquad(userId, mwId);
-  if (squad.length === 0) throw ApiError.badRequest('Önce kalıcı kadro seçilmeli', 'no_squad');
+  if (squad.length === 0) throw ApiError.badRequest('Önce kadronu kurmalısın', 'no_squad');
 
   const ordered = await getOrderedMatchweeks();
   const editability = lineupEditability(ordered, mwId);
@@ -238,7 +238,7 @@ export async function setLineup(
     throw ApiError.badRequest(validation.error.message, validation.error.code);
   }
 
-  // A club swapped in for this week is here to play; it cannot be benched.
+  // A club swapped in for this week came to play. It cannot be benched.
   if (active?.code === 'weekly_swap' && benchTeamId === active.payload.toTeamId) {
     throw ApiError.badRequest(
       'Bu hafta takasla gelen kulüp yedeğe çekilemez',
@@ -246,25 +246,11 @@ export async function setLineup(
     );
   }
 
-  // Benching a shielded club cancels the joker; the client confirms first.
+  // Benching a shielded club would cancel the joker (§3.6), so answer 409 and
+  // let the client confirm first. One live joker per week is guaranteed by the
+  // partial unique index, so `active` is the only activation there can be.
   if (active?.code === 'clean_sheet_shield' && benchTeamId === active.payload.teamId) {
-    throw new ApiError(409, 'joker_bench_conflict', 'Kalkan kullandığın kulübü yedeğe çekiyorsun');
-  }
-
-  // Benching a club that holds an active clean_sheet_shield would cancel the
-  // joker (§3.6). Reject so the client can confirm + cancel first (409).
-  const shield = await query<{ payload: { teamId?: string } }>(
-    `SELECT payload FROM joker_activations
-     WHERE user_id = $1 AND matchweek_id = $2 AND joker_type_code = 'clean_sheet_shield'
-       AND cancelled_at IS NULL`,
-    [userId, mwId],
-  );
-  if (shield.rows[0]?.payload?.teamId === benchTeamId) {
-    throw new ApiError(
-      409,
-      'joker_bench_conflict',
-      'Bu kulüpte aktif kalkan jokeri var; bench’e çekmek jokeri iptal eder',
-    );
+    throw new ApiError(409, 'joker_bench_conflict', 'Kalkan taktığın kulübü yedeğe çekiyorsun');
   }
 
   await query(

@@ -15,7 +15,7 @@ export class ApiError extends Error {
   static unauthorized(message = 'Kimlik doğrulanamadı', code = 'unauthorized') {
     return new ApiError(401, code, message);
   }
-  static forbidden(message = 'Bu işlem için yetkiniz yok', code = 'forbidden') {
+  static forbidden(message = 'Bunu yapma yetkin yok', code = 'forbidden') {
     return new ApiError(403, code, message);
   }
   static badRequest(message = 'Geçersiz istek', code = 'bad_request', details?: unknown) {

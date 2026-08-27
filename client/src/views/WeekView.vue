@@ -190,7 +190,7 @@ async function chooseSwap(toTeamId: string) {
   await activateJoker('weekly_swap', { fromTeamId: swapFrom.value?.teamId, toTeamId });
 }
 
-// A club swapped in for this week is here to play; it cannot be benched.
+// A club swapped in for this week came to play. It cannot be benched.
 function canBench(club: SquadClub) {
   return editable.value && club.teamId !== swappedInId.value;
 }
@@ -263,7 +263,7 @@ async function activateJoker(code: string, payload: Record<string, unknown>) {
     toast.add({ severity: 'success', summary: `${JOKER_NAMES[code]} aktif`, life: 2500 });
     await loadWeek();
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Olmadı', detail: msg(e), life: 4500 });
+    toast.add({ severity: 'error', summary: 'Joker oynanamadı', detail: msg(e), life: 4500 });
   } finally {
     busy.value = false;
   }
@@ -321,8 +321,9 @@ async function loadWeek() {
 
 /**
  * While a match of the selected week is in play the page re-reads itself once a
- * minute, from our own API only (the provider is the sync job's business,
- * §5.6), so the feed, the coupon and the provisional total keep moving.
+ * minute so the feed, the coupon and the provisional total keep moving. It
+ * reads our own API and nothing else. Talking to the provider is the sync job's
+ * job (§5.6).
  */
 function scheduleLivePoll() {
   window.clearInterval(livePoller);
@@ -392,10 +393,10 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
 
     <template v-else>
       <Message v-if="isComplete" severity="success" :closable="false">Hafta bitti, puanlar kesinleşti.</Message>
-      <Message v-else-if="!currentMw?.opened" severity="secondary" :closable="false">Bu hafta henüz açılmadı.</Message>
+      <Message v-else-if="!currentMw?.opened" severity="secondary" :closable="false">Bu hafta henüz açılmadı. Bir önceki hafta başlayınca burası düzenlemeye açılır.</Message>
       <Message v-else-if="drama" severity="warn" :closable="false">⏰ Kilide son {{ countdown }}!</Message>
       <Message v-else-if="editable && countdown" severity="info" :closable="false">Kilide {{ countdown }} kaldı.</Message>
-      <Message v-else-if="!editable" severity="warn" :closable="false">Hafta kilitli.</Message>
+      <Message v-else-if="!editable" severity="warn" :closable="false">Hafta kilitlendi, diziliş artık değişmiyor.</Message>
 
       <section class="pitch surface-card">
         <div class="zone-label">Sahada</div>
@@ -448,8 +449,8 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
                 class="slot-btn joker press"
                 :class="{ on: j.active }"
                 :aria-pressed="j.active"
-                :aria-label="j.active ? `${JOKER_NAMES[j.code]}: geri al` : `${JOKER_NAMES[j.code]}: ${club.name}`"
-                :title="j.active ? `${JOKER_NAMES[j.code]}: geri al` : JOKER_NAMES[j.code]"
+                :aria-label="j.active ? `${JOKER_NAMES[j.code]} jokerini geri al` : `${club.name} için ${JOKER_NAMES[j.code]}`"
+                :title="j.active ? 'Geri al' : JOKER_NAMES[j.code]"
                 @click="onJokerClick(j.code, club, j.active)"
               >
                 <component :is="JOKER_ICONS[j.code]" :size="16" aria-hidden="true" />
@@ -495,8 +496,8 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
                 class="slot-btn joker press"
                 :class="{ on: j.active }"
                 :aria-pressed="j.active"
-                :aria-label="j.active ? `${JOKER_NAMES[j.code]}: geri al` : `${JOKER_NAMES[j.code]}: ${benchClub.name}`"
-                :title="j.active ? `${JOKER_NAMES[j.code]}: geri al` : JOKER_NAMES[j.code]"
+                :aria-label="j.active ? `${JOKER_NAMES[j.code]} jokerini geri al` : `${benchClub.name} için ${JOKER_NAMES[j.code]}`"
+                :title="j.active ? 'Geri al' : JOKER_NAMES[j.code]"
                 @click="onJokerClick(j.code, benchClub, j.active)"
               >
                 <component :is="JOKER_ICONS[j.code]" :size="16" aria-hidden="true" />
@@ -606,8 +607,8 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
                 </div>
               </td>
               <td class="line-points">
-                <span v-if="sittingOut(l)" title="Yedek: puanı yazılmadı">–</span>
-                <span v-else-if="byeIds.has(l.teamId) && l.basePoints === 0" class="text-muted">maç yok · 0</span>
+                <span v-if="sittingOut(l)" title="Yedekte kaldı, puanı yazılmadı">-</span>
+                <span v-else-if="byeIds.has(l.teamId) && l.basePoints === 0" class="text-muted">bu hafta maçı yoktu</span>
                 <span v-else>{{ l.basePoints }} → <strong>{{ l.contributed >= 0 ? '+' : '' }}{{ l.contributed }}</strong></span>
               </td>
             </tr>
@@ -666,7 +667,7 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
                   <JokerIcon :code="p.jokerCode" :size="16" />
                   <span v-if="p.jokerDetail" class="text-muted">{{ p.jokerDetail }}</span>
                 </span>
-                <span v-else class="text-muted">–</span>
+                <span v-else class="text-muted">-</span>
               </td>
               <td>{{ p.benchName }}</td>
             </tr>
@@ -723,8 +724,6 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
 .club-card.drag:active { cursor: grabbing; }
 .club-card.is-captain { border-color: var(--color-warning); box-shadow: 0 0 0 1px var(--color-warning), 0 0 22px rgba(251, 191, 36, 0.18); }
 .crest-link { text-decoration: none; }
-.crest-lg { width: 58px; height: 58px; font-size: 0.8rem; }
-.crest-sm { width: 30px; height: 30px; font-size: 0.7rem; }
 .crest.dim { filter: grayscale(0.7); opacity: 0.75; }
 .club-name { font-size: 0.88rem; font-weight: 700; text-align: center; line-height: 1.25; }
 .club-foot { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; min-height: 1.2rem; }

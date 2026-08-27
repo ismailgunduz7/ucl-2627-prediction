@@ -31,21 +31,31 @@ const editable = computed(() => !!state.value && !state.value.locked && state.va
 const candidates = computed(
   () => state.value?.options.find((o) => o.fromTeamId === fromId.value)?.candidates ?? [],
 );
+/** Both ends of a committed transfer, by name. The destination stays in its
+ *  own pot's candidate list precisely so it can be named here. */
 const committedNames = computed(() => {
   const s = state.value;
   if (!s || s.status !== 'committed') return null;
-  const from = s.options.find((o) => o.fromTeamId === s.fromTeamId)?.fromName;
-  return { from: from ?? 'kulüp', toId: s.toTeamId };
+  const option = s.options.find((o) => o.fromTeamId === s.fromTeamId);
+  return {
+    from: option?.fromName ?? 'kulüp',
+    to: option?.candidates.find((c) => c.id === s.toTeamId)?.name ?? 'yeni kulübün',
+  };
 });
 
 async function load() {
-  state.value = await api.get<State>('/api/act-transfer');
-  fromId.value = state.value.fromTeamId;
-  toId.value = state.value.toTeamId;
+  try {
+    state.value = await api.get<State>('/api/act-transfer');
+    fromId.value = state.value.fromTeamId;
+    toId.value = state.value.toTeamId;
+  } catch {
+    // Nothing to offer if the window cannot be read. The page around it stands.
+    state.value = null;
+  }
 }
 
-// A club the transfer removes may carry an active joker; the server answers
-// 409 and asks for a confirmation before cancelling and refunding it.
+// A club the transfer removes may carry an active joker. The server answers 409
+// and waits for a confirmation before cancelling and refunding it.
 const jokerConflict = ref<{ teamName: string; jokerName: string } | null>(null);
 
 function conflictText(e: ApiRequestError): { teamName: string; jokerName: string } {
@@ -103,8 +113,8 @@ onMounted(load);
       <div>
         <div class="section-title" style="margin: 0">Eleme turu transferi</div>
         <p class="text-muted" style="margin: 0.25rem 0 0; font-size: 0.88rem">
-          Eleme turlarına girerken bir kulübünü aynı pottan biriyle kalıcı olarak değiştirebilirsin.
-          Kullanmak zorunda değilsin.
+          Eleme turlarına girerken bir kulübünü aynı pottan biriyle kalıcı olarak
+          değiştirebilirsin. Kullanmak zorunda değilsin.
         </p>
       </div>
       <Tag
@@ -152,8 +162,9 @@ onMounted(load);
         />
       </div>
       <p v-if="committedNames" class="text-muted" style="margin: 0.75rem 0 0; font-size: 0.85rem">
-        Şu an <strong>{{ committedNames.from }}</strong> yerine yeni kulübün kadronda. Pencere
-        kapanana kadar değiştirebilirsin.
+        Şu an <strong>{{ committedNames.from }}</strong> yerine
+        <strong>{{ committedNames.to }}</strong> kadronda. Pencere kapanana kadar
+        fikrini değiştirebilirsin.
       </p>
     </template>
 

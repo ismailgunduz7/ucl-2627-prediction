@@ -33,12 +33,12 @@ export async function getMatchweekById(id: string): Promise<MatchweekRow | null>
 export interface LockState {
   /** T0(M): earliest kickoff of the matchweek, or null if no fixtures yet. */
   firstKickoffAt: Date | null;
-  /** T0(M) − 5m, or null if firstKickoffAt is unknown. */
+  /** T0(M) - 5m, or null if firstKickoffAt is unknown. */
   lockAt: Date | null;
   locked: boolean;
 }
 
-/** A matchweek has started once a match kicked off, by status or by wall clock. */
+/** A matchweek has started once a match kicked off, by status or by the clock. */
 function hasStarted(status: string, firstKickoffAt: Date | null, now: Date): boolean {
   if (status === 'in_progress' || status === 'complete') return true;
   return firstKickoffAt !== null && now.getTime() >= firstKickoffAt.getTime();
@@ -46,9 +46,10 @@ function hasStarted(status: string, firstKickoffAt: Date | null, now: Date): boo
 
 /**
  * Lock state for a matchweek at instant `now` (§3.4). Derived from the CURRENT
- * first_kickoff_at (never a stored deadline). Locked once now ≥ T0−5m OR the
- * matchweek has already started (a match kicked off); the latter keeps a
- * started week frozen even if the wall clock and provider clock disagree.
+ * first_kickoff_at (never a stored deadline). Locked once now ≥ T0-5m OR the
+ * matchweek has already started, meaning a match kicked off. That second
+ * condition keeps a started week frozen even when the wall clock and the
+ * provider's clock disagree.
  */
 export function lockStateFor(mw: MatchweekRow, now: Date = new Date()): LockState {
   const started = mw.status === 'in_progress' || mw.status === 'complete';
@@ -60,7 +61,7 @@ export function lockStateFor(mw: MatchweekRow, now: Date = new Date()): LockStat
 
 /**
  * Selection lock (§3.2): the permanent squad edit window closes at the SAME
- * instant as the MW1 lineup lock, T0(MW1) − 5m. Not a separate clock.
+ * instant as the MW1 lineup lock, T0(MW1) - 5m. Not a separate clock.
  */
 export async function getSelectionLockState(now: Date = new Date()): Promise<LockState> {
   const mw1 = await getFirstLeagueMatchweek();
@@ -79,7 +80,7 @@ export interface OrderedMatchweek {
 
 export interface Editability {
   lockAt: Date | null;
-  /** now ≥ T0(M) − 5m. */
+  /** now ≥ T0(M) - 5m. */
   locked: boolean;
   /** Editing opened: M is first, or the previous matchweek has kicked off (§3.4). */
   opened: boolean;
@@ -89,7 +90,7 @@ export interface Editability {
 /**
  * Pure editability for matchweek `mwId` given all matchweeks in play order.
  * A matchweek is editable when its predecessor has started (or it is first) and
- * its own lock (T0 − 5m) has not passed. Derived entirely from current
+ * its own lock (T0 - 5m) has not passed. Derived entirely from current
  * first_kickoff_at values, never a stored deadline.
  */
 export function lineupEditability(
@@ -132,8 +133,8 @@ export async function getOrderedMatchweeks(): Promise<OrderedMatchweek[]> {
 
 /**
  * Recompute matchweek denormalized state inside a transaction (§3.4, §4.6):
- * 1. first_kickoff_at for weeks not yet started (upcoming/open); never moves a
- *    started week's lock.
+ * 1. first_kickoff_at for weeks not yet started (upcoming/open). A started
+ *    week's lock never moves.
  * 2. mark in_progress once any match is live/finished.
  * 3. mark complete when every match is finished/cancelled.
  * Called by both provider sync and manual result edits.

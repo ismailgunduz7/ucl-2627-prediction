@@ -42,8 +42,9 @@ export function assertDomainInvariants(): void {
 
 /**
  * The authoritative lock instant for a matchweek whose earliest kickoff is
- * `firstKickoffAt`. Always T0(M) - LINEUP_LOCK_OFFSET_SECONDS; never stored as a
- * frozen deadline (§3.4); always derived from the current first_kickoff_at.
+ * `firstKickoffAt`. Always T0(M) - LINEUP_LOCK_OFFSET_SECONDS, and always
+ * derived from the current first_kickoff_at. It is never stored as a frozen
+ * deadline (§3.4), so a rescheduled kickoff moves the lock with it.
  */
 export function lockInstantFor(firstKickoffAt: Date): Date {
   return new Date(firstKickoffAt.getTime() - LINEUP_LOCK_OFFSET_SECONDS * 1000);
