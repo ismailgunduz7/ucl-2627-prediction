@@ -8,6 +8,7 @@ import Button from 'primevue/button';
 import { useToast } from 'primevue/usetoast';
 import { Crown, Armchair, House, Plane, ArrowUp, ArrowDown, Minus } from '@lucide/vue';
 import { api, ApiRequestError } from '@/lib/api';
+import { useAuthStore } from '@/stores/auth';
 import PageHeader from '@/components/PageHeader.vue';
 import BallLoader from '@/components/BallLoader.vue';
 import JokerIcon from '@/components/JokerIcon.vue';
@@ -25,7 +26,7 @@ interface WeekScore { total: number; final: boolean; lines: ScoreLine[]; jokerCo
 interface Inventory { code: string; name: string; remaining: number }
 interface ActiveJoker { code: string; payload: Record<string, unknown> }
 interface BriefingClub { teamId: string; name: string; fixtures: { opponentName: string; opponentTierId: number; home: boolean }[]; difficulty: string | null }
-interface OpenPick { userId: string; displayName: string; benchName: string; captainName: string; jokerCode: string | null }
+interface OpenPick { userId: string; displayName: string; benchName: string; captainName: string; jokerCode: string | null; jokerDetail: string | null }
 interface Pot { tierId: number; teams: { id: string; name: string; eliminated: boolean; isActive: boolean }[] }
 type Pick = 'home' | 'draw' | 'away';
 interface PredictionMatch {
@@ -49,6 +50,7 @@ const PICK_OPTIONS: { value: Pick; label: string }[] = [
 ];
 
 const toast = useToast();
+const auth = useAuthStore();
 
 const matchweeks = ref<Mw[]>([]);
 const selectedMw = ref<string | null>(null);
@@ -650,18 +652,23 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
       </section>
 
       <section v-if="openPicks.available" class="surface-card card-pad">
-        <div class="section-title">Rakiplerin tercihleri</div>
-        <table class="lines">
-          <thead><tr><th style="text-align: left">Oyuncu</th><th>Yedek</th><th>Kaptan</th><th>Joker</th></tr></thead>
+        <div class="section-title">Bu hafta kim ne yapmış</div>
+        <table class="lines picks-table">
+          <thead>
+            <tr><th>Oyuncu</th><th>Kaptan</th><th>Joker</th><th>Yedek</th></tr>
+          </thead>
           <tbody>
-            <tr v-for="p in openPicks.picks" :key="p.userId">
-              <td style="text-align: left">{{ p.displayName }}</td>
-              <td>{{ p.benchName }}</td>
+            <tr v-for="p in openPicks.picks" :key="p.userId" :class="{ me: p.userId === auth.user?.id }">
+              <td>{{ p.displayName }}<span v-if="p.userId === auth.user?.id" class="you"> · sen</span></td>
               <td>{{ p.captainName }}</td>
               <td>
-                <JokerIcon v-if="p.jokerCode" :code="p.jokerCode" :size="16" />
+                <span v-if="p.jokerCode" class="pick-joker">
+                  <JokerIcon :code="p.jokerCode" :size="16" />
+                  <span v-if="p.jokerDetail" class="text-muted">{{ p.jokerDetail }}</span>
+                </span>
                 <span v-else class="text-muted">—</span>
               </td>
+              <td>{{ p.benchName }}</td>
             </tr>
           </tbody>
         </table>
@@ -841,6 +848,12 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
 }
 .lines tr:last-child td { border-bottom: none; }
 .lines tr.muted td { color: var(--color-text-muted); }
+/* Every column reads left, headers over their values. */
+.picks-table th, .picks-table td { text-align: left; padding-left: 0.5rem; }
+.picks-table tr.me td { background: var(--color-primary-soft); }
+.picks-table .you { color: var(--color-primary); font-size: var(--text-2xs); font-weight: 700; }
+.pick-joker { display: inline-flex; align-items: center; gap: 0.45rem; }
+.pick-joker .text-muted { font-size: var(--text-xs); }
 .swap-list { display: flex; flex-direction: column; gap: 0.45rem; max-height: 320px; overflow-y: auto; }
 .swap-option {
   display: flex; align-items: center; gap: 0.7rem; padding: 0.55rem 0.7rem;

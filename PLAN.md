@@ -891,6 +891,8 @@ When matchweek auto-completes (§4.6): week total, per-club lines (bench “puan
 
 From `T0(M)`: peers see bench, captain, and joker **if present**. No joker → show nothing for joker.
 
+*Built* on the hub as "Bu hafta kim ne yapmış": every participant of the competition, the viewer's own row marked as theirs, columns reading player · captain · joker · bench. A weekly swap names both sides of the change (out → in) and a shield names its target, since an icon alone says a joker was played but not on what; no joker stays a plain dash.
+
 ### 18.5 Multi-live tracker
 
 All live CL matches; user clubs pinned; tolerate provider delay.

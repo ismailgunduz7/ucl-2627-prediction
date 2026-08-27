@@ -71,11 +71,20 @@ export interface OpenPick {
   benchName: string;
   captainName: string;
   jokerCode: string | null;
+  /** What the joker touched: "out → in" for a swap, the target for a shield. */
+  jokerDetail: string | null;
+}
+
+async function teamName(teamId: string): Promise<string | null> {
+  if (!teamId) return null;
+  const { rows } = await query<{ name: string }>('SELECT name FROM teams WHERE id = $1', [teamId]);
+  return rows[0]?.name ?? null;
 }
 
 /**
- * Peers' picks for a matchweek, visible only from kickoff (§3.6, §18.4). Returns
- * available=false before the week has started. Joker omitted when none used.
+ * Everyone's picks for a matchweek — the viewer's own row included — visible
+ * only from kickoff (§3.6, §18.4). Returns available=false before the week has
+ * started. Joker omitted when none used.
  */
 export async function getOpenPicks(
   competitionId: string,
@@ -101,12 +110,26 @@ export async function getOpenPicks(
     if (!lineup) continue;
     const byId = new Map(lineup.squad.map((s) => [s.teamId, s.name]));
     const joker = await getActiveJoker(p.id, mwId);
+
+    let jokerDetail: string | null = null;
+    if (joker?.code === 'weekly_swap') {
+      // The outgoing club is no longer in the effective squad; look it up.
+      const out = await teamName(String(joker.payload.fromTeamId ?? ''));
+      const inn =
+        byId.get(String(joker.payload.toTeamId ?? '')) ??
+        (await teamName(String(joker.payload.toTeamId ?? '')));
+      if (out && inn) jokerDetail = `${out} → ${inn}`;
+    } else if (joker?.code === 'clean_sheet_shield') {
+      jokerDetail = byId.get(String(joker.payload.teamId ?? '')) ?? null;
+    }
+
     picks.push({
       userId: p.id,
       displayName: p.display_name,
       benchName: byId.get(lineup.benchTeamId) ?? '',
       captainName: byId.get(lineup.captainTeamId) ?? '',
       jokerCode: joker?.code ?? null,
+      jokerDetail,
     });
   }
   return { available: true, picks };
