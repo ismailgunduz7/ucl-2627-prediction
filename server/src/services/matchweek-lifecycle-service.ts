@@ -137,6 +137,8 @@ export async function getOrderedMatchweeks(): Promise<OrderedMatchweek[]> {
  *    week's lock never moves.
  * 2. mark in_progress once any match is live/finished.
  * 3. mark complete when every match is finished/cancelled.
+ * 4. take a week back out of complete when a result is undone, and drop the
+ *    finals it had already written.
  * Called by both provider sync and manual result edits.
  */
 export async function refreshMatchweekLifecycle(client: PoolClient): Promise<void> {
@@ -159,6 +161,24 @@ export async function refreshMatchweekLifecycle(client: PoolClient): Promise<voi
          SELECT 1 FROM matches m
          WHERE m.matchweek_id = mw.id AND m.status NOT IN ('finished', 'cancelled')
        )`,
+  );
+  // An admin undoing a result, or a provider moving a match back off finished,
+  // leaves a completed week that is no longer complete. Roll it back and throw
+  // away the finals it wrote, so the week is scored from scratch when every
+  // match is settled again. It stays locked either way: `hasStarted` treats
+  // in_progress as started, so nobody gets a second go at their lineup.
+  await client.query(
+    `WITH reopened AS (
+       UPDATE matchweeks mw
+       SET status = 'in_progress', completed_at = NULL, updated_at = now()
+       WHERE mw.status = 'complete'
+         AND EXISTS (
+           SELECT 1 FROM matches m
+           WHERE m.matchweek_id = mw.id AND m.status NOT IN ('finished', 'cancelled')
+         )
+       RETURNING mw.id
+     )
+     DELETE FROM player_matchday_scores s USING reopened r WHERE s.matchweek_id = r.id`,
   );
 }
 

@@ -91,10 +91,14 @@ export async function getLeaderboard(competitionId: string): Promise<Leaderboard
     [competitionId],
   );
 
+  // Only weeks that are still complete count as final. A week that reopened
+  // has its rows deleted, but scoping the sum here means a stale row could
+  // never be added to the provisional total for the same week either.
   const finals = await query<{ user_id: string; total: string }>(
     `SELECT s.user_id, sum(s.points)::text AS total
      FROM player_matchday_scores s
      JOIN users u ON u.id = s.user_id
+     JOIN matchweeks mw ON mw.id = s.matchweek_id AND mw.status = 'complete'
      WHERE u.competition_id = $1 GROUP BY s.user_id`,
     [competitionId],
   );

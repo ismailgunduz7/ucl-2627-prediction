@@ -390,7 +390,7 @@ Default: do **not** move a postponed match to a different fantasy matchweek.
 
 ### 4.6 Matchweek completion (automatic)
 
-A matchweek `M` is **complete** when every match assigned to `M` is either `finished` or `cancelled`.
+A matchweek `M` is **complete** when every match assigned to `M` is either `finished` or `cancelled`. The test is re-evaluated on every sync and every manual result edit, in **both** directions: undoing a result, or a provider moving a match back off `finished`, takes the week out of `complete` again, discards the finals it had written and returns it to `in_progress` so it is scored from scratch once every match is settled. A reopened week stays **locked** (a started matchweek is locked regardless of status, §3.4), so no lineup, joker or coupon can be revisited.
 
 - Detection is by the sync/scoring job; **not** an admin button.
 - On completion: write final `player_matchday_scores` for all participants; unlock weekly wrap cards.
