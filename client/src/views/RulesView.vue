@@ -1,9 +1,8 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
-import { Zap, Shield, Repeat, Armchair, Users, Lock, ArrowLeftRight } from '@lucide/vue';
+import { Zap, Shield, Repeat, Armchair } from '@lucide/vue';
 import { api } from '@/lib/api';
 import PageHeader from '@/components/PageHeader.vue';
-import OctopusMark from '@/components/OctopusMark.vue';
 import BallLoader from '@/components/BallLoader.vue';
 
 interface RuleRow { code: string; category: string; label: string; points: Record<number, number> }
@@ -24,25 +23,25 @@ const jokers = [
     code: 'triple_boost',
     name: 'Üçlü kaptan',
     icon: Zap,
-    desc: 'Kaptanının puanı iki yerine üç katına çıkar. Kilitten önce kaptanı değiştirirsen joker yeni kaptana geçer.',
+    desc: 'Kaptanın puanı iki yerine üç katına çıkar. Kilitten önce kaptan değiştirilirse joker yeni kaptana geçer.',
   },
   {
     code: 'bench_boost',
     name: 'Bench boost',
     icon: Armchair,
-    desc: 'O hafta yedeğin dahil dört kulübün birden puan yazar; istersen kaptanlığı yedekteki kulübe bile verebilirsin.',
+    desc: 'O hafta yedek dahil dört kulübün puanı birden yazılır. Kaptanlık yedekteki kulübe de verilebilir.',
   },
   {
     code: 'clean_sheet_shield',
     name: 'Gol yememe kalkanı',
     icon: Shield,
-    desc: 'Sahadaki bir kulübüne takarsın. Tek gol yerse gol yememiş sayılır: bonusunu alır, o golün cezasını yemez. İki ve üzeri golde kalkan kırılır, normal puanlama işler. Kalkanlı kulübü yedeğe çekersen joker iptal edilir, hakkın geri gelir.',
+    desc: 'Sahadaki bir kulübe takılır. Kulüp tek gol yerse gol yememiş sayılır: gol yememe bonusu verilir, o golün cezası işlenmez. İki ve üzeri golde kalkan kırılır ve normal puanlama uygulanır. Kalkanlı kulüp yedeğe çekilirse joker iptal edilir ve hak iade edilir.',
   },
   {
     code: 'weekly_swap',
     name: 'Haftalık değişim',
     icon: Repeat,
-    desc: 'Bir kulübünün yerine aynı pottan, kadronda olmayan ve elenmemiş bir kulüp alırsın — sadece o haftalık. Gelen kulüp oynamaya gelir, yedeğe çekilemez; çıkan kulüp kaptansa şerit gelene geçer. Hafta bitince kadron kendiliğinden eskiye döner.',
+    desc: 'Bir kulübün yerine aynı pottan, kadroda olmayan ve elenmemiş bir kulüp yalnızca o haftalık alınır. Gelen kulüp yedeğe çekilemez; çıkan kulüp kaptansa kaptanlık gelene geçer. Hafta bitince kadro kendiliğinden eski haline döner.',
   },
 ];
 
@@ -73,38 +72,40 @@ onMounted(async () => {
 </script>
 
 <template>
-  <div class="page-stack">
+  <div class="page-stack rules-page">
     <PageHeader title="Nasıl oynanır" />
 
     <BallLoader v-if="loading" />
 
     <template v-else>
       <section class="surface-card card-pad">
-        <div class="section-title head-icon"><Users :size="18" /> Kadro</div>
-        <p style="margin: 0">
-          Her pottan bir kulüp seçip dört kulüplük kadronu kurarsın. Kadro ilk haftanın kilidine
-          kadar serbest, sonrasında sezon boyunca seninle — tek kalıcı değişiklik hakkı lig aşaması
-          biterken gelir. Her hafta dörtlünden birini yedeğe çeker, sahada kalan üçten birine
-          kaptanlığı verirsin: yedeğin puanı o hafta yazılmaz, kaptanınki ikiyle çarpılır. Elenen
-          kulüp kadrondan düşmez ama maçı olmadığı için puan da getirmez.
+        <div class="section-title">Kadro</div>
+        <p>
+          Her pottan bir kulüp seçilerek dört kulüplük kadro kurulur. Kadro ilk haftanın kilidine
+          kadar serbestçe değiştirilebilir; sonrasında sezon boyunca sabittir ve tek kalıcı
+          değişiklik hakkı lig aşaması bitince tanınır. Her hafta dört kulüpten biri yedeğe
+          çekilir, sahada kalan üçten birine kaptanlık verilir. Yedeğe çekilen kulübün puanı o
+          hafta yazılmaz; kaptanın puanı ikiyle çarpılır. Elenen kulüp kadrodan düşmez, ancak
+          maçı olmadığı için puan da getirmez.
         </p>
       </section>
 
       <section class="surface-card card-pad">
-        <div class="section-title head-icon"><Lock :size="18" /> Kilitler</div>
-        <p style="margin: 0">
-          Bir hafta, o haftanın ilk maçından <b>beş dakika önce</b> kilitlenir; diziliş, joker ve
-          kupon o ana kadar istediğin kadar değişir. İlk maç başladığında iki şey olur: sıradaki
-          hafta düzenlemeye açılır ve herkesin tercihi — yedek, kaptan, varsa joker — birbirine
-          görünür olur. Kilitten önce kimse kimseninkini göremez.
+        <div class="section-title">Kilitler</div>
+        <p>
+          Bir hafta, o haftanın ilk maçından <b>beş dakika önce</b> kilitlenir. Diziliş, joker ve
+          kupon o ana kadar serbestçe değiştirilebilir. İlk maçın başlamasıyla iki şey olur:
+          sıradaki hafta düzenlemeye açılır ve tüm oyuncuların tercihleri (yedek, kaptan, varsa
+          joker) birbirine görünür hale gelir. Kilitten önce hiçbir tercih başkasına gösterilmez.
         </p>
       </section>
 
       <section class="surface-card card-pad">
         <div class="section-title">Puan tablosu</div>
-        <p style="margin: 0 0 0.75rem">
+        <p>
           Aynı sonuç, zayıf pottaki bir kulüp için daha değerlidir; güçlü bir kulübün kötü sonucu
-          ise daha çok cezalandırılır. Bir kulüp o hafta iki maç oynarsa ikisinin puanı da yazılır.
+          ise daha ağır cezalandırılır. Bir kulüp aynı hafta iki maç oynarsa ikisinin puanı da
+          yazılır.
         </p>
         <div style="overflow-x: auto">
           <table class="rules">
@@ -118,7 +119,7 @@ onMounted(async () => {
               <tr v-for="r in rules" :key="r.code">
                 <td style="text-align: left">
                   <strong>{{ r.label }}</strong>
-                  <span class="text-muted" style="font-size: 0.75rem; display: block">{{ categoryLabel[r.category] ?? r.category }}</span>
+                  <span class="rule-cat">{{ categoryLabel[r.category] ?? r.category }}</span>
                 </td>
                 <td v-for="p in pots" :key="p.tierId" :class="(r.points[p.tierId] ?? 0) < 0 ? 'text-negative' : ''">
                   {{ r.points[p.tierId] ?? 0 }}
@@ -131,9 +132,9 @@ onMounted(async () => {
 
       <section class="surface-card card-pad">
         <div class="section-title">Jokerler</div>
-        <p class="text-muted" style="margin: 0 0 1rem">
-          Haftada en fazla bir joker oynanır. Kilitten önce vazgeçersen hakkın geri gelir; haklar
-          lig aşamasının başında verilir, lig bitince eleme turları için baştan dağıtılır.
+        <p>
+          Haftada en fazla bir joker oynanabilir. Kilitten önce vazgeçilirse hak iade edilir.
+          Haklar lig aşamasının başında verilir; lig bitince eleme turları için yeniden dağıtılır.
         </p>
         <div class="joker-grid stagger">
           <div v-for="j in jokers" :key="j.code" class="joker-card">
@@ -141,31 +142,33 @@ onMounted(async () => {
               <component :is="j.icon" :size="18" />
               <b>{{ j.name }}</b>
             </div>
-            <p class="text-muted" style="margin: 0; font-size: 0.86rem">{{ j.desc }}</p>
+            <p class="joker-desc">{{ j.desc }}</p>
             <small v-if="grantLine(j.code)" class="joker-grant">{{ grantLine(j.code) }}</small>
           </div>
         </div>
       </section>
 
       <section class="surface-card card-pad">
-        <div class="section-title head-icon"><ArrowLeftRight :size="18" /> Lig bitince</div>
-        <p style="margin: 0">
-          Lig aşaması tamamlanınca 25–36. sıradakiler elenir. İlk sekize girenler play-off
-          oynamadan son 16'ya geçer ve boşta geçirecekleri o haftalar için tek seferlik bir bonus
-          alır — tabloda "Lig ilk 8 bonusu". Joker hakların yenilenir, bir de transfer hakkın
-          olur: istersen kadrondan bir kulübü aynı pottan başka bir kulüple <b>kalıcı olarak</b>
-          değiştirirsin. Pencere ilk eleme haftasının kilidine kadar açık; o zamana kadar fikrini
-          istediğin kadar değiştirebilirsin, kullanmazsan yanar. Eleme turlarında her ayak kendi
-          haftasıdır: diziliş, joker ve kupon ayak ayak kilitlenir.
+        <div class="section-title">Lig bitince</div>
+        <p>
+          Lig aşaması tamamlandığında 25–36. sıradaki kulüpler elenir. İlk sekize giren kulüpler
+          play-off oynamadan son 16'ya geçer ve boşta geçirecekleri haftalar için tek seferlik
+          "Lig ilk 8 bonusu" alır. Joker hakları eleme turları için yeniden dağıtılır. Ayrıca bir
+          transfer hakkı tanınır: kadrodan bir kulüp, aynı pottan başka bir kulüple <b>kalıcı
+          olarak</b> değiştirilebilir. Pencere ilk eleme haftasının kilidine kadar açıktır; bu
+          süre içinde seçim istenildiği kadar güncellenebilir, kullanılmazsa yanar. Eleme
+          turlarında her ayak kendi haftasıdır: diziliş, joker ve kupon ayak ayak kilitlenir.
         </p>
       </section>
 
       <section class="surface-card card-pad">
-        <div class="section-title paul-title"><OctopusMark :size="19" /> Ahtapot Paul</div>
-        <p class="text-muted" style="margin: 0">
-          Haftanın her maçı için MS1, MS0 ya da MS2 dersin — kendi kulüplerinin maçı olması
-          gerekmez. Tutan her tahmin {{ predictionPoints }} puan yazar ve haftalık toplamına
-          eklenir. Kupon, dizilişle aynı anda kilitlenir; seçimine tekrar basarsan geri alırsın.
+        <div class="section-title">Ahtapot Paul</div>
+        <p>
+          Haftanın her maçı için ev sahibi galibiyeti (MS1), beraberlik (MS0) ya da deplasman
+          galibiyeti (MS2) tahmini yapılabilir; maçın oyuncunun kendi kulüplerine ait olması
+          gerekmez. Tutan her tahmin {{ predictionPoints }} puan kazandırır ve haftalık toplama
+          eklenir. Kupon, dizilişle aynı anda kilitlenir. Seçili tahmine yeniden basıldığında
+          tahmin geri alınır.
         </p>
       </section>
 
@@ -185,21 +188,31 @@ onMounted(async () => {
 </template>
 
 <style scoped>
-.head-icon { display: flex; align-items: center; gap: 0.5rem; }
-.head-icon svg { color: var(--color-primary); }
+/* One voice, one colour: every paragraph on this page reads the same. */
+.rules-page p {
+  margin: 0 0 0.75rem;
+  color: var(--color-text-secondary);
+  line-height: 1.55;
+}
+.rules-page section > p:last-child { margin-bottom: 0; }
+.rules-page p b { color: var(--color-text); }
+
 .rules { width: 100%; border-collapse: collapse; min-width: 480px; }
 .rules th, .rules td { padding: 0.6rem 0.75rem; text-align: center; border-bottom: 1px solid var(--color-border); }
 .rules thead th { background: var(--color-bg-subtle); font-size: 0.82rem; font-weight: 700; color: var(--color-text-secondary); }
 .rules tbody tr:last-child td { border-bottom: none; }
-.paul-title { display: flex; align-items: center; gap: 0.5rem; }
+.rule-cat { font-size: 0.75rem; display: block; color: var(--color-text-secondary); }
+
 .joker-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 0.9rem; }
 .joker-card { background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0.9rem; display: flex; flex-direction: column; gap: 0.45rem; }
 .joker-head { display: flex; align-items: center; gap: 0.5rem; color: var(--color-primary); }
 .joker-head b { color: var(--color-text); }
+.joker-desc { margin: 0; font-size: 0.86rem; }
 .joker-grant {
   margin-top: auto; padding-top: 0.35rem;
-  font-size: var(--text-2xs); font-weight: 700; color: var(--color-primary);
+  font-size: var(--text-2xs); font-weight: 700; color: var(--color-text-secondary);
 }
+
 .pot-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 1rem; }
 .pot-box { background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0.85rem; }
 .pot-box-head { font-weight: 700; margin-bottom: 0.6rem; }
