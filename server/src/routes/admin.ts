@@ -8,7 +8,7 @@ import { listTeams } from '../services/team-service.ts';
 import {
   DEFAULT_CONFIG,
   getAllConfig,
-  setConfigValue,
+  setConfigValues,
   type ConfigKey,
 } from '../services/tournament-config-service.ts';
 import {
@@ -129,18 +129,27 @@ adminRoutes.get('/config', async (c) => {
   return c.json({ config });
 });
 
-const ConfigSchema = z.object({
+const ConfigEntrySchema = z.object({
   key: z.string(),
   value: z.unknown(),
 });
+// One knob, or a whole form's worth. A form is a single decision by the admin,
+// so its keys are written in one transaction rather than one request each.
+const ConfigBodySchema = z.union([
+  ConfigEntrySchema,
+  z.object({ updates: z.array(ConfigEntrySchema).min(1) }),
+]);
 
 adminRoutes.put('/config', async (c) => {
-  const body = ConfigSchema.safeParse(await c.req.json().catch(() => null));
-  if (!body.success) throw ApiError.badRequest('Geçersiz config gövdesi', 'invalid_body');
-  if (!(body.data.key in DEFAULT_CONFIG)) {
-    throw ApiError.badRequest('Bilinmeyen config anahtarı', 'unknown_config_key');
+  const body = ConfigBodySchema.safeParse(await c.req.json().catch(() => null));
+  if (!body.success) throw ApiError.badRequest('Geçersiz ayar gövdesi', 'invalid_body');
+  const entries = 'updates' in body.data ? body.data.updates : [body.data];
+  for (const entry of entries) {
+    if (!(entry.key in DEFAULT_CONFIG)) {
+      throw ApiError.badRequest(`Bilinmeyen ayar: ${entry.key}`, 'unknown_config_key');
+    }
   }
-  await setConfigValue(body.data.key as ConfigKey, body.data.value);
+  await setConfigValues(entries.map((e) => ({ key: e.key as ConfigKey, value: e.value })));
   const config = await getAllConfig();
   return c.json({ config });
 });

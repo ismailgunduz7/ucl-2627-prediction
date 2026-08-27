@@ -1,4 +1,4 @@
-import { query } from '../db/pool.ts';
+import { query, withTransaction } from '../db/pool.ts';
 
 /** Admin-editable config knobs (§8.1). Fixed domain constants live in code (§3.9). */
 export interface JokerInventoryDefaults {
@@ -44,10 +44,24 @@ export async function getConfigValue<K extends ConfigKey>(key: K): Promise<(type
   return (rows[0]?.value as (typeof DEFAULT_CONFIG)[K]) ?? DEFAULT_CONFIG[key];
 }
 
+const UPSERT_CONFIG = `INSERT INTO tournament_config (key, value) VALUES ($1, $2)
+   ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`;
+
 export async function setConfigValue(key: ConfigKey, value: unknown): Promise<void> {
-  await query(
-    `INSERT INTO tournament_config (key, value) VALUES ($1, $2)
-     ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = now()`,
-    [key, JSON.stringify(value)],
-  );
+  await query(UPSERT_CONFIG, [key, JSON.stringify(value)]);
+}
+
+/**
+ * Write several knobs at once, all or nothing. A settings form is one decision
+ * by the admin, so a failure partway through must not leave half of it applied
+ * under a message saying nothing was saved.
+ */
+export async function setConfigValues(
+  entries: { key: ConfigKey; value: unknown }[],
+): Promise<void> {
+  await withTransaction(async (client) => {
+    for (const { key, value } of entries) {
+      await client.query(UPSERT_CONFIG, [key, JSON.stringify(value)]);
+    }
+  });
 }

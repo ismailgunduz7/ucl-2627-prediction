@@ -54,14 +54,15 @@ async function save() {
   if (!config.value) return;
   saving.value = true;
   try {
-    await api.put('/api/admin/config', { key: 'sync_provider', value: config.value.sync_provider });
+    // One request, one transaction. Three separate writes could leave the
+    // provider switched over while the joker grants never landed, under a
+    // message telling the admin nothing had been saved at all.
     await api.put('/api/admin/config', {
-      key: 'joker_inventory_defaults',
-      value: config.value.joker_inventory_defaults,
-    });
-    await api.put('/api/admin/config', {
-      key: 'deadline_drama_window_seconds',
-      value: Math.round(dramaHours.value * 3600),
+      updates: [
+        { key: 'sync_provider', value: config.value.sync_provider },
+        { key: 'joker_inventory_defaults', value: config.value.joker_inventory_defaults },
+        { key: 'deadline_drama_window_seconds', value: Math.round(dramaHours.value * 3600) },
+      ],
     });
     toast.add({ severity: 'success', summary: 'Ayarlar kaydedildi', life: 2500 });
     await load();
