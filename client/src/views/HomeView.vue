@@ -30,7 +30,9 @@ const topThree = computed(() => leaderboard.value.slice(0, 3));
 onMounted(async () => {
   try {
     const [status, sq, lb] = await Promise.all([
-      api.get<{ matchweeks: Mw[]; currentMatchweekId: string | null }>('/api/tournament/status'),
+      api.get<{ matchweeks: Mw[]; currentMatchweekId: string | null; seasonComplete: boolean }>(
+        '/api/tournament/status',
+      ),
       api.get<{ squad: SquadEntry[]; locked: boolean }>('/api/squad'),
       api.get<{ leaderboard: LbEntry[] }>('/api/leaderboard'),
     ]);
@@ -38,7 +40,7 @@ onMounted(async () => {
     squadLocked.value = sq.locked;
     leaderboard.value = lb.leaderboard;
     currentMw.value = status.matchweeks.find((m) => m.id === status.currentMatchweekId) ?? null;
-    seasonOver.value = status.matchweeks.some((m) => m.id === 'final' && m.status === 'complete');
+    seasonOver.value = status.seasonComplete;
     if (currentMw.value) {
       const sc = await api.get<{ score: { total: number; final: boolean } | null }>(
         `/api/matchweeks/${currentMw.value.id}/score`,

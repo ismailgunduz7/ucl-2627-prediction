@@ -75,6 +75,22 @@ export async function firstKnockoutMatchweekId(): Promise<string | null> {
   return rows[0]?.id ?? null;
 }
 
+/**
+ * Whether the season has an ending yet: the final's own matchweek is complete.
+ *
+ * The id comes from `matchweekId`, which drops the leg suffix for a one-legged
+ * round, so the final's week is literally 'final'. Everything that wants to
+ * know lives on the other side of this function rather than spelling the id out
+ * for itself, because the id scheme belongs here.
+ */
+export async function isSeasonComplete(): Promise<boolean> {
+  const { rowCount } = await query(
+    `SELECT 1 FROM matchweeks WHERE id = $1 AND status = 'complete'`,
+    [matchweekId('final', 1, 1)],
+  );
+  return (rowCount ?? 0) > 0;
+}
+
 /** Builds the play-off ties from ranks 9-24 and their two legs (§2.4). */
 export async function createPlayoffRound(standings: StandingRow[]): Promise<void> {
   await ensureKnockoutMatchweeks();

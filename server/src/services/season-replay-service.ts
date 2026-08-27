@@ -1,4 +1,5 @@
 import { query } from '../db/pool.ts';
+import { isSeasonComplete } from './knockout-service.ts';
 import { getLeaderboard } from './leaderboard-service.ts';
 
 /**
@@ -53,8 +54,7 @@ export async function getSeasonReplay(
   userId: string,
   competitionId: string | null,
 ): Promise<SeasonReplay> {
-  const fin = await query(`SELECT 1 FROM matchweeks WHERE id = 'final' AND status = 'complete'`);
-  const finished = (fin.rowCount ?? 0) > 0;
+  const finished = await isSeasonComplete();
 
   const weeks = await query<WeekRow>(
     `SELECT s.matchweek_id, mw.label, s.points, s.breakdown

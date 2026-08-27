@@ -20,6 +20,7 @@ import { getParticipantWeekScore } from '../services/matchweek-scoring-service.t
 import { getLeaderboard, getRankMovement } from '../services/leaderboard-service.ts';
 import { getPlayerPoints } from '../services/player-points-service.ts';
 import { getLeagueStandings } from '../services/standings-service.ts';
+import { isSeasonComplete } from '../services/knockout-service.ts';
 import { getActTransfer, setActTransfer } from '../services/act-service.ts';
 import {
   activate as activateJoker,
@@ -81,7 +82,7 @@ participantRoutes.get('/scoring-rules', async (c) => {
 // --- Tournament status ----------------------------------------------------
 participantRoutes.get('/tournament/status', async (c) => {
   const now = new Date();
-  const [currentAct, mw1, current, selectionLock, mwRows, ordered] = await Promise.all([
+  const [currentAct, mw1, current, selectionLock, mwRows, ordered, seasonComplete] = await Promise.all([
     getConfigValue('current_act'),
     getFirstLeagueMatchweek(),
     getCurrentMatchweek(),
@@ -93,6 +94,7 @@ participantRoutes.get('/tournament/status', async (c) => {
        FROM matchweeks ORDER BY CASE act WHEN 'league_phase' THEN 0 ELSE 1 END, sort_order`,
     ),
     getOrderedMatchweeks(),
+    isSeasonComplete(),
   ]);
 
   return c.json({
@@ -139,6 +141,8 @@ participantRoutes.get('/tournament/status', async (c) => {
     ),
     mw1Id: mw1?.id ?? null,
     currentMatchweekId: current?.id ?? null,
+    /** The final has been played, so the season replay has something to show. */
+    seasonComplete,
   });
 });
 
