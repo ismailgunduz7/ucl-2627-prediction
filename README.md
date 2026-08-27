@@ -1,25 +1,26 @@
-# UEFA Champions League 2026–27 Club Fantasy
+# UEFA Champions League 2026-27 Club Fantasy
 
-A private/small-group **club** fantasy game for the UEFA Champions League 2026–27
+A private/small-group **club** fantasy game for the UEFA Champions League 2026-27
 season. Players pick **clubs** (one per pot), not footballers; points come from
 real match results. See [PLAN.md](PLAN.md) for the authoritative product spec.
 
-> **Status:** Phases 0–6 complete and playable end to end: accounts, permanent
-> squads, club scoring with the per-pot rules editor, provider sync behind a
-> swappable interface, weekly lineups with the `T0 − 5m` lock, all four jokers,
-> live provisional scoring, the leaderboard and per-player/per-club breakdowns,
-> and the league → knockout transition through the final. On top of that: a
+> **Status:** phases 0-6 are done and the game plays end to end. That covers
+> accounts, permanent squads, club scoring with the per-pot rules editor,
+> provider sync behind a swappable interface, weekly lineups with the
+> `T0 - 5m` lock, all four jokers, live provisional scoring, the leaderboard
+> with per-player and per-club breakdowns, and the run from the league phase
+> through the knockouts to the final. Since then it has also grown a
 > background sync job that polls the provider on an adaptive schedule, a
-> fixtures and multi-live page covering a whole round at a time,
-> **Ahtapot Paul**, a weekly MS1/MS0/MS2 coupon on every match of the week, a
-> live delta feed on the weekly hub that itemises every point as it lands, and
-> a season replay that opens once the final is played.
+> fixtures page that shows a whole round at a time and follows several live
+> matches at once, **Ahtapot Paul** (a weekly MS1/MS0/MS2 coupon on every
+> match), a live feed on the weekly hub that itemises each point as it lands,
+> and a season replay that unlocks once the final is played.
 >
-> What is left is tracked as Phase 7 in [PLAN.md](PLAN.md) §13: production
-> deploy configuration, deeper edge-case tests, and swapping the randomly
-> drawn fixtures for UEFA's real list once it is published. The clubs and
-> pots are already the official 2026–27 field; the mock provider drives the
-> season until real provider ids are mapped.
+> Phase 7 in [PLAN.md](PLAN.md) §13 tracks the rest: production deploy
+> configuration, deeper edge-case tests, and swapping the drawn fixtures for
+> UEFA's real list once it is published. The clubs and pots are already the
+> official 2026-27 field. Until real provider ids are mapped, the mock
+> provider drives the season.
 
 ## Stack
 
@@ -50,21 +51,21 @@ npm run migrate
 # 4. Seed the first admin account (there is no public self-registration)
 npm run seed --workspace server
 
-# 5. Seed the domain: the official 2026–27 pots, config, and 8 league
+# 5. Seed the domain: the official 2026-27 pots, config, and 8 league
 #    matchweeks with a randomly drawn fixture list on the real calendar.
 #    SEED_FORCE=1 wipes the whole season (accounts stay) and reseeds;
 #    SEED_DRAW_SEED=<n> reproduces a specific draw.
 npm run seed:domain --workspace server
 ```
 
-> The clubs and pots are the **official 2026–27 field** (UEFA, 26 Aug 2026).
-> The fixture list is a **random draw** under the real constraints (two
-> opponents per pot, one home one away, never a same-country pairing) until
-> UEFA publishes the actual fixtures (PLAN.md §2.3).
+> The clubs and pots are the **official 2026-27 field** (UEFA, 26 Aug 2026).
+> The fixture list is a **random draw**, made under the real constraints: two
+> opponents per pot, one at home and one away, never a same-country pairing.
+> It stands in until UEFA publishes the actual fixtures (PLAN.md §2.3).
 
-The seed creates an admin (default `admin` / `changeme123`; override with
-`SEED_ADMIN_USERNAME` / `SEED_ADMIN_PASSWORD`) and a default competition. **Change
-the password immediately in any real deployment.**
+The seed creates an admin and a default competition. The account is `admin` /
+`changeme123` unless you set `SEED_ADMIN_USERNAME` and `SEED_ADMIN_PASSWORD`.
+**Change that password immediately in any real deployment.**
 
 ## Running
 
@@ -81,12 +82,12 @@ npm run dev:client   # http://localhost:5173
 - Admin app: `http://localhost:5173/yonetim` (admin login required)
 - Healthcheck: `http://localhost:8787/health` and `/health/ready`
 
-Scores only move when someone pulls them in. Trigger a sync by hand from
-**Yönetim → Sync** (the mock provider takes a simulated clock there, which is
-how you advance the mock season), or set `SYNC_SCHEDULER_ENABLED=true` to let
-the background job poll on its own. That job deliberately parks itself while the
-mock provider is selected, since the mock reads its status off the clock you
-give it.
+Scores only move when someone pulls them in. Pull them by hand from **Yönetim →
+Skor Çekme**, which is also where the mock provider takes the simulated clock
+you use to advance the mock season. Set `SYNC_SCHEDULER_ENABLED=true` and the
+background job polls on its own instead. That job parks itself whenever the mock
+provider is selected, because the mock reads its status off the clock you give
+it rather than off the wall clock.
 
 ## Scripts
 
@@ -97,7 +98,7 @@ give it.
 | `npm run migrate`                | Apply pending SQL migrations             |
 | `npm run migrate:status -w server` | Show applied/pending migrations        |
 | `npm run seed --workspace server` | Seed first admin + default competition  |
-| `npm run seed:domain --workspace server` | Seed the 2026–27 pots, matchweeks + a drawn fixture list |
+| `npm run seed:domain --workspace server` | Seed the 2026-27 pots, matchweeks + a drawn fixture list |
 | `npm run test`                   | Run server unit tests (node:test)        |
 
 ## Environment variables

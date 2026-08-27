@@ -1,4 +1,4 @@
-# UEFA Champions League 2026–27 Fantasy Competition Implementation Plan
+# UEFA Champions League 2026-27 Fantasy Competition Implementation Plan
 
 This document is the single source of truth for building the product **from scratch**. An implementer (human or AI agent) should be able to deliver the system using only this plan, without prior knowledge of any other competition or codebase.
 
@@ -8,13 +8,13 @@ Working conventions for contributors (commits, git workflow, design language, te
 
 ## 0. Implementation status
 
-Phases 0–6 are built and running against a Supabase database. What follows is the full specification; this section records where reality currently stands so nobody has to infer it from the code.
+Phases 0-6 are built and running against a Supabase database. What follows is the full specification; this section records where reality currently stands so nobody has to infer it from the code.
 
-**Built and verified:** auth and admin-provisioned accounts · pots, clubs, matchweeks, matches, config · permanent squad with one-club-per-pot enforced in the database · club-layer scoring with the per-pot rules editor · provider sync behind a swappable interface with manual-override protection and an audit log · weekly bench/captain with the `T0 − 5m` lock and the M+1 gate · the four jokers with one-per-week activation and cancel/refund · provisional scoring on read and finals on completion · leaderboard, league table, per-player and per-club points breakdowns · the league→knockout act transition (eliminations, top-8 bonus, joker refresh, act transfer) and the knockout bracket through the final with advancement and medals · the background sync job with adaptive cadence and backoff · Ahtapot Paul, the weekly 1X2 coupon (§18.9) · the fixtures and multi-live page (§18.5) · the live delta feed on the hub (§18.6) · the season replay (§18.8).
+**Built and verified:** auth and admin-provisioned accounts · pots, clubs, matchweeks, matches, config · permanent squad with one-club-per-pot enforced in the database · club-layer scoring with the per-pot rules editor · provider sync behind a swappable interface with manual-override protection and an audit log · weekly bench/captain with the `T0 - 5m` lock and the M+1 gate · the four jokers with one-per-week activation and cancel/refund · provisional scoring on read and finals on completion · leaderboard, league table, per-player and per-club points breakdowns · the league→knockout act transition (eliminations, top-8 bonus, joker refresh, act transfer) and the knockout bracket through the final with advancement and medals · the background sync job with adaptive cadence and backoff · Ahtapot Paul, the weekly 1X2 coupon (§18.9) · the fixtures and multi-live page (§18.5) · the live delta feed on the hub (§18.6) · the season replay (§18.8).
 
 **Deliberate deviations from the spec, all temporary:**
 
-- The 36 clubs and their pots are the **real 2026–27 field** (UEFA's confirmed draw pots, 26 Aug 2026), but the **fixture list is a random draw** under the competition's own constraints (two opponents per pot, one home one away, never a compatriot, eight full matchdays on the real calendar) because UEFA publishes the actual fixtures only after the draw ceremony (§2.3). Reseed the fixtures (keeping the clubs) when the real list lands.
+- The 36 clubs and their pots are the **real 2026-27 field** (UEFA's confirmed draw pots, 26 Aug 2026), but the **fixture list is a random draw** under the competition's own constraints (two opponents per pot, one home one away, never a compatriot, eight full matchdays on the real calendar) because UEFA publishes the actual fixtures only after the draw ceremony (§2.3). Reseed the fixtures (keeping the clubs) when the real list lands.
 - A **mock provider** drives the fixtures off a simulated clock so the pipeline can be exercised before real data exists (§5.1). The football-data.org client is written and behind the same interface, but nothing maps to it until clubs carry real provider ids. The background sync job stays parked for as long as the mock is the configured provider.
 - Level knockout aggregates are settled by a **shootout seeded from the tie id** rather than real penalty data (§2.4), so recalculation always reaches the same winner.
 
@@ -24,9 +24,9 @@ Phases 0–6 are built and running against a Supabase database. What follows is 
 
 ## 1. Product vision
 
-Build a private / small-group **club fantasy game** for the **UEFA Champions League 2026–27** season.
+Build a private / small-group **club fantasy game** for the **UEFA Champions League 2026-27** season.
 
-Players do **not** pick footballers (no FPL-style squad of GK/DEF/MID/FWD). They pick **clubs**. Points come from those clubs’ real match results. Engagement continues all season through **weekly lineup decisions** (active three vs bench, captain), **jokers**, live match feedback, and season-act resets; not only through a one-time squad lock.
+Players do **not** pick footballers (no FPL-style squad of GK/DEF/MID/FWD). They pick **clubs**. Points come from those clubs' real match results. Engagement continues all season through **weekly lineup decisions** (active three vs bench, captain), **jokers**, live match feedback, and season-act resets; not only through a one-time squad lock.
 
 ### Goals
 
@@ -51,10 +51,10 @@ Players do **not** pick footballers (no FPL-style squad of GK/DEF/MID/FWD). They
 
 ### 2.1 Competition window
 
-- **Competition:** UEFA Champions League, season **2026–27**.
+- **Competition:** UEFA Champions League, season **2026-27**.
 - **Included (full product scope, not “league only”):**
   1. League phase
-  2. Knockout phase play-offs (teams ranked **9–24** after the league phase)
+  2. Knockout phase play-offs (teams ranked **9-24** after the league phase)
   3. Round of 16
   4. Quarter-finals
   5. Semi-finals
@@ -63,7 +63,7 @@ Players do **not** pick footballers (no FPL-style squad of GK/DEF/MID/FWD). They
 
 ### 2.2 League phase
 
-Approximate structure (confirm against official 2026–27 regulations when seeding data):
+Approximate structure (confirm against official 2026-27 regulations when seeding data):
 
 - **36 clubs** in a single league table (Swiss / league-phase format).
 - Each club plays a fixed number of league-phase matches (historically **8** matchdays per club in the post-2024 format).
@@ -71,7 +71,7 @@ Approximate structure (confirm against official 2026–27 regulations when seedi
 
 ### 2.3 Pots (tiers)
 
-At the league-phase draw, UEFA assigns clubs to **four pots** (Pot 1–4). In this game:
+At the league-phase draw, UEFA assigns clubs to **four pots** (Pot 1-4). In this game:
 
 - **Pot = scoring tier.**
 - Each pot has its own point values for the same rule types (e.g. a Pot 1 win may score differently than a Pot 4 win).
@@ -79,27 +79,27 @@ At the league-phase draw, UEFA assigns clubs to **four pots** (Pot 1–4). In th
 
 When the official draw is published, seed `teams` with pot assignments. Until then, use placeholder pots and swap via admin/seed update.
 
-*Current state:* seeded with the **official 2026–27 pots** as UEFA confirmed them on 26 August 2026, in `server/src/data/teams-2627.ts`; nine clubs per pot with their associations, which drive the no-compatriot draw rule. The fixture list is a random draw from `server/src/domain/schedule.ts` (seedable via `SEED_DRAW_SEED`) until UEFA publishes the real one; provider ids stay unmapped until then, so the mock provider keeps driving the season.
+*Current state:* seeded with the **official 2026-27 pots** as UEFA confirmed them on 26 August 2026, in `server/src/data/teams-2627.ts`; nine clubs per pot with their associations, which drive the no-compatriot draw rule. The fixture list is a random draw from `server/src/domain/schedule.ts` (seedable via `SEED_DRAW_SEED`) until UEFA publishes the real one; provider ids stay unmapped until then, so the mock provider keeps driving the season.
 
 ### 2.4 Knockout phase
 
 After the league phase:
 
-- Paths follow UEFA 2026–27 regulations (play-offs for ranks 9–24, then R16 → final).
-- **Top-8 clubs skip the play-off round.** Clubs finishing the league phase in positions **1–8** advance directly to the Round of 16. During the play-off matchweeks these clubs have **no fixture (bye)** and therefore score **0** those weeks. To make sure a top-8 finish is not a disadvantage, each such club receives a **one-time** `league_top8_bonus` (§4.2) when the league phase completes. There is **no per-week "bye" award** of any kind.
+- Paths follow UEFA 2026-27 regulations (play-offs for ranks 9-24, then R16 → final).
+- **Top-8 clubs skip the play-off round.** Clubs finishing the league phase in positions **1-8** advance directly to the Round of 16. During the play-off matchweeks these clubs have **no fixture (bye)** and therefore score **0** those weeks. To make sure a top-8 finish is not a disadvantage, each such club receives a **one-time** `league_top8_bonus` (§4.2) when the league phase completes. There is **no per-week "bye" award** of any kind.
 - Where ties are **two-legged**, each **leg is its own matchweek** for fantasy (bench/captain/joker lock per leg).
 - No third-place match.
 - Scoring continues with stage-specific rules (`round_advance`, final medals, etc.).
-- Tie-break methods (extra time, penalties) follow that season’s UEFA rules. There is **no away-goals rule**.
+- Tie-break methods (extra time, penalties) follow that season's UEFA rules. There is **no away-goals rule**.
 
 *Current state:* ties resolve on aggregate over the legs. With no penalty data to read, a level aggregate is settled by a shootout seeded from the tie id, so a recalculation always reaches the same winner. Replace this once the provider supplies shootout results.
 
 ### 2.5 Eliminated clubs
 
-- A club that is **eliminated** from the tournament remains in the database and may remain on a user’s permanent squad.
+- A club that is **eliminated** from the tournament remains in the database and may remain on a user's permanent squad.
 - From the moment of elimination onward, that club contributes **0 fantasy points from future matches** (it no longer plays). A club that has **no fixture assigned** in a given matchweek (whether eliminated or a top-8 club on a bye week) simply scores **0** that week; there is no per-week bye award.
 - Elimination can occur:
-  - **After the league phase:** clubs that finish outside the positions that continue (e.g. ranks **25–36**) are marked eliminated when the league phase completes.
+  - **After the league phase:** clubs that finish outside the positions that continue (e.g. ranks **25-36**) are marked eliminated when the league phase completes.
   - **During the knockout path:** losers of play-offs / R16 / QF / SF (and the final loser remains in for silver-medal scoring on the final matchweek, then is done).
 - Clubs are **not** deleted. Skill is picking successful clubs from each pot; only two reach the final.
 
@@ -121,7 +121,7 @@ After the league phase:
 | Squad size | **4 clubs** | One from each pot when using 4 pots |
 | Pot constraint | **Exactly one club per pot** | Hard constraint (4 clubs, 4 pots) |
 | Duplicates | Forbidden | Same club cannot appear twice |
-| Edit window | Until **selection lock** | **Same instant as matchweek 1 lineup lock:** `T0(MW1) − 5 minutes` (§3.4). Not a separate arbitrary clock. |
+| Edit window | Until **selection lock** | **Same instant as matchweek 1 lineup lock:** `T0(MW1) - 5 minutes` (§3.4). Not a separate arbitrary clock. |
 | After lock | Permanent until act transfer (§3.7) | Weekly bench/captain/jokers do not change the permanent 4 |
 
 Validation must be enforced server-side (RPC or transactional service), not only in the UI.
@@ -141,17 +141,17 @@ Let `T0(M)` = kickoff time of the **earliest** match in matchweek `M`.
 
 | Action | Rule |
 |--------|------|
-| Lineup (bench/captain), jokers, weekly swap for matchweek **M** | Editable until **`T0(M) − 5 minutes`**. After that instant, matchweek **M** is frozen for that user. |
+| Lineup (bench/captain), jokers, weekly swap for matchweek **M** | Editable until **`T0(M) - 5 minutes`**. After that instant, matchweek **M** is frozen for that user. |
 | Editing matchweek **M+1** (and later) | Allowed **once the first match of M has kicked off** (i.e. after `T0(M)`), even while M is still being played. |
-| Hard constraint | The lock instant for M is **always** `T0(M) − 5 minutes`. It must never be configured to fall after `T0(M)`. |
+| Hard constraint | The lock instant for M is **always** `T0(M) - 5 minutes`. It must never be configured to fall after `T0(M)`. |
 
-**Privacy / open picks:** From `T0(M)` onward (first kickoff of M), within the same competition, peers can see each user’s bench, captain, and joker for M (see §3.6). Before `T0(M)`, those picks stay private.
+**Privacy / open picks:** From `T0(M)` onward (first kickoff of M), within the same competition, peers can see each user's bench, captain, and joker for M (see §3.6). Before `T0(M)`, those picks stay private.
 
 **Kickoff reschedules (provider moves `T0`):** The lock instant is **always derived from the current `first_kickoff_at`** of matchweek `M`, recomputed on every sync; it is never a stored, frozen deadline. Consequences:
 
 - `first_kickoff_at` = the earliest `kickoff_at` among matches still assigned to `M` (a `postponed` match keeps its assignment; if it is the earliest and gets a new date, `T0(M)` moves with it).
-- **Kickoff moved later, and `M` had not yet started** (`now < old T0(M)`): the lock simply moves later; if the week was already locked purely because the old `T0−5m` had passed, it **re-opens** until the new `T0−5m`. Safe because open picks only appear from `T0(M)`, so nothing was revealed yet.
-- **Kickoff moved earlier such that the new `T0(M) − 5m` is already in the past at sync time:** `M` **locks immediately**. Any user without a valid saved lineup gets the deterministic fallback (§3.5).
+- **Kickoff moved later, and `M` had not yet started** (`now < old T0(M)`): the lock simply moves later; if the week was already locked purely because the old `T0-5m` had passed, it **re-opens** until the new `T0-5m`. Safe because open picks only appear from `T0(M)`, so nothing was revealed yet.
+- **Kickoff moved earlier such that the new `T0(M) - 5m` is already in the past at sync time:** `M` **locks immediately**. Any user without a valid saved lineup gets the deterministic fallback (§3.5).
 - **A match has already kicked off (`now ≥ T0(M)`):** `M` is treated as **started and frozen**; it does **not** re-open even if a later match in `M` is rescheduled, because peer picks are already visible.
 - All comparisons are UTC (§3.9).
 
@@ -160,13 +160,13 @@ Let `T0(M)` = kickoff time of the **earliest** match in matchweek `M`.
 Before the lock for matchweek M, every participant sets:
 
 1. **Bench (1 of 4):** Exactly one club from the effective four (permanent squad after optional `weekly_swap`) sits on the **bench**. The other **three score**. Bench club points that week are **ignored**, unless `bench_boost` is active.
-2. **Captain (1 of the scoring clubs):** Captain’s **net matchweek points** are multiplied by **×2** (or **×3** with `triple_boost`). Captain must be among the clubs that score that week (the three, or any of four under bench boost).
+2. **Captain (1 of the scoring clubs):** Captain's **net matchweek points** are multiplied by **×2** (or **×3** with `triple_boost`). Captain must be among the clubs that score that week (the three, or any of four under bench boost).
 
 These are **not** jokers; change them every week at no inventory cost.
 
 **Bench ↔ captain swap.** A benched club can **never** hold the captaincy; the **only** way to captain a benched club is the `bench_boost` joker (§3.6), which makes all four score. So if the user swaps the roles of two of their own clubs (e.g. captain **X** and bench **Y** → captain **Y**, bench **X**), the captaincy moves to the club that leaves the bench (**Y**, now a scoring club) and the old captain (**X**) goes to the bench and stops scoring. Generally: whenever the current captain is moved to the bench, the captaincy must be reassigned to a scoring club in the same action.
 
-**Default if the user does nothing before lock:** keep previous matchweek’s bench + captain if both are still valid on the effective four; otherwise deterministic fallback (e.g. bench = highest pot number / Pot 4, captain = Pot 1 among the three). Document fallback in UI.
+**Default if the user does nothing before lock:** keep previous matchweek's bench + captain if both are still valid on the effective four; otherwise deterministic fallback (e.g. bench = highest pot number / Pot 4, captain = Pot 1 among the three). Document fallback in UI.
 
 **After a `weekly_swap` ends:** next matchweek uses the permanent squad again (including a club that may already be eliminated; that club simply scores 0 until replaced via a later weekly swap or act transfer).
 
@@ -176,7 +176,7 @@ These are **not** jokers; change them every week at no inventory cost.
 
 Each participant receives inventory counts (admin-configurable). Illustrative defaults per **act** (see §3.7):
 
-**Initial grant (Act I).** A participant's inventory is seeded with the **Act I (league phase)** `joker_inventory_defaults` at account creation, and in every case **strictly before the MW1 selection lock** (`T0(MW1) − 5m`); so a participant can already activate a joker for matchweek 1. This is the counterpart of the Act II **refresh** in §3.7 step 3: Act I = first grant at onboarding, Act II = full reset at league completion. A participant added mid–Act I still receives the full Act I grant.
+**Initial grant (Act I).** A participant's inventory is seeded with the **Act I (league phase)** `joker_inventory_defaults` at account creation, and in every case **strictly before the MW1 selection lock** (`T0(MW1) - 5m`); so a participant can already activate a joker for matchweek 1. This is the counterpart of the Act II **refresh** in §3.7 step 3: Act I = first grant at onboarding, Act II = full reset at league completion. A participant added mid-Act I still receives the full Act I grant.
 
 | Code | Suggested name (TR copy TBD) | Count | Effect |
 |------|------------------------------|-------|--------|
@@ -189,11 +189,11 @@ Each participant receives inventory counts (admin-configurable). Illustrative de
 
 - At most **one** joker activation per participant per matchweek. This is a **hard rule**, enforced both by the `joker-service` and by a DB partial unique index (§8.1 `joker_activations`); a second live activation for the same week is rejected. To use a different joker, the user must first cancel the active one (refund) before lock.
 - Optional (using a joker is never required).
-- Must activate/cancel before lock (`T0(M) − 5 minutes`).
+- Must activate/cancel before lock (`T0(M) - 5 minutes`).
 - Inventory decrements on activation.
 - **Cancel before lock:** joker is removed and **inventory is restored** (+1).
 - Team-targeted jokers (`clean_sheet_shield`) may only target a club that is **not** on the bench. The only joker that makes a benched club score is `bench_boost`.
-- If the user moves a **joker-targeted club onto the bench** (e.g. shield target), treat that as **cancelling the joker** and **refund inventory**. UI must show a confirmation dialog before applying, e.g. “X takımında kullandığınız joker var. Bench’e çekmek jokeri iptal eder ve iade eder. Devam?”
+- If the user moves a **joker-targeted club onto the bench** (e.g. shield target), treat that as **cancelling the joker** and **refund inventory**. UI must show a confirmation dialog before applying, e.g. “X takımında kullandığınız joker var. Bench'e çekmek jokeri iptal eder ve iade eder. Devam?”
 - **Changing/removing a club that has a joker on it.** Because the squad is still editable before a matchweek locks (permanent selection before selection lock, `act_transfer`, or `weekly_swap`), any edit that **removes or replaces a club that is the target/subject of an active joker for that matchweek** must warn the user first: a confirmation dialog stating the joker will be cancelled and refunded, e.g. “X takımında kullandığınız joker var. Takımı değiştirmek jokeri iptal eder ve iade eder. Devam?” On confirm, cancel the joker and restore inventory (+1). (In practice this applies to team-targeted jokers such as `clean_sheet_shield`, and to any joker payload that references the removed club.)
 
 **Visibility**
@@ -204,7 +204,7 @@ Each participant receives inventory counts (admin-configurable). Illustrative de
 #### Joker: One-week team swap (`weekly_swap`)
 
 - Replace one permanent slot for **this matchweek only** with another club from the **same pot**, not already in the squad.
-- **Flow:** choose the replacement club (“yeni takım”), then activate swap. There is no in-place edit of an active swap’s target: to change the replacement club, **cancel** the swap (refund), pick the new replacement, activate again.
+- **Flow:** choose the replacement club (“yeni takım”), then activate swap. There is no in-place edit of an active swap's target: to change the replacement club, **cancel** the swap (refund), pick the new replacement, activate again.
 - Exclude **eliminated** clubs from the picker when `eliminated_at` is set. If **every** other club in that pot is eliminated, swap in that pot is impossible.
 - **Effect on bench/captain when the swapped-out club held a role:** the incoming replacement club **inherits the swapped-out club's slot and role**. If the swapped-out club was the **bench**, the replacement becomes the new bench (captain unchanged). If it was the **captain** (a scoring club), the replacement becomes a scoring club and **inherits the captaincy**. A benched club can never hold the captaincy except under `bench_boost` (§3.5). The user can still freely change bench/captain afterwards before lock.
 - Lineup is chosen on the post-swap four.
@@ -246,17 +246,17 @@ Target: one **scoring** club (not benched).
 Acts:
 
 1. **Act I: League phase**
-2. **Act II: Knockout** (play-offs for 9–24 through final)
+2. **Act II: Knockout** (play-offs for 9-24 through final)
 
 **When the league phase is complete** (all league-phase matches finished; detected automatically from synced data):
 
-1. Mark league-phase eliminations (e.g. ranks **25–36**) via `eliminated_at`.
-2. **Award `league_top8_bonus`:** grant the one-time per-pot bonus to each club that finished the league phase in positions **1–8** (§4.2). Written as a club-layer `team_point_entries` line attributed to the first play-off matchweek so it flows into participant scoring for owners who have that club scoring that week.
-3. **Joker refresh:** every participant’s inventory resets to Act II defaults (full refill; prior remaining counts are replaced by the Act II grant table).
+1. Mark league-phase eliminations (e.g. ranks **25-36**) via `eliminated_at`.
+2. **Award `league_top8_bonus`:** grant the one-time per-pot bonus to each club that finished the league phase in positions **1-8** (§4.2). Written as a club-layer `team_point_entries` line attributed to the first play-off matchweek so it flows into participant scoring for owners who have that club scoring that week.
+3. **Joker refresh:** every participant's inventory resets to Act II defaults (full refill; prior remaining counts are replaced by the Act II grant table).
 4. **Act transfer window opens:** each participant **may** change **one** permanent squad club to another club in the **same pot** (`act_transfer`). Optional; keeping the squad unchanged is valid.
 5. While the window is open (until transfer lock), the user may update that transfer as often as they like (same-pot; destination must not be eliminated; if the pot has no eligible clubs, transfer in that pot is impossible).
 6. **On each successful commit/update:** write `team_selections` **immediately** (status `committed`). Further edits overwrite until lock.
-7. **Transfer lock:** `T0(M_ko1) − 5 minutes` where `M_ko1` is the first knockout matchweek. At lock: `available` → `expired`; `committed` stays as the frozen permanent squad.
+7. **Transfer lock:** `T0(M_ko1) - 5 minutes` where `M_ko1` is the first knockout matchweek. At lock: `available` → `expired`; `committed` stays as the frozen permanent squad.
 8. While a `weekly_swap` is active for `M_ko1`, act-transfer edits are blocked until the swap is cancelled (§3.6).
 
 **Strategic note:** After jokers refresh, a `weekly_swap` can temporarily replace an eliminated (0-point) club with a still-alive club. Top-8 clubs sitting out the play-off matchweeks score 0 those weeks (bye); the one-time `league_top8_bonus` (§4.2) compensates for that idle period, while bench/swap remain available as user tools.
@@ -270,7 +270,7 @@ Details in §10 and §18.
 | Feature | Summary |
 |---------|---------|
 | Matchweek briefing | Pre-lock overview of *your* fixtures + how hard each looks |
-| Deadline drama | Urgency UX approaching `T0(M) − 5 minutes` |
+| Deadline drama | Urgency UX approaching `T0(M) - 5 minutes` |
 | Weekly wrap card | Personal end-of-week summary (in-app; share export not required) |
 | Open picks after kickoff | Bench, captain, and joker (if any) visible to peers from `T0(M)` |
 | Multi-live tracker | Concurrent live matches, own clubs pinned |
@@ -287,15 +287,15 @@ These values are **structural rules of the game**, not admin config. They live a
 |----------|-------|-------|
 | `SQUAD_SIZE` | **4** | Permanent squad is always 4 clubs. |
 | `POT_COUNT` | **4** | Exactly one club per pot. |
-| `ACTIVE_CLUBS_PER_WEEK` | **3** | = `SQUAD_SIZE − 1` (one benched); `bench_boost` overrides to 4 for that week only. |
-| `LINEUP_LOCK_OFFSET_SECONDS` | **300** | Lock is always `T0(M) − 5 minutes`; never after `T0(M)`. |
+| `ACTIVE_CLUBS_PER_WEEK` | **3** | = `SQUAD_SIZE - 1` (one benched); `bench_boost` overrides to 4 for that week only. |
+| `LINEUP_LOCK_OFFSET_SECONDS` | **300** | Lock is always `T0(M) - 5 minutes`; never after `T0(M)`. |
 
 **Invariants that must hold (validated at startup / in tests):**
 
-1. `ACTIVE_CLUBS_PER_WEEK == SQUAD_SIZE − 1`.
+1. `ACTIVE_CLUBS_PER_WEEK == SQUAD_SIZE - 1`.
 2. `SQUAD_SIZE == POT_COUNT` (exactly one club per pot).
 3. `LINEUP_LOCK_OFFSET_SECONDS > 0` and the derived lock instant is strictly before `T0(M)`.
-4. Selection lock for the permanent squad is **derived** from the MW1 lineup lock (`T0(MW1) − 5m`); never a second, independent clock.
+4. Selection lock for the permanent squad is **derived** from the MW1 lineup lock (`T0(MW1) - 5m`); never a second, independent clock.
 5. The captain fallback (§3.5) assumes exactly one club per pot; it must be derived from the current pot layout, not hardcoded to a pot index if any of the above ever change.
 
 **Time handling:** All instants (`kickoff_at`, `first_kickoff_at`, lock times, `eliminated_at`, `locked_at`) are stored and compared in **UTC** (`timestamptz`). Clients localize for display only. Lock evaluation is always UTC-vs-UTC so DST transitions cannot shift a deadline.
@@ -314,7 +314,7 @@ These values are **structural rules of the game**, not admin config. They live a
 1. Start from permanent squad (4).
 2. Apply `weekly_swap` if activated → still 4 clubs.
 3. If `bench_boost` → all 4 score; else drop the benched club.
-4. For each scoring club, take club-layer points from this matchweek’s matches (finished lines + live provisional drafts; §4.3), applying shield adjustments if any; include any one-time bonus lines attributed to this matchweek (e.g. `league_top8_bonus`, §4.2). A scoring club with **no fixture assigned** to this matchweek and no bonus line contributes **0** (bye).
+4. For each scoring club, take club-layer points from this matchweek's matches (finished lines + live provisional drafts; §4.3), applying shield adjustments if any; include any one-time bonus lines attributed to this matchweek (e.g. `league_top8_bonus`, §4.2). A scoring club with **no fixture assigned** to this matchweek and no bonus line contributes **0** (bye).
 5. Apply captain multiplier ×2, or ×3 if `triple_boost`.
 6. Week total = sum over scoring clubs.
 
@@ -330,7 +330,7 @@ Store as `scoring_rule_types` + per-pot values in `tier_scoring_rules` (tier = p
 | `goals_scored` | match | Per goal scored |
 | `goals_conceded` | match | Per goal conceded |
 | `clean_sheet` | match | GA = 0 (shield may treat GA = 1 as CS for bonus / conceded suppression) |
-| `league_top8_bonus` | league | **One-time** per-pot bonus awarded to each club that **finishes the league phase in positions 1–8**. These clubs skip the knockout play-off round, so they have no fixture (bye) during the play-off matchweeks and score 0 then; this one-time bonus keeps a top-8 finish from being a disadvantage. Awarded once when the league phase completes; attributed to the first play-off matchweek. **Not** a per-week award and **not** given to eliminated clubs. |
+| `league_top8_bonus` | league | **One-time** per-pot bonus awarded to each club that **finishes the league phase in positions 1-8**. These clubs skip the knockout play-off round, so they have no fixture (bye) during the play-off matchweeks and score 0 then; this one-time bonus keeps a top-8 finish from being a disadvantage. Awarded once when the league phase completes; attributed to the first play-off matchweek. **Not** a per-week award and **not** given to eliminated clubs. |
 | `round_advance` | knockout | Progress to next knockout round (awarded on the match/leg that causes advancement) |
 | `gold_medal` / `silver_medal` | knockout | Final winner / runner-up (on the final matchweek) |
 
@@ -378,7 +378,7 @@ The backend must support **live hubs, anlık delta, and provisional week points*
 |--------|---------------------|----------------------|
 | `finished` | Normal rules | Counts toward completion |
 | `cancelled` | **Neither club scores** any points from that match | Treated as **resolved**; does **not** block matchweek completion |
-| `postponed` then played later | When eventually finished, points are attributed to the match’s **original** `matchweek_id`, even if the real kickoff falls after later matchweeks | Original matchweek stays **incomplete** until that match is `finished` or `cancelled` |
+| `postponed` then played later | When eventually finished, points are attributed to the match's **original** `matchweek_id`, even if the real kickoff falls after later matchweeks | Original matchweek stays **incomplete** until that match is `finished` or `cancelled` |
 
 Default: do **not** move a postponed match to a different fantasy matchweek.
 
@@ -394,7 +394,7 @@ A matchweek `M` is **complete** when every match assigned to `M` is either `fini
 
 - Detection is by the sync/scoring job; **not** an admin button.
 - On completion: write final `player_matchday_scores` for all participants; unlock weekly wrap cards.
-- When the **league phase** completes specifically, also award `league_top8_bonus` to the clubs ranked 1–8 (§3.7 step 2) before finalizing the affected participant scores.
+- When the **league phase** completes specifically, also award `league_top8_bonus` to the clubs ranked 1-8 (§3.7 step 2) before finalizing the affected participant scores.
 
 ### 4.7 Recalculation
 
@@ -404,7 +404,7 @@ Admin can trigger a **full rebuild**:
 2. Re-apply club-layer scoring for all finished matches (+ one-time `league_top8_bonus` when the league phase is complete).
 3. Re-apply final participant matchweek scores (lineups + jokers).
 
-Incremental path: on match upsert, update that match’s club lines (or live drafts) and recompute affected provisional API responses; on finish/complete, persist finals.
+Incremental path: on match upsert, update that match's club lines (or live drafts) and recompute affected provisional API responses; on finish/complete, persist finals.
 
 ### 4.8 Leaderboard ranking
 
@@ -454,10 +454,10 @@ Do not ingest corners, cards, shots, or odds. Match results only.
 
 Set `teams.eliminated_at` when:
 
-- League phase completes and the club finishes outside continuing places (e.g. **25–36**), and/or
+- League phase completes and the club finishes outside continuing places (e.g. **25-36**), and/or
 - The club loses a knockout tie (play-off through SF).
 
-Use this flag to filter swap and act-transfer pickers (§3.6–3.7).
+Use this flag to filter swap and act-transfer pickers (§3.6-3.7).
 
 ### 5.6 Provider access, caching & rate limits
 
@@ -525,7 +525,7 @@ Key/value or JSON document for the **admin-editable** knobs only (the fixed rule
 Squad size (4), active clubs per week (3), the one-per-pot rule, and the 5-minute lock offset are **fixed domain constants** (§3.9), not config rows.
 
 **tiers** (pots)  
-`id`, `name` (`Pot 1`…`Pot 4`), `sort_order` (1–4).
+`id`, `name` (`Pot 1`…`Pot 4`), `sort_order` (1-4).
 
 **teams**  
 `id`, `name`, `short_name`, `tier_id`, `external_id`, `is_active`, `crest_url`, `eliminated_at` (nullable timestamptz), optional country.
@@ -592,7 +592,7 @@ Model the grant explicitly:
 | `from_team_id` | Nullable until first commit |
 | `to_team_id` | Nullable until first commit |
 | `updated_at` | Last change while `available`/`committed` before lock |
-| `locked_at` | Set when transfer window locks (`T0(M_ko1) − 5m`); status `available` → `expired` if never committed |
+| `locked_at` | Set when transfer window locks (`T0(M_ko1) - 5m`); status `available` → `expired` if never committed |
 
 While status is `available` or `committed` and before lock, user may update `from_team_id`/`to_team_id` (same pot, destination not eliminated; pot must have at least one eligible club) **unless** a `weekly_swap` is active for the first knockout matchweek; then cancel swap first. On each successful apply, status becomes `committed` and **`team_selections` updates immediately**. At lock: if still `available`, set `expired`; if `committed`, freeze.
 
@@ -627,7 +627,7 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 - Tournament status (locks, current act/matchweek, `T0` and lock countdown, act-transfer grant)
 - List teams (pots, crests, eliminated flag)
 - Get permanent squad (put only before selection lock, except act-transfer endpoint)
-- Get/put matchweek lineup before that week’s lock
+- Get/put matchweek lineup before that week's lock
 - Act transfer: get grant / update selection while window open
 - Leaderboard; open picks after `T0(M)` (omit joker field when none)
 - Player points + weekly wrap (wrap when `matchweeks.status = complete`)
@@ -721,7 +721,7 @@ UI copy is Turkish; code identifiers are English. The interface is dark-only, bu
 7. Provider score correction after finish → recompute club + participants.
 8. Second joker same week → reject; cancel then activate another → OK if before lock.
 9. Cancel joker before lock → inventory +1.
-10. Edits after `T0(M) − 5m` for week M → reject; edits for M+1 after `T0(M)` → allow.
+10. Edits after `T0(M) - 5m` for week M → reject; edits for M+1 after `T0(M)` → allow.
 11. Swap / act transfer across pots → reject.
 12. Act transfer after knockout lock → reject; `available` → `expired`.
 13. Weekly swap week ends → permanent (possibly eliminated) club returns to effective squad; scores 0 if eliminated.
@@ -733,7 +733,7 @@ UI copy is Turkish; code identifiers are English. The interface is dark-only, bu
 19. No self-register; no post-lock user creation for the season.
 20. Eliminated clubs (league exit or knockout loss) hidden from swap/transfer pickers; empty pot → no transfer/swap in that pot.
 21. Active weekly_swap blocks act-transfer edits until swap cancelled.
-22. Clubs finishing league positions 1–8 receive a **one-time** `league_top8_bonus` at league completion; during play-off matchweeks these clubs have no fixture and score **0** (bye). Eliminated clubs receive no bonus.
+22. Clubs finishing league positions 1-8 receive a **one-time** `league_top8_bonus` at league completion; during play-off matchweeks these clubs have no fixture and score **0** (bye). Eliminated clubs receive no bonus.
 23. Swap the roles of captain **X** (scoring) and bench **Y** → **Y** becomes captain, **X** goes to bench; a benched club is captain **only** under `bench_boost`.
 24. `weekly_swap` out the captain club → incoming replacement inherits the captaincy (scoring); `weekly_swap` out the bench club → incoming becomes the new bench.
 25. Edit squad (permanent selection before lock / `act_transfer` / `weekly_swap`) removing a club that has an active joker on it → confirm dialog → joker cancelled + refunded.
@@ -764,7 +764,7 @@ UI copy is Turkish; code identifiers are English. The interface is dark-only, bu
 ### Phase 1: Domain skeleton ✅
 
 - Pots, 36 clubs, matchweeks registry, matches, config, permanent squad + selection lock, admin user create.
-- Clubs were placeholder data until UEFA confirmed the 2026–27 pots, which are now seeded (§2.3); a generated fixture list gives locks and scoring something to work on until the real one is published.
+- Clubs were placeholder data until UEFA confirmed the 2026-27 pots, which are now seeded (§2.3); a generated fixture list gives locks and scoring something to work on until the real one is published.
 
 ### Phase 2: Club scoring + rules UI ✅
 
@@ -778,7 +778,7 @@ UI copy is Turkish; code identifiers are English. The interface is dark-only, bu
 
 ### Phase 4: Weekly lineup + matchweek scoring + locks ✅
 
-- Bench/captain; `T0 − 5m` lock; next-week editing after `T0`; crest wall; participant scores; weekly wrap on auto-complete.
+- Bench/captain; `T0 - 5m` lock; next-week editing after `T0`; crest wall; participant scores; weekly wrap on auto-complete.
 - A matchweek that has started is frozen by status as well as by clock, so a simulated provider clock cannot reopen it. The wrap card's rank movement arrived later, with Phase 7 (§18.3).
 
 ### Phase 5: Jokers + live provisional + hub chrome ✅
@@ -797,7 +797,7 @@ Ordered by what blocks a real season most. Shipped from this list already: the l
 
 1. **Production deploy configuration.**
 2. Remaining edge-case tests from §11: provider score correction after a finish, a postponed match holding its week open, and the top-8 bonus.
-3. **Real fixture list** once UEFA publishes it (the pots are already the official 2026–27 field; today's fixtures are a constraint-true random draw), plus provider id mapping so the real feed takes over from the mock.
+3. **Real fixture list** once UEFA publishes it (the pots are already the official 2026-27 field; today's fixtures are a constraint-true random draw), plus provider id mapping so the real feed takes over from the mock.
 
 ---
 
@@ -805,13 +805,13 @@ Ordered by what blocks a real season most. Shipped from this list already: the l
 
 1. Admin-created users can login; pick one club per pot (4); selection lock enforced; no self-register; no joins after lock.
 2. Each matchweek: bench 1 + captain; three clubs score (four with bench boost); captain ×2 or ×3 with triple; integers only.
-3. Edits for week M stop at `T0(M) − 5 minutes`; after `T0(M)`, week M+1 may be edited.
+3. Edits for week M stop at `T0(M) - 5 minutes`; after `T0(M)`, week M+1 may be edited.
 4. Sync drives scores; multi-live works via provisional scoring (§4.3 Option A unless B chosen later), and the live delta feed reads from the same drafts.
 5. At most one joker per week; cancel refunds; shield cannot sit on bench; bench conflict cancels+refunds with confirm.
 6. Peers see open picks from `T0(M)`; if no joker, joker UI omitted.
 7. Matchweek completes automatically when all its matches are finished or cancelled; postponed kept on original week; wrap card on complete.
-8. League → knockout: mark league eliminations; jokers refresh; optional same-pot permanent transfer committed immediately, locked at first KO week lock; swap/act-transfer interaction per §3.6–3.7.
-9. Full path in scope; one-time `league_top8_bonus` for clubs finishing league positions 1–8 (idle play-off weeks score 0, no per-week bye award); no qualifying; no betting; no random mode.
+8. League → knockout: mark league eliminations; jokers refresh; optional same-pot permanent transfer committed immediately, locked at first KO week lock; swap/act-transfer interaction per §3.6-3.7.
+9. Full path in scope; one-time `league_top8_bonus` for clubs finishing league positions 1-8 (idle play-off weeks score 0, no per-week bye award); no qualifying; no betting; no random mode.
 10. Crest wall + boosted chip; season replay; selection lock = MW1 lineup lock.
 11. Ahtapot Paul: one MS1/MS0/MS2 call per match of the week, locked with the lineup, each correct call worth the configured points inside that week's total.
 12. `/fikstur` shows a whole round at once (both legs of a tie, first legs above the returns) with live matches marked, the participant's own clubs picked out, and a figure beside a club only when its points actually reach that participant.
@@ -831,7 +831,7 @@ Still open:
 
 - One vs many competitions in production. The schema and admin support many; the mock runs a single one.
 - Free-tier delayed live vs paid livescore; decide alongside the scheduled sync job.
-- Final 2026–27 stage labels from UEFA.
+- Final 2026-27 stage labels from UEFA.
 - Difficulty weighting details; the bands use the pot gap and venue only, with no form or injury input.
 
 ---
@@ -863,7 +863,7 @@ Knockout `round_advance` / medal values: tune after league-phase feel is good.
 4. Do not add betting, qualifying rounds, player fantasy, half-points, random mode, or self-registration.
 5. Keep the score provider behind an interface; prefer provisional **Option A** (§4.3).
 6. Document env vars in `README.md` (`DATABASE_URL`, `JWT_SECRET`, `FOOTBALL_DATA_API_TOKEN`, `ADMIN_PATH`, `CLIENT_ORIGIN`, etc.).
-7. If UEFA’s final 2026–27 labelling differs slightly, adjust seeds/enums; keep the core loop: **4-club pot squad, weekly 3+bench+captain, 5-minute pre-kickoff locks, integer multipliers, jokers with cancel/refund, act refresh + transfer, full knockout path.**
+7. If UEFA's final 2026-27 labelling differs slightly, adjust seeds/enums; keep the core loop: **4-club pot squad, weekly 3+bench+captain, 5-minute pre-kickoff locks, integer multipliers, jokers with cancel/refund, act refresh + transfer, full knockout path.**
 
 ---
 
@@ -873,11 +873,11 @@ Knockout `round_advance` / medal values: tune after league-phase feel is good.
 
 Before lock on the hub: list the user's four clubs' fixtures (opponent, home/away, kickoff).
 
-**Difficulty:** per-club band `kolay` / `orta` / `zor`, from the gap between the two clubs plus the venue; not a betting tip. What decides it is `own pot − opponent pot`, with an away trip costing a little more than one seed of that gap; a club playing twice in the week is judged on its harder fixture. The same fixture is therefore easy for the stronger host and hard for the weaker visitor. A club with no fixture shows no band at all. Lives in `server/src/domain/difficulty.ts`.
+**Difficulty:** per-club band `kolay` / `orta` / `zor`, from the gap between the two clubs plus the venue; not a betting tip. What decides it is `own pot - opponent pot`, with an away trip costing a little more than one seed of that gap; a club playing twice in the week is judged on its harder fixture. The same fixture is therefore easy for the stronger host and hard for the weaker visitor. A club with no fixture shows no band at all. Lives in `server/src/domain/difficulty.ts`.
 
 ### 18.2 Deadline drama
 
-- Countdown to `T0(M) − 5 minutes`.
+- Countdown to `T0(M) - 5 minutes`.
 - Final **2 hours** before lock (config): stronger banner / dirty-form reminder.
 - After lock: calm locked state.
 
@@ -901,7 +901,7 @@ All live CL matches; user clubs pinned; tolerate provider delay.
 
 ### 18.6 Anlık delta
 
-Compact events from provisional + finished transitions, e.g. `+3 galibiyet`, `−1 gol yedi`, `kaptan ×2 → +6`. Scoped to the user’s scoring clubs. Mark provisional until match finished.
+Compact events from provisional + finished transitions, e.g. `+3 galibiyet`, `-1 gol yedi`, `kaptan ×2 → +6`. Scoped to the user's scoring clubs. Mark provisional until match finished.
 
 *Built* as the "Puan akışı" section on the hub: one row per scoring club, each rule that landed as a signed chip; finished matches definitive, live matches drafted with the same rules and marked with a pulse until they finish (§4.3 Option A). The shield's adjustment and the captain's `×2/×3` extra appear as their own lines on the club they belong to, so the chips of a week sum to exactly what the club layer feeds the participant's total. While anything is live the page re-reads itself once a minute from our own API (never the provider (§5.6)) and once the week completes the feed folds its chips into the wrap card's club lines (§18.3).
 
@@ -919,7 +919,7 @@ Final rank/total; best/worst week; joker usage; captain hit rate; act transfer c
 
 A side game on top of the squad: for **every match of the matchweek** (not only the ones a participant's clubs play) they call the outcome as **MS1 / MS0 / MS2** (home / draw / away). Each correct call is worth `prediction_points_per_correct` (seeded 3, admin-editable), and those points join that week's participant total, so there is one score and one leaderboard.
 
-- **One deadline.** The coupon locks with the lineup, at `T0 − 5 minutes` of the week's first kickoff (§3.4). Weeks open for editing under the M+1 rule are open for predictions too.
+- **One deadline.** The coupon locks with the lineup, at `T0 - 5 minutes` of the week's first kickoff (§3.4). Weeks open for editing under the M+1 rule are open for predictions too.
 - **Picks are stored per match**, as the outcome seen from the home side, so a provider reschedule cannot silently flip a call.
 - **Settlement follows the club layer** (§4.3 Option A): a finished match settles definitively, a live match counts on its current score, and a postponed or cancelled match counts for nobody. The week's tally therefore climbs live and is frozen by `finalizeMatchweek` along with the rest of the week.
 - **Clicking the live pick again clears it**; there is no separate save.

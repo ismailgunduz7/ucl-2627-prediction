@@ -4,13 +4,13 @@ Rules for any AI agent (or human) contributing to this repository. Read this
 before making changes.
 
 [PLAN.md](PLAN.md) is the authoritative product specification. When code and
-PLAN.md disagree, PLAN.md wins, or the plan gets updated deliberately, not
-silently.
+PLAN.md disagree, PLAN.md wins. The only other way out is to change the plan on
+purpose, in the open. It never just drifts.
 
 ## Documentation is part of the work
 
 **Every change updates the documentation it affects, in the same commit as the
-code.** Not at the end of the feature, not in a follow-up pass: the commit that
+code.** Not at the end of the feature, not in a follow-up pass. The commit that
 changes behaviour is the commit that fixes the prose describing it. A reader who
 only has the docs should never be told something the code stopped doing.
 
@@ -40,7 +40,7 @@ subject`.
 ### Never hard-wrap the body
 
 **Each paragraph is a single line.** Separate paragraphs with a blank line. Do
-not wrap at 72, 80 or any other column; editors and review tools wrap for us,
+not wrap at 72, 80 or any other column. Editors and review tools wrap for us,
 and hard wraps make later edits and diffs messy.
 
 ```
@@ -51,7 +51,7 @@ Replace the separate joker panel with buttons on the club cards themselves. Pitc
 Once a joker is live only its own button remains, highlighted on the slot it applies to, and clicking it again cancels and refunds.
 ```
 
-Wrong (the same body hard-wrapped):
+The same body hard-wrapped, which is wrong:
 
 ```
 Replace the separate joker panel with buttons on the club cards themselves.
@@ -79,8 +79,8 @@ bench slot offers bench boost.
 The sibling project `../world-cup-prediction` is the design reference for both
 the participant and admin interfaces.
 
-- **Dark only.** There is no light theme and no theme switch. Everything must be
-  legible on the dark surface: inputs, dropdowns, dialogs, toasts, all of it.
+- **Dark only.** There is no light theme and no theme switch. Inputs, dropdowns,
+  dialogs and toasts all have to stay legible on the dark surface.
 - Style through the CSS variables in `client/src/styles/main.css` and the
   PrimeVue preset in `client/src/theme/preset.ts`. Avoid one-off colours.
 - PrimeVue is the component library; override its tokens rather than fighting
@@ -98,14 +98,25 @@ the participant and admin interfaces.
   **English**.
 - Write like a person. No filler that states the obvious ("Değişikliklerin
   anında kaydediliyor"), no robotic explanations, no internal jargon or spec
-  section symbols in the interface.
-- **Never use an em dash (—).** Not in UI copy, docs, code comments, or commit
-  messages, and not as a table placeholder either. Restructure the sentence
-  instead: a colon, a semicolon, parentheses, or two sentences. An en dash (–)
-  is fine for numeric ranges ("2026–27") and as the empty-cell marker.
-- The rules page speaks formally, in the passive voice ("seçilir",
-  "kilitlenir", "iade edilir"); the rest of the app may address the player
-  directly.
+  section symbols in the interface. If a label already says what a thing is,
+  the sentence under it can go.
+- **No em dashes, and no swapping one for a semicolon.** A sentence built
+  around a dash reads like a machine wrote it, and putting a semicolon in the
+  same slot just gives you a machine sentence with a semicolon in it. Rewrite
+  the thought instead. Two short sentences beat one long one nearly every
+  time, and the clause on the far side of the dash usually turns out not to be
+  worth keeping.
+- **Keyboard characters only, in interface strings and in code.** A hyphen
+  `-`, a straight apostrophe `'`. No en dash, no minus sign, no curly quotes:
+  editors flag them as look-alikes and nobody reading the app can tell the
+  difference anyway. Ranges are `2026-27` and `9-24`; an empty cell is `-`.
+- Nothing stays in English in the interface just because English is what we
+  call it in the code. Sync is "skor çekme", an override is "elle girilen
+  skor", the mock provider is "simülasyon". Never print a raw enum value
+  (`finished`, `football_data`, `success`) where a person will read it.
+- The player is addressed as **sen** everywhere, error messages included. The
+  rules page is the one exception: it explains the game in the passive voice
+  ("seçilir", "kilitlenir", "iade edilir"), like a rulebook.
 
 ## Testing
 
