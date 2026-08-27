@@ -69,11 +69,13 @@ participantRoutes.get('/teams/:id', async (c) => {
 
 // --- Scoring rules matrix (read-only) ------------------------------------
 participantRoutes.get('/scoring-rules', async (c) => {
-  const [rules, predictionPointsPerCorrect] = await Promise.all([
+  const [rules, predictionPointsPerCorrect, jokerGrants] = await Promise.all([
     getRulesMatrix(),
     getConfigValue('prediction_points_per_correct'),
+    // The per-act grant counts, so the rules page states the real numbers.
+    getConfigValue('joker_inventory_defaults'),
   ]);
-  return c.json({ rules, predictionPointsPerCorrect });
+  return c.json({ rules, predictionPointsPerCorrect, jokerGrants });
 });
 
 // --- Tournament status ----------------------------------------------------

@@ -683,7 +683,7 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 | `/hafta` | Lineup, jokers, briefing, Ahtapot Paul coupon, deadline drama, provisional points, wrap when complete | built |
 | `/lig` | League-phase table with the knockout cut lines | built |
 | `/puan-durumu` | Leaderboard | built |
-| `/kurallar` | Rules matrix, joker explanations, pots and their clubs | built |
+| `/kurallar` | The whole game explained: squad and captaincy, locks and visibility, the rules matrix, jokers with their real grant counts, the league→knockout switch, the coupon, pots and their clubs | built |
 | `/oyuncu/:id` | Season breakdown per matchweek, down to the rule lines | built |
 | `/takim/:id` | Club matches and points, expandable to rule lines | built |
 | `/fikstur` | Multi-live + fixtures | built |
