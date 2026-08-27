@@ -116,15 +116,25 @@ function decorateLines(lines: ClubLine[], squad: EffectiveClub[]): ParticipantWe
   }));
 }
 
-/** Compute a participant's provisional matchweek score, applying any active joker. */
+/**
+ * Compute a participant's provisional matchweek score, applying any active
+ * joker.
+ *
+ * `clubPoints` lets a caller scoring the whole competition read the week's club
+ * points once instead of once per participant, since that half of the sum is
+ * identical for everyone. It is copied rather than used directly, because the
+ * shield adjustment below writes into the map and one player's shield must not
+ * land on anybody else's total.
+ */
 export async function computeParticipantMatchweek(
   userId: string,
   mwId: string,
+  clubPoints?: ReadonlyMap<string, number>,
 ): Promise<ParticipantWeekScore | null> {
   const lineup = await resolveLineup(userId, mwId);
   if (!lineup) return null;
 
-  const teamPoints = await getTeamPointsForMatchweek(mwId);
+  const teamPoints = new Map(clubPoints ?? (await getTeamPointsForMatchweek(mwId)));
   const joker = await getActiveJoker(userId, mwId);
   const predictions = await getPredictionTally(userId, mwId);
 
@@ -201,9 +211,10 @@ async function participantsWithSquad(): Promise<string[]> {
 /** Write final player_matchday_scores for every participant for a completed week (§4.6). */
 export async function finalizeMatchweek(mwId: string): Promise<number> {
   const userIds = await participantsWithSquad();
+  const clubPoints = await getTeamPointsForMatchweek(mwId);
   let written = 0;
   for (const userId of userIds) {
-    const score = await computeParticipantMatchweek(userId, mwId);
+    const score = await computeParticipantMatchweek(userId, mwId, clubPoints);
     if (!score) continue;
     await query(
       `INSERT INTO player_matchday_scores (user_id, matchweek_id, points, breakdown)

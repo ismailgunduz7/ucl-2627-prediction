@@ -1,6 +1,9 @@
 import { query } from '../db/pool.ts';
 import { rankOf } from '../domain/ranking.ts';
-import { computeParticipantMatchweek } from './matchweek-scoring-service.ts';
+import {
+  computeParticipantMatchweek,
+  getTeamPointsForMatchweek,
+} from './matchweek-scoring-service.ts';
 
 export interface RankMovement {
   rank: number;
@@ -119,10 +122,16 @@ export async function getLeaderboard(competitionId: string): Promise<Leaderboard
     for (const r of rows.rows) lastWeekPoints.set(r.user_id, r.points);
   }
 
-  // In-progress weeks contribute provisional totals.
+  // In-progress weeks contribute provisional totals. What each club earned in
+  // such a week is the same number for every participant, so it is read once
+  // per week here rather than once per week per participant.
   const inProgress = await query<{ id: string }>(
     `SELECT id FROM matchweeks WHERE status = 'in_progress'`,
   );
+  const clubPointsByWeek = new Map<string, Map<string, number>>();
+  for (const mw of inProgress.rows) {
+    clubPointsByWeek.set(mw.id, await getTeamPointsForMatchweek(mw.id));
+  }
 
   // Everyone's permanent four, one query for the whole competition.
   const squadRows = await query<{
@@ -152,7 +161,7 @@ export async function getLeaderboard(competitionId: string): Promise<Leaderboard
     const finalPoints = finalByUser.get(p.id) ?? 0;
     let provisionalPoints = 0;
     for (const mw of inProgress.rows) {
-      const score = await computeParticipantMatchweek(p.id, mw.id);
+      const score = await computeParticipantMatchweek(p.id, mw.id, clubPointsByWeek.get(mw.id));
       if (score) provisionalPoints += score.total;
     }
     entries.push({
