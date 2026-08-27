@@ -1,6 +1,5 @@
 <script setup lang="ts">
-import { ref, computed, onMounted } from 'vue';
-import Tag from 'primevue/tag';
+import { ref, onMounted } from 'vue';
 import Message from 'primevue/message';
 import { api } from '@/lib/api';
 import PageHeader from '@/components/PageHeader.vue';
@@ -20,11 +19,13 @@ interface Entry {
 const rows = ref<Entry[]>([]);
 const meId = ref<string | null>(null);
 const loading = ref(true);
-const hasProvisional = computed(() => rows.value.some((e) => e.provisionalPoints !== 0));
 
 const POTS = [1, 2, 3, 4];
 function clubOf(e: Entry, pot: number) {
   return e.squad.find((c) => c.tierId === pot) ?? null;
+}
+function signed(n: number) {
+  return n > 0 ? `+${n}` : `${n}`;
 }
 
 onMounted(async () => {
@@ -53,9 +54,7 @@ onMounted(async () => {
               <th>#</th>
               <th style="text-align: left">Oyuncu</th>
               <th v-for="pot in POTS" :key="pot" class="pot-col">Pot {{ pot }}</th>
-              <th>Kesin</th>
-              <th v-if="hasProvisional">Anlık</th>
-              <th>Toplam</th>
+              <th>Puan</th>
             </tr>
           </thead>
           <tbody>
@@ -72,13 +71,18 @@ onMounted(async () => {
                   class="club-link"
                   :title="clubOf(e, pot)!.name"
                 >{{ clubOf(e, pot)!.shortName }}</RouterLink>
-                <span v-else class="text-muted">—</span>
+                <span v-else class="text-muted">–</span>
               </td>
-              <td>{{ e.finalPoints }}</td>
-              <td v-if="hasProvisional" class="text-muted">
-                {{ e.provisionalPoints !== 0 ? (e.provisionalPoints > 0 ? '+' : '') + e.provisionalPoints : '—' }}
+              <td class="total-cell">
+                <strong>{{ e.total }}</strong>
+                <span
+                  v-if="e.provisionalPoints !== 0"
+                  class="live-part"
+                  title="Oynanan maçlardan gelen pay; maçlar bitince kesinleşir"
+                >
+                  <span class="dot" aria-hidden="true" />{{ signed(e.provisionalPoints) }} canlı
+                </span>
               </td>
-              <td><strong>{{ e.total }}</strong></td>
             </tr>
           </tbody>
         </table>
@@ -100,4 +104,21 @@ onMounted(async () => {
 .pot-col { font-variant-numeric: normal; }
 .club-link { color: var(--color-text-secondary); font-weight: 600; font-size: 0.85rem; }
 .club-link:hover { color: var(--color-primary); }
+.total-cell strong { font-size: var(--text-md); }
+/* The slice of the total that is still moving in live matches. */
+.live-part {
+  display: block;
+  margin-top: 0.15rem;
+  font-size: var(--text-2xs);
+  font-weight: 700;
+  color: var(--color-danger);
+}
+.live-part .dot {
+  display: inline-block;
+  width: 5px; height: 5px; border-radius: 50%;
+  background: currentColor;
+  margin-right: 0.3rem;
+  vertical-align: middle;
+  animation: pulse-soft 1.4s ease-in-out infinite;
+}
 </style>

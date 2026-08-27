@@ -3,7 +3,7 @@ import { computeParticipantMatchweek } from './matchweek-scoring-service.ts';
 
 export interface RankMovement {
   rank: number;
-  /** Null on the season's first completed week — there is nothing to move from. */
+  /** Null on the season's first completed week; there is nothing to move from. */
   prevRank: number | null;
 }
 
@@ -76,7 +76,7 @@ export interface LeaderboardEntry {
   provisionalPoints: number;
   total: number;
   rank: number;
-  /** The PERMANENT four in pot order — an act transfer rewrites it, a weekly swap never shows here. */
+  /** The PERMANENT four in pot order; an act transfer rewrites it, a weekly swap never shows here. */
   squad: LeaderboardSquadClub[];
 }
 
