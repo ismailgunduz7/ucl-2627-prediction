@@ -62,6 +62,13 @@ export async function getRankMovement(
   return { rank, prevRank: idx > 0 ? rankAfter(idx - 1) : null };
 }
 
+export interface LeaderboardSquadClub {
+  teamId: string;
+  tierId: number;
+  name: string;
+  shortName: string;
+}
+
 export interface LeaderboardEntry {
   userId: string;
   displayName: string;
@@ -69,6 +76,8 @@ export interface LeaderboardEntry {
   provisionalPoints: number;
   total: number;
   rank: number;
+  /** The PERMANENT four in pot order — an act transfer rewrites it, a weekly swap never shows here. */
+  squad: LeaderboardSquadClub[];
 }
 
 /**
@@ -113,6 +122,29 @@ export async function getLeaderboard(competitionId: string): Promise<Leaderboard
     `SELECT id FROM matchweeks WHERE status = 'in_progress'`,
   );
 
+  // Everyone's permanent four, one query for the whole competition.
+  const squadRows = await query<{
+    user_id: string;
+    team_id: string;
+    tier_id: number;
+    name: string;
+    short_name: string;
+  }>(
+    `SELECT ts.user_id, ts.team_id, ts.tier_id, t.name, t.short_name
+     FROM team_selections ts
+     JOIN teams t ON t.id = ts.team_id
+     JOIN users u ON u.id = ts.user_id
+     WHERE u.competition_id = $1
+     ORDER BY ts.tier_id`,
+    [competitionId],
+  );
+  const squadByUser = new Map<string, LeaderboardSquadClub[]>();
+  for (const r of squadRows.rows) {
+    const list = squadByUser.get(r.user_id) ?? [];
+    list.push({ teamId: r.team_id, tierId: r.tier_id, name: r.name, shortName: r.short_name });
+    squadByUser.set(r.user_id, list);
+  }
+
   const entries: Omit<LeaderboardEntry, 'rank'>[] = [];
   for (const p of participants.rows) {
     const finalPoints = finalByUser.get(p.id) ?? 0;
@@ -127,6 +159,7 @@ export async function getLeaderboard(competitionId: string): Promise<Leaderboard
       finalPoints,
       provisionalPoints,
       total: finalPoints + provisionalPoints,
+      squad: squadByUser.get(p.id) ?? [],
     });
   }
 

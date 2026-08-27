@@ -6,6 +6,7 @@ import { api } from '@/lib/api';
 import PageHeader from '@/components/PageHeader.vue';
 import BallLoader from '@/components/BallLoader.vue';
 
+interface SquadClub { teamId: string; tierId: number; name: string; shortName: string }
 interface Entry {
   userId: string;
   displayName: string;
@@ -13,12 +14,18 @@ interface Entry {
   provisionalPoints: number;
   total: number;
   rank: number;
+  squad: SquadClub[];
 }
 
 const rows = ref<Entry[]>([]);
 const meId = ref<string | null>(null);
 const loading = ref(true);
 const hasProvisional = computed(() => rows.value.some((e) => e.provisionalPoints !== 0));
+
+const POTS = [1, 2, 3, 4];
+function clubOf(e: Entry, pot: number) {
+  return e.squad.find((c) => c.tierId === pot) ?? null;
+}
 
 onMounted(async () => {
   try {
@@ -36,15 +43,16 @@ onMounted(async () => {
     <PageHeader title="Puan durumu" />
 
     <BallLoader v-if="loading" />
-    <Message v-else-if="!rows.length" severity="secondary" :closable="false">Bu yarışmada henüz sıralama oluşmadı.</Message>
+    <Message v-else-if="!rows.length" severity="secondary" :closable="false">Bu yarışmada henüz oyuncu yok.</Message>
 
     <template v-else>
-      <div class="surface-card" style="overflow: hidden">
+      <div class="surface-card" style="overflow-x: auto">
         <table class="lb">
           <thead>
             <tr>
               <th>#</th>
               <th style="text-align: left">Oyuncu</th>
+              <th v-for="pot in POTS" :key="pot" class="pot-col">Pot {{ pot }}</th>
               <th>Kesin</th>
               <th v-if="hasProvisional">Anlık</th>
               <th>Toplam</th>
@@ -56,6 +64,15 @@ onMounted(async () => {
               <td style="text-align: left">
                 <RouterLink :to="`/oyuncu/${e.userId}`" class="player-link">{{ e.displayName }}</RouterLink>
                 <span v-if="e.userId === meId" class="you"> · sen</span>
+              </td>
+              <td v-for="pot in POTS" :key="pot" class="pot-col">
+                <RouterLink
+                  v-if="clubOf(e, pot)"
+                  :to="`/takim/${clubOf(e, pot)!.teamId}`"
+                  class="club-link"
+                  :title="clubOf(e, pot)!.name"
+                >{{ clubOf(e, pot)!.shortName }}</RouterLink>
+                <span v-else class="text-muted">—</span>
               </td>
               <td>{{ e.finalPoints }}</td>
               <td v-if="hasProvisional" class="text-muted">
@@ -80,4 +97,7 @@ onMounted(async () => {
 .you { color: var(--color-primary); font-size: 0.8rem; font-weight: 600; }
 .player-link { color: var(--color-text); font-weight: 600; }
 .player-link:hover { color: var(--color-primary); }
+.pot-col { font-variant-numeric: normal; }
+.club-link { color: var(--color-text-secondary); font-weight: 600; font-size: 0.85rem; }
+.club-link:hover { color: var(--color-primary); }
 </style>
