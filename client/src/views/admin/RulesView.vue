@@ -70,7 +70,7 @@ onMounted(load);
 
 <template>
   <div class="page-stack">
-    <PageHeader title="Puanlama kuralları" subtitle="Her kural için pot bazında puanı belirle. Değerler tam sayı, negatif olabilir.">
+    <PageHeader title="Puanlama kuralları" subtitle="Her kuralın puanını pot pot ayarla; cezalar eksi yazılır.">
       <template #actions>
         <div style="display: flex; gap: 0.5rem">
           <Button label="Yeniden hesapla" icon="pi pi-refresh" severity="secondary" outlined :loading="recalculating" @click="recalculate" />

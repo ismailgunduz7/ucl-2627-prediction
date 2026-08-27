@@ -123,7 +123,7 @@ watch(selectedMw, loadMatches);
 
 <template>
   <div class="page-stack">
-    <PageHeader title="Maçlar" subtitle="Bir maçı bitirdiğinde kulüp puanları otomatik hesaplanır. Elle girdiğin sonucu sync ezmez.">
+    <PageHeader title="Maçlar" subtitle="Maçı bitti'ye çektiğin anda puanları işlenir. Elle girdiğin sonucu sync ezmez.">
       <template #actions>
         <Select
           v-model="selectedMw"
