@@ -1,4 +1,4 @@
--- Phase 1 — domain skeleton (PLAN.md §8.1).
+-- Phase 1: domain skeleton (PLAN.md §8.1).
 -- Pots (tiers), teams, matchweek registry, matches, admin-editable config, and
 -- the permanent squad selection with server-enforced one-club-per-pot rules.
 

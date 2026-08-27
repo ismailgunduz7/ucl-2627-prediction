@@ -59,7 +59,7 @@ export function resolveTie(
     };
   }
 
-  // Level on aggregate — a shootout, seeded so it never changes on a re-run.
+  // Level on aggregate: a shootout, seeded so it never changes on a re-run.
   const coin = createHash('sha256').update(tieId).digest()[0]! % 2 === 0;
   return {
     winnerTeamId: coin ? teamAId : teamBId,

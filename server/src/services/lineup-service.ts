@@ -238,7 +238,7 @@ export async function setLineup(
     throw ApiError.badRequest(validation.error.message, validation.error.code);
   }
 
-  // A club swapped in for this week is here to play — it cannot be benched.
+  // A club swapped in for this week is here to play; it cannot be benched.
   if (active?.code === 'weekly_swap' && benchTeamId === active.payload.toTeamId) {
     throw ApiError.badRequest(
       'Bu hafta takasla gelen kulüp yedeğe çekilemez',
@@ -246,7 +246,7 @@ export async function setLineup(
     );
   }
 
-  // Benching a shielded club cancels the joker — the client confirms first.
+  // Benching a shielded club cancels the joker; the client confirms first.
   if (active?.code === 'clean_sheet_shield' && benchTeamId === active.payload.teamId) {
     throw new ApiError(409, 'joker_bench_conflict', 'Kalkan kullandığın kulübü yedeğe çekiyorsun');
   }

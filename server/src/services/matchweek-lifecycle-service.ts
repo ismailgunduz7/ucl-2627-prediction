@@ -38,7 +38,7 @@ export interface LockState {
   locked: boolean;
 }
 
-/** A matchweek has started once a match kicked off — by status or by wall clock. */
+/** A matchweek has started once a match kicked off, by status or by wall clock. */
 function hasStarted(status: string, firstKickoffAt: Date | null, now: Date): boolean {
   if (status === 'in_progress' || status === 'complete') return true;
   return firstKickoffAt !== null && now.getTime() >= firstKickoffAt.getTime();
@@ -47,7 +47,7 @@ function hasStarted(status: string, firstKickoffAt: Date | null, now: Date): boo
 /**
  * Lock state for a matchweek at instant `now` (§3.4). Derived from the CURRENT
  * first_kickoff_at (never a stored deadline). Locked once now ≥ T0−5m OR the
- * matchweek has already started (a match kicked off) — the latter keeps a
+ * matchweek has already started (a match kicked off); the latter keeps a
  * started week frozen even if the wall clock and provider clock disagree.
  */
 export function lockStateFor(mw: MatchweekRow, now: Date = new Date()): LockState {
@@ -132,7 +132,7 @@ export async function getOrderedMatchweeks(): Promise<OrderedMatchweek[]> {
 
 /**
  * Recompute matchweek denormalized state inside a transaction (§3.4, §4.6):
- * 1. first_kickoff_at for weeks not yet started (upcoming/open) — never moves a
+ * 1. first_kickoff_at for weeks not yet started (upcoming/open); never moves a
  *    started week's lock.
  * 2. mark in_progress once any match is live/finished.
  * 3. mark complete when every match is finished/cancelled.

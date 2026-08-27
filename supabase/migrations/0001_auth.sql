@@ -1,4 +1,4 @@
--- Phase 0 — auth foundation (PLAN.md §8.1, §9.1).
+-- Phase 0: auth foundation (PLAN.md §8.1, §9.1).
 -- Competitions are visibility scopes only; they carry no rule/scoring/config
 -- overrides. Users are admin-provisioned (no public self-registration).
 

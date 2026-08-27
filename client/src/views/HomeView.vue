@@ -20,7 +20,7 @@ const currentMw = ref<Mw | null>(null);
 const weekTotal = ref<number | null>(null);
 const weekFinal = ref(false);
 const leaderboard = ref<LbEntry[]>([]);
-// The final is done — the season has an ending worth replaying (§18.8).
+// The final is done, so the season has an ending worth replaying (§18.8).
 const seasonOver = ref(false);
 
 const squadComplete = computed(() => squad.value.length === 4);
@@ -63,7 +63,7 @@ onMounted(async () => {
     <BallLoader v-if="loading" />
 
     <RouterLink v-if="!loading && seasonOver" to="/sezon" class="surface-card card-pad replay-banner">
-      <span class="replay-title">🏆 Sezon bitti — filmin hazır</span>
+      <span class="replay-title">🏆 Sezon bitti, filmin hazır</span>
       <span class="text-muted">Sıralaman, en iyi haftan, jokerlerin ve puanının yolculuğu</span>
       <Button label="İzle" icon="pi pi-play" size="small" />
     </RouterLink>
@@ -97,7 +97,7 @@ onMounted(async () => {
         <h2 class="section-title" style="margin: 0 0 0.75rem">{{ currentMw?.label ?? 'Hafta' }}</h2>
         <template v-if="currentMw">
           <div class="week-score">
-            <span class="big-num">{{ weekTotal ?? '—' }}</span>
+            <span class="big-num">{{ weekTotal ?? '–' }}</span>
             <span class="text-muted">{{ weekFinal ? 'kesin puan' : 'anlık puan' }}</span>
           </div>
           <RouterLink to="/hafta">

@@ -123,7 +123,7 @@ onMounted(load);
         <div class="section-title">Joker hakları</div>
         <p class="text-muted note" style="margin-bottom: 1rem">
           Lig değerleri yeni hesap açılırken verilir; eleme değerleri lig biterken herkese yeniden
-          dağıtılır. Var olan envanterlere dokunmaz — onun yeri Kullanıcılar sayfası.
+          dağıtılır. Var olan envanterlere dokunmaz; onun yeri Kullanıcılar sayfası.
         </p>
         <div style="overflow-x: auto">
           <table class="grants">

@@ -5,7 +5,7 @@ import type { ProviderFixture, ScoreProvider } from './score-provider.ts';
 /**
  * Mock provider for the pre-draw mockup (§5, §17.5). Reads our seeded matches
  * and returns them as fixtures whose status/score are derived from a simulated
- * clock — letting us exercise the full sync pipeline (scheduled → live →
+ * clock, letting us exercise the full sync pipeline (scheduled → live →
  * finished, scoring, completion) before real 2026–27 data exists.
  *
  * Manual-override protection lives in the sync service, not here; this provider

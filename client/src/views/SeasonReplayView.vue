@@ -131,7 +131,7 @@ onMounted(async () => {
           <small class="text-muted">kaptanın haftanın en iyisi çıktı</small>
         </div>
         <div class="surface-card card-pad stat">
-          <span class="stat-num">{{ data.transfer === 'committed' ? '✓' : '—' }}</span>
+          <span class="stat-num">{{ data.transfer === 'committed' ? '✓' : '–' }}</span>
           <small class="text-muted">{{ data.transfer === 'committed' ? 'eleme transferini kullandın' : 'eleme transferine dokunmadın' }}</small>
         </div>
       </div>

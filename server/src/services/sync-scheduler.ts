@@ -15,7 +15,7 @@ import { resolveProvider, runSync } from './score-sync-service.ts';
  * (§5.6). Only this job and the admin "trigger sync" button ever call the
  * provider, so participant traffic can never trip the rate limit.
  *
- * A poll that fails is logged to `sync_runs` and swallowed — the app keeps
+ * A poll that fails is logged to `sync_runs` and swallowed; the app keeps
  * serving the last-good data and the next poll simply comes later.
  *
  * The job stays parked while the mock provider is configured. The mock reads
@@ -124,7 +124,7 @@ async function scheduleNext(first = false): Promise<void> {
     : nextSyncDelayMs({ now: new Date(), window, consecutiveFailures, throttled });
 
   // After a restart, catch up soon rather than sitting out a whole quiet
-  // cadence — but not instantly, so a crash loop still cannot hammer the
+  // cadence, but not instantly, so a crash loop still cannot hammer the
   // provider.
   if (first) delay = Math.min(delay, SYNC_CADENCE_MS.imminent);
   nextRunAt = new Date(Date.now() + delay);

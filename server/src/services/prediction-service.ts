@@ -12,7 +12,7 @@ import { getOrderedMatchweeks, lineupEditability } from './matchweek-lifecycle-s
 
 /**
  * Ahtapot Paul (§18.9): a 1X2 call on every match of the matchweek. Picks share
- * the lineup's deadline — one deadline per week — and pay out as part of that
+ * the lineup's deadline (one deadline per week) and pay out as part of that
  * week's participant score.
  */
 

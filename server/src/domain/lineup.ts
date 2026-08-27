@@ -43,7 +43,7 @@ export function validateLineup(
  * Resolve the lineup to use when a user has not set one (§3.5):
  * keep the previous week's bench + captain if both are still valid on the
  * effective four; otherwise deterministic fallback derived from the current pot
- * layout — bench = highest pot number (weakest, e.g. Pot 4), captain = lowest
+ * layout: bench = highest pot number (weakest, e.g. Pot 4), captain = lowest
  * pot (strongest, e.g. Pot 1) among the three that score.
  */
 export function defaultLineup(

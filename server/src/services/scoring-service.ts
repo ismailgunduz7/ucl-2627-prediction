@@ -190,8 +190,8 @@ export async function clearMatchLinesInTx(client: PoolClient, matchId: string): 
 export async function recalculateAll(): Promise<{ matchesScored: number; finalizedWeeks: string[] }> {
   const { matchesScored } = await withTransaction(async (client) => {
     // Match-based lines are cleared and rebuilt from scratch. Bonus lines
-    // (top-8, round advance, medals — match_id NULL) are one-time awards tied
-    // to season events that a recalc cannot re-derive cheaply, so they stay —
+    // (top-8, round advance, medals; match_id NULL) are one-time awards tied
+    // to season events that a recalc cannot re-derive cheaply, so they stay,
     // but their POINTS must follow the current per-pot rule values.
     await client.query('DELETE FROM team_point_entries WHERE match_id IS NOT NULL');
     const rules = await loadTierRules(client);
@@ -300,7 +300,7 @@ export interface OverrideAudit {
   action: string;
   changedFields: Record<string, { from: unknown; to: unknown }>;
   adminUserId: string | null;
-  /** Who did it, by name — null if the account was deleted since. */
+  /** Who did it, by name; null if the account was deleted since. */
   adminName: string | null;
   createdAt: string;
 }

@@ -1,4 +1,4 @@
--- Phase 6 — season acts and the knockout path (PLAN.md §3.7, §8.1).
+-- Phase 6: season acts and the knockout path (PLAN.md §3.7, §8.1).
 
 -- act_transfers ------------------------------------------------------------
 -- One optional permanent squad change per participant when the knockout act

@@ -51,7 +51,7 @@ router.beforeEach(async (to) => {
   if (to.meta.requiresAdmin && !auth.isAdmin) {
     return { name: 'home' };
   }
-  // Admins have no business on participant pages — keep them in the panel.
+  // Admins have no business on participant pages; keep them in the panel.
   if (to.meta.participant && auth.isAdmin) {
     return { name: 'admin-dashboard' };
   }

@@ -94,7 +94,7 @@ const VALUE_LABEL: Record<string, string> = {
   scheduled: 'planlandı', live: 'canlı', finished: 'bitti', postponed: 'ertelendi', cancelled: 'iptal',
 };
 function auditValue(v: unknown) {
-  if (v === null || v === undefined) return '—';
+  if (v === null || v === undefined) return '–';
   return VALUE_LABEL[String(v)] ?? String(v);
 }
 function auditWhen(iso: string) {

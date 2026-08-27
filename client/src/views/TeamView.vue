@@ -96,7 +96,7 @@ watch(() => route.params.id, (id) => id && load(id as string));
                 <strong v-if="m.points !== null" :class="m.points >= 0 ? 'text-positive' : 'text-negative'">
                   {{ m.points > 0 ? '+' : '' }}{{ m.points }}
                 </strong>
-                <span v-else class="text-muted">—</span>
+                <span v-else class="text-muted">–</span>
               </td>
             </tr>
             <tr v-if="openMatch === m.matchId" class="entry-row">

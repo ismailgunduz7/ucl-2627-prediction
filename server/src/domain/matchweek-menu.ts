@@ -106,7 +106,7 @@ export interface RoundOption {
 /**
  * One entry per round for a picker that opens a whole round at a time.
  *
- * A round of several matchweeks is named once — "Son 16" covers both its legs.
+ * A round of several matchweeks is named once: "Son 16" covers both its legs.
  * A round of one names itself, so league weeks stay "Hafta 8", "Hafta 7", and
  * the final stays "Final". The number of weeks in the round is what decides
  * this; the labels alone cannot, since a league week's own name differs from

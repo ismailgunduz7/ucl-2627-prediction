@@ -1,10 +1,10 @@
-# UEFA Champions League 2026–27 — Club Fantasy
+# UEFA Champions League 2026–27 Club Fantasy
 
 A private/small-group **club** fantasy game for the UEFA Champions League 2026–27
 season. Players pick **clubs** (one per pot), not footballers; points come from
 real match results. See [PLAN.md](PLAN.md) for the authoritative product spec.
 
-> **Status:** Phases 0–6 complete and playable end to end — accounts, permanent
+> **Status:** Phases 0–6 complete and playable end to end: accounts, permanent
 > squads, club scoring with the per-pot rules editor, provider sync behind a
 > swappable interface, weekly lineups with the `T0 − 5m` lock, all four jokers,
 > live provisional scoring, the leaderboard and per-player/per-club breakdowns,
@@ -15,7 +15,7 @@ real match results. See [PLAN.md](PLAN.md) for the authoritative product spec.
 > live delta feed on the weekly hub that itemises every point as it lands, and
 > a season replay that opens once the final is played.
 >
-> What is left is tracked as Phase 7 in [PLAN.md](PLAN.md) §13 — production
+> What is left is tracked as Phase 7 in [PLAN.md](PLAN.md) §13: production
 > deploy configuration, deeper edge-case tests, and swapping the randomly
 > drawn fixtures for UEFA's real list once it is published. The clubs and
 > pots are already the official 2026–27 field; the mock provider drives the
@@ -58,11 +58,11 @@ npm run seed:domain --workspace server
 ```
 
 > The clubs and pots are the **official 2026–27 field** (UEFA, 26 Aug 2026).
-> The fixture list is a **random draw** under the real constraints — two
-> opponents per pot, one home one away, never a same-country pairing — until
+> The fixture list is a **random draw** under the real constraints (two
+> opponents per pot, one home one away, never a same-country pairing) until
 > UEFA publishes the actual fixtures (PLAN.md §2.3).
 
-The seed creates an admin (default `admin` / `changeme123` — override with
+The seed creates an admin (default `admin` / `changeme123`; override with
 `SEED_ADMIN_USERNAME` / `SEED_ADMIN_PASSWORD`) and a default competition. **Change
 the password immediately in any real deployment.**
 

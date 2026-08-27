@@ -4,25 +4,25 @@ Rules for any AI agent (or human) contributing to this repository. Read this
 before making changes.
 
 [PLAN.md](PLAN.md) is the authoritative product specification. When code and
-PLAN.md disagree, PLAN.md wins — or the plan gets updated deliberately, not
+PLAN.md disagree, PLAN.md wins, or the plan gets updated deliberately, not
 silently.
 
 ## Documentation is part of the work
 
 **Every change updates the documentation it affects, in the same commit as the
-code.** Not at the end of the feature, not in a follow-up pass — the commit that
+code.** Not at the end of the feature, not in a follow-up pass: the commit that
 changes behaviour is the commit that fixes the prose describing it. A reader who
 only has the docs should never be told something the code stopped doing.
 
 What to touch:
 
-- **[PLAN.md](PLAN.md)** — §0 for what is built, deliberately deviating, or not
+- **[PLAN.md](PLAN.md)**: §0 for what is built, deliberately deviating, or not
   built yet; §13 Phase 7 for what remains; the relevant spec section when the
   rules themselves change; §14 when a change adds an acceptance criterion.
-- **[README.md](README.md)** — the status paragraph, setup or run steps, scripts,
+- **[README.md](README.md)**: the status paragraph, setup or run steps, scripts,
   environment variables, and repository layout.
-- **This file** — when a working convention changes.
-- **`.env.example`** — whenever a new environment variable is read.
+- **This file**: when a working convention changes.
+- **`.env.example`**: whenever a new environment variable is read.
 
 A change that is genuinely invisible to all four (an internal refactor with no
 behaviour change) needs no doc edit, and inventing one is worse than none.
@@ -40,7 +40,7 @@ subject`.
 ### Never hard-wrap the body
 
 **Each paragraph is a single line.** Separate paragraphs with a blank line. Do
-not wrap at 72, 80 or any other column — editors and review tools wrap for us,
+not wrap at 72, 80 or any other column; editors and review tools wrap for us,
 and hard wraps make later edits and diffs messy.
 
 ```
@@ -51,7 +51,7 @@ Replace the separate joker panel with buttons on the club cards themselves. Pitc
 Once a joker is live only its own button remains, highlighted on the slot it applies to, and clicking it again cancels and refunds.
 ```
 
-Wrong — the same body hard-wrapped:
+Wrong (the same body hard-wrapped):
 
 ```
 Replace the separate joker panel with buttons on the club cards themselves.
@@ -79,8 +79,8 @@ bench slot offers bench boost.
 The sibling project `../world-cup-prediction` is the design reference for both
 the participant and admin interfaces.
 
-- **Dark only.** There is no light theme and no theme switch. Everything —
-  inputs, dropdowns, dialogs, toasts — must be legible on the dark surface.
+- **Dark only.** There is no light theme and no theme switch. Everything must be
+  legible on the dark surface: inputs, dropdowns, dialogs, toasts, all of it.
 - Style through the CSS variables in `client/src/styles/main.css` and the
   PrimeVue preset in `client/src/theme/preset.ts`. Avoid one-off colours.
 - PrimeVue is the component library; override its tokens rather than fighting
@@ -99,6 +99,13 @@ the participant and admin interfaces.
 - Write like a person. No filler that states the obvious ("Değişikliklerin
   anında kaydediliyor"), no robotic explanations, no internal jargon or spec
   section symbols in the interface.
+- **Never use an em dash (—).** Not in UI copy, docs, code comments, or commit
+  messages, and not as a table placeholder either. Restructure the sentence
+  instead: a colon, a semicolon, parentheses, or two sentences. An en dash (–)
+  is fine for numeric ranges ("2026–27") and as the empty-cell marker.
+- The rules page speaks formally, in the passive voice ("seçilir",
+  "kilitlenir", "iade edilir"); the rest of the app may address the player
+  directly.
 
 ## Testing
 

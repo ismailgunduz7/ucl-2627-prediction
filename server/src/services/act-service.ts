@@ -146,7 +146,7 @@ async function getTransferRow(userId: string): Promise<TransferRow | null> {
 
 /**
  * The squad as it stood BEFORE the committed transfer. The transfer is always
- * expressed against this squad — its options, its from club, and any re-apply —
+ * expressed against this squad (its options, its from club, and any re-apply),
  * so updating a committed transfer swaps the original club back out instead of
  * chasing the club that replaced it.
  */
@@ -196,7 +196,7 @@ export async function getActTransfer(userId: string): Promise<ActTransferState> 
 
 /**
  * Same-pot, still-alive alternatives per ORIGINAL squad club. The committed
- * destination club stays eligible in its pot — it is the current selection.
+ * destination club stays eligible in its pot; it is the current selection.
  */
 async function buildOptions(userId: string, row: TransferRow | null): Promise<ActTransferState['options']> {
   const squad = await getOriginalSquad(userId, row);
@@ -276,7 +276,7 @@ export async function setActTransfer(
     throw ApiError.badRequest('Elenmiş kulüp seçilemez', 'to_ineligible');
   }
 
-  // A club leaving the effective squad may carry an active joker — a shield on
+  // A club leaving the effective squad may carry an active joker, a shield on
   // it, say (§3.6, §11.25). Confirm first; on confirm, cancel with a refund.
   // (An active weekly swap was already rejected above.)
   const currentSquad = await getPermanentSquad(userId);

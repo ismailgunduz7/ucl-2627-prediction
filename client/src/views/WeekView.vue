@@ -190,7 +190,7 @@ async function chooseSwap(toTeamId: string) {
   await activateJoker('weekly_swap', { fromTeamId: swapFrom.value?.teamId, toTeamId });
 }
 
-// A club swapped in for this week is here to play — it cannot be benched.
+// A club swapped in for this week is here to play; it cannot be benched.
 function canBench(club: SquadClub) {
   return editable.value && club.teamId !== swappedInId.value;
 }
@@ -321,8 +321,8 @@ async function loadWeek() {
 
 /**
  * While a match of the selected week is in play the page re-reads itself once a
- * minute — from our own API only, the provider is the sync job's business
- * (§5.6) — so the feed, the coupon and the provisional total keep moving.
+ * minute, from our own API only (the provider is the sync job's business,
+ * §5.6), so the feed, the coupon and the provisional total keep moving.
  */
 function scheduleLivePoll() {
   window.clearInterval(livePoller);
@@ -448,8 +448,8 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
                 class="slot-btn joker press"
                 :class="{ on: j.active }"
                 :aria-pressed="j.active"
-                :aria-label="j.active ? `${JOKER_NAMES[j.code]} — geri al` : `${JOKER_NAMES[j.code]} — ${club.name}`"
-                :title="j.active ? `${JOKER_NAMES[j.code]} — geri al` : JOKER_NAMES[j.code]"
+                :aria-label="j.active ? `${JOKER_NAMES[j.code]}: geri al` : `${JOKER_NAMES[j.code]}: ${club.name}`"
+                :title="j.active ? `${JOKER_NAMES[j.code]}: geri al` : JOKER_NAMES[j.code]"
                 @click="onJokerClick(j.code, club, j.active)"
               >
                 <component :is="JOKER_ICONS[j.code]" :size="16" aria-hidden="true" />
@@ -495,8 +495,8 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
                 class="slot-btn joker press"
                 :class="{ on: j.active }"
                 :aria-pressed="j.active"
-                :aria-label="j.active ? `${JOKER_NAMES[j.code]} — geri al` : `${JOKER_NAMES[j.code]} — ${benchClub.name}`"
-                :title="j.active ? `${JOKER_NAMES[j.code]} — geri al` : JOKER_NAMES[j.code]"
+                :aria-label="j.active ? `${JOKER_NAMES[j.code]}: geri al` : `${JOKER_NAMES[j.code]}: ${benchClub.name}`"
+                :title="j.active ? `${JOKER_NAMES[j.code]}: geri al` : JOKER_NAMES[j.code]"
                 @click="onJokerClick(j.code, benchClub, j.active)"
               >
                 <component :is="JOKER_ICONS[j.code]" :size="16" aria-hidden="true" />
@@ -606,8 +606,8 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
                 </div>
               </td>
               <td class="line-points">
-                <span v-if="sittingOut(l)" title="Yedek — puan yazılmadı">—</span>
-                <span v-else-if="byeIds.has(l.teamId) && l.basePoints === 0" class="text-muted">maç yok — 0</span>
+                <span v-if="sittingOut(l)" title="Yedek: puanı yazılmadı">–</span>
+                <span v-else-if="byeIds.has(l.teamId) && l.basePoints === 0" class="text-muted">maç yok · 0</span>
                 <span v-else>{{ l.basePoints }} → <strong>{{ l.contributed >= 0 ? '+' : '' }}{{ l.contributed }}</strong></span>
               </td>
             </tr>
@@ -666,7 +666,7 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
                   <JokerIcon :code="p.jokerCode" :size="16" />
                   <span v-if="p.jokerDetail" class="text-muted">{{ p.jokerDetail }}</span>
                 </span>
-                <span v-else class="text-muted">—</span>
+                <span v-else class="text-muted">–</span>
               </td>
               <td>{{ p.benchName }}</td>
             </tr>

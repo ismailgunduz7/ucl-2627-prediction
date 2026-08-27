@@ -7,7 +7,7 @@ import { shieldDeltaForTarget } from './matchweek-scoring-service.ts';
 
 /**
  * The live delta feed (§18.6): the week's point events for the participant's
- * SCORING clubs, one line per rule — `+3 galibiyet`, `−1 gol yedi` — with the
+ * SCORING clubs, one line per rule (`+3 galibiyet`, `−1 gol yedi`) with the
  * captain's multiplier as its own line. Finished matches contribute definitive
  * lines; live matches contribute drafts marked provisional, computed with the
  * same rules (§4.3 Option A). Read entirely from our own tables (§5.6).
@@ -17,7 +17,7 @@ export interface DeltaEvent {
   ruleCode: string;
   label: string;
   points: number;
-  /** From a match still in play — the number can move until it finishes. */
+  /** From a match still in play; the number can move until it finishes. */
   provisional: boolean;
 }
 

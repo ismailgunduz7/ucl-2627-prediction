@@ -28,7 +28,7 @@ interface FdMatch {
 
 /**
  * Real provider using football-data.org API v4 (§5.1). Server-side only; the
- * token never reaches clients (§5.6). All participant reads come from our DB —
+ * token never reaches clients (§5.6). All participant reads come from our DB;
  * only this sync path calls the provider, so user concurrency never trips the
  * provider rate limit.
  *

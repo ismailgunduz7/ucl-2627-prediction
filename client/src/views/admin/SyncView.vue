@@ -35,7 +35,7 @@ async function loadRuns() {
 const scheduleLine = computed(() => {
   const s = scheduler.value;
   if (!s) return '';
-  if (!s.enabled) return 'Otomatik yoklama kapalı — skorlar yalnızca buradan çektiğinde güncelleniyor.';
+  if (!s.enabled) return 'Otomatik yoklama kapalı; skorlar yalnızca buradan çektiğinde güncelleniyor.';
   if (s.pausedReason === 'mock_provider') {
     return 'Mock sağlayıcı seçili olduğu için arka planda yoklama yapılmıyor: simülasyon saatini sen veriyorsun. Gerçek sağlayıcıya geçince kendiliğinden başlar.';
   }
@@ -48,7 +48,7 @@ const scheduleLine = computed(() => {
 });
 
 function time(iso: string | null) {
-  return iso ? new Date(iso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '—';
+  return iso ? new Date(iso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '–';
 }
 async function runSync() {
   running.value = true;
@@ -88,8 +88,8 @@ onBeforeUnmount(() => { if (statusTimer) clearInterval(statusTimer); });
     </section>
 
     <Message severity="info" :closable="false">
-      Mock sağlayıcı, ileri tarihli fikstürleri simüle saatle ilerletir — gerçek 2026/27 verisi
-      gelene kadar akışı denemek için. Elle sonuç girdiğin maçlar sync'te atlanır.
+      Mock sağlayıcı, ileri tarihli fikstürleri simüle saatle ilerletir; gerçek 2026/27 verisi
+      gelene kadar akışı böyle denersin. Elle sonuç girdiğin maçlar sync'te atlanır.
     </Message>
 
     <section class="surface-card card-pad">

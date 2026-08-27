@@ -87,7 +87,7 @@ participantRoutes.get('/tournament/status', async (c) => {
     getCurrentMatchweek(),
     getSelectionLockState(now),
     query<MatchweekRow>(
-      // Play order (league before knockout) — a plain ORDER BY act would sort
+      // Play order (league before knockout); a plain ORDER BY act would sort
       // the text values and put 'knockout' first.
       `SELECT id, act, sort_order, label, status, first_kickoff_at, completed_at
        FROM matchweeks ORDER BY CASE act WHEN 'league_phase' THEN 0 ELSE 1 END, sort_order`,

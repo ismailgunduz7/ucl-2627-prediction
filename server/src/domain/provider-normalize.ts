@@ -12,7 +12,7 @@ export function normalizeFootballDataStatus(raw: string): MatchStatus {
     case 'PAUSED':
       return 'live';
     case 'FINISHED':
-    case 'AWARDED': // administrative result — treat as finished
+    case 'AWARDED': // administrative result; treat as finished
       return 'finished';
     case 'POSTPONED':
       return 'postponed';

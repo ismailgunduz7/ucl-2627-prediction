@@ -25,8 +25,8 @@ export const AppPreset = definePreset(Aura, {
       dark: {
         // Aura's dark scheme reads this ramp light-to-dark: surface.0 is the
         // brightest foreground and surface.950 the deepest background. It was
-        // written the other way round, so every token Aura derives from it —
-        // list option text, icons, menu items — came out dark on dark.
+        // written the other way round, so every token Aura derives from it
+        // (list option text, icons, menu items) came out dark on dark.
         surface: {
           0: '#ffffff',
           50: '#f0f4fa',

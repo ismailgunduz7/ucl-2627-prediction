@@ -1,4 +1,4 @@
--- Phase 2 — club-layer scoring (PLAN.md §4.2, §8.1).
+-- Phase 2: club-layer scoring (PLAN.md §4.2, §8.1).
 -- Rule types + per-pot values + definitive point entries for finished matches
 -- (Option A: finished rows only; live provisional is computed on read, §4.3).
 

@@ -1,4 +1,4 @@
--- Phase 3 — provider sync, override audit, and mock external-id backfill
+-- Phase 3: provider sync, override audit, and mock external-id backfill
 -- (PLAN.md §5, §8.1).
 
 -- sync_runs (observability, §5.2) -----------------------------------------

@@ -25,7 +25,7 @@ test('successful login resets the counter', () => {
   }
 });
 
-test('different (ip, username) pairs are independent — no cross lockout', () => {
+test('different (ip, username) pairs are independent, with no cross lockout', () => {
   for (let i = 0; i < 7; i++) checkLoginRate('9.9.9.9', 'victim');
   assert.equal(checkLoginRate('9.9.9.9', 'victim').allowed, false);
   // A different IP targeting the same username is unaffected.

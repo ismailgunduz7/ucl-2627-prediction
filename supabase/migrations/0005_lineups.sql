@@ -1,4 +1,4 @@
--- Phase 4 — weekly lineups + participant matchweek scoring (PLAN.md §3.5, §4.1, §8.1).
+-- Phase 4: weekly lineups + participant matchweek scoring (PLAN.md §3.5, §4.1, §8.1).
 
 -- matchweek_lineups --------------------------------------------------------
 -- One bench + one captain per user per matchweek. The four permanent clubs are

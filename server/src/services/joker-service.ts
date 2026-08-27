@@ -41,7 +41,7 @@ export async function getActiveJoker(userId: string, mwId: string): Promise<Acti
 
 /**
  * Admin repair (§9.3): set a user's remaining count for one joker directly.
- * Bypasses the activate/cancel bookkeeping on purpose — this is the tool for
+ * Bypasses the activate/cancel bookkeeping on purpose; this is the tool for
  * when that bookkeeping and reality have drifted apart.
  */
 export async function setInventoryCount(
@@ -141,7 +141,7 @@ export async function activate(
 
   const existing = await getActiveJoker(userId, mwId);
   if (existing) {
-    throw ApiError.badRequest('Bu hafta zaten bir joker aktif — önce onu iptal et', 'joker_already_active');
+    throw ApiError.badRequest('Bu hafta zaten bir joker aktif; önce onu iptal et', 'joker_already_active');
   }
 
   const normalized = await validatePayload(userId, mwId, code, payload);

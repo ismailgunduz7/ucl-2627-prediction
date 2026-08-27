@@ -3,7 +3,7 @@ import assert from 'node:assert/strict';
 import { generateLeagueDraw, validateLeagueDraw, type DrawTeam } from './schedule.ts';
 import { POTS_2627 } from '../data/teams-2627.ts';
 
-// The real 2026–27 field — if the draw works here, it works for the seed.
+// The real 2026–27 field: if the draw works here, it works for the seed.
 const TEAMS: DrawTeam[] = ([1, 2, 3, 4] as const).flatMap((pot) =>
   POTS_2627[pot].map((t) => ({ pot, country: t.country })),
 );

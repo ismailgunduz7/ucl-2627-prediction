@@ -60,7 +60,7 @@ function dayLabel(iso: string) {
   return new Date(iso).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
 }
 function timeLabel(iso: string | null) {
-  return iso ? new Date(iso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '—';
+  return iso ? new Date(iso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '–';
 }
 function syncLabel(iso: string | null) {
   return iso ? new Date(iso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : null;
@@ -86,8 +86,8 @@ async function loadFixtures() {
 }
 
 /**
- * While a match is in play the page refreshes itself from our own API — never
- * from the provider, which only the sync job talks to.
+ * While a match is in play the page refreshes itself from our own API, never
+ * from the provider; only the sync job talks to that.
  */
 function schedulePoll() {
   window.clearInterval(poller);

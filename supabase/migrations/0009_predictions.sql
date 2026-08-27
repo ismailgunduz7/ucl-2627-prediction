@@ -1,4 +1,4 @@
--- Phase 7 — Ahtapot Paul: 1X2 predictions on the week's matches (PLAN.md §18.9).
+-- Phase 7: Ahtapot Paul: 1X2 predictions on the week's matches (PLAN.md §18.9).
 
 CREATE TABLE match_predictions (
   id          uuid PRIMARY KEY DEFAULT gen_random_uuid(),

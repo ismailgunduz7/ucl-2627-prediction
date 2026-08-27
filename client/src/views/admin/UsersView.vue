@@ -39,7 +39,7 @@ const form = ref({ username: '', password: '', displayName: '', isAdmin: false, 
 const canSubmit = computed(
   () => form.value.username.length >= 3 && form.value.password.length >= 8 && form.value.displayName.length >= 1 && (form.value.isAdmin || form.value.competitionId !== null),
 );
-const compName = (id: string | null) => (id ? competitions.value.find((c) => c.id === id)?.name ?? '—' : '—');
+const compName = (id: string | null) => (id ? competitions.value.find((c) => c.id === id)?.name ?? '–' : '–');
 
 async function load() {
   loading.value = true;
@@ -250,7 +250,7 @@ onMounted(load);
     </Dialog>
     <Dialog v-model:visible="jokerDialog" modal header="Joker hakları" :style="{ width: '400px' }">
       <p class="text-muted" style="margin: 0 0 0.9rem">
-        <strong>{{ jokerTarget?.display_name }}</strong> için kalan hakları doğrudan yazarsın —
+        <strong>{{ jokerTarget?.display_name }}</strong> için kalan hakları doğrudan yazarsın;
         aktivasyon geçmişine dokunmaz.
       </p>
       <div class="joker-rows">

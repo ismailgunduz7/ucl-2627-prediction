@@ -1,4 +1,4 @@
--- Phase 5 — jokers (PLAN.md §3.6, §8.1).
+-- Phase 5: jokers (PLAN.md §3.6, §8.1).
 
 -- joker_types --------------------------------------------------------------
 CREATE TABLE joker_types (
@@ -28,7 +28,7 @@ CREATE TRIGGER joker_inventory_set_updated_at
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- joker_activations --------------------------------------------------------
--- At most ONE non-cancelled activation per (user, matchweek) — enforced by the
+-- At most ONE non-cancelled activation per (user, matchweek), enforced by the
 -- partial unique index below AND the joker-service (§3.6, §8.1). A cancelled row
 -- (cancelled_at set) frees the slot for a different joker before lock.
 CREATE TABLE joker_activations (

@@ -4,7 +4,7 @@ import { computed } from 'vue';
 /**
  * One fixture written the way it is played: home side first, away side second.
  * That ordering is what says where the club played, so the line carries no
- * venue icon, and neither side is emphasised — bold here would read as "won".
+ * venue icon, and neither side is emphasised, since bold here would read as "won".
  */
 const props = defineProps<{
   teamName: string;
