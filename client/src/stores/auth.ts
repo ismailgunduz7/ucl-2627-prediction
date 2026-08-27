@@ -41,17 +41,32 @@ export const useAuthStore = defineStore('auth', () => {
     }
   }
 
-  /** On app boot, attempt a silent refresh from the httpOnly cookie. */
+  let inFlight: Promise<void> | null = null;
+
+  /**
+   * On app boot, attempt a silent refresh from the httpOnly cookie.
+   *
+   * The router guard and the app shell both want this before `ready` flips, so
+   * concurrent callers have to be handed the SAME request. Refresh tokens
+   * rotate server-side and a reused one counts as theft, so firing the call
+   * twice with one cookie gets the second rejected and logs the user straight
+   * back out of a session that was perfectly good.
+   */
   async function bootstrap(): Promise<void> {
-    try {
-      const session = await api.post<SessionResponse>('/api/auth/refresh');
-      applySession(session);
-    } catch {
-      setAccessToken(null);
-      user.value = null;
-    } finally {
-      ready.value = true;
-    }
+    if (ready.value) return;
+    const run = (inFlight ??= (async () => {
+      try {
+        const session = await api.post<SessionResponse>('/api/auth/refresh');
+        applySession(session);
+      } catch {
+        setAccessToken(null);
+        user.value = null;
+      } finally {
+        ready.value = true;
+        inFlight = null;
+      }
+    })());
+    await run;
   }
 
   return { user, ready, isAuthenticated, isAdmin, login, logout, bootstrap };
