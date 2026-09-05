@@ -130,6 +130,8 @@ it rather than off the wall clock.
   cookie** with server-side **rotation** (each refresh revokes the old token).
 - Login is **rate-limited** per `(IP + username)` with a `429` + `Retry-After`;
   there is no permanent account lockout (avoids DoS on a known username).
+- Spent refresh tokens are swept daily, a week after they expire. The server
+  does this itself; there is no cron to set up.
 
 ## Repository layout
 

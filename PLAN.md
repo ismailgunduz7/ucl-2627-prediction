@@ -508,7 +508,7 @@ No separate betting client. No random-mode module.
 Created only via admin API.
 
 **refresh_tokens**  
-Rotation-safe refresh sessions.
+Rotation-safe refresh sessions. Rows are swept a week after their own `expires_at`, so a rotated token stays matchable for reuse detection through its whole lifetime and the table does not grow for the life of the season.
 
 **competitions**  
 `id`, `name`, timestamps.  
@@ -749,7 +749,8 @@ UI copy is Turkish; code identifiers are English. The interface is dark-only, bu
 ## 12. Security and privacy
 
 - Passwords hashed (bcrypt/argon2).
-- Refresh token rotation.
+- Refresh token rotation. A presented token that has already been rotated is treated as theft, not as an expired session.
+- Spent refresh tokens are **swept daily**, one week past their own expiry. The delay is deliberate: a rotated row is what a stolen token is matched against, so deleting it early would downgrade a caught reuse into an ordinary invalid session.
 - Admin UI behind obscure path + admin role on API.
 - **Rate-limit login** per `(IP + username)` over a short sliding window (e.g. a handful of attempts per ~15 min). On limit, respond `429` with a `Retry-After` header and a clear "çok fazla deneme, X dakika sonra tekrar deneyin" message; **no permanent account lockout** (avoids trivial denial-of-service against a known username). Successful login resets the counter.
 - Provider rate limits never reach end users: all provider calls are server-side and centralized; participant reads come from DB/cache only (§5.6). A user can never "hit" the football-data limit through normal use.
