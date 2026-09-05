@@ -6,7 +6,15 @@
  *   /api/auth/refresh (credentials: 'include').
  * - On a 401 for a normal call, we transparently try one refresh + retry.
  */
-const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? 'http://localhost:8787';
+/**
+ * Where the API lives. Empty means same origin, which is what a deploy that
+ * proxies `/api/*` through the static host wants: the refresh cookie stays
+ * first-party and CORS never comes into it.
+ *
+ * A production build with nothing configured therefore talks to its own origin
+ * rather than falling back to a localhost that cannot exist there.
+ */
+const BASE_URL = import.meta.env.VITE_API_BASE_URL ?? (import.meta.env.DEV ? 'http://localhost:8787' : '');
 
 let accessToken: string | null = null;
 export function setAccessToken(token: string | null): void {

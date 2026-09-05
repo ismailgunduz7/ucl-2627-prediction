@@ -123,6 +123,41 @@ it rather than off the wall clock.
 | `PORT`                     | API port (default 8787)                              |
 | `VITE_API_BASE_URL`        | API base URL the client calls                        |
 
+## Deploy
+
+The client is a static site on Netlify; the API runs anywhere that keeps a Node
+process alive. `netlify.toml` builds the client workspace out of the repo root
+and publishes `client/dist`.
+
+**Put the API behind the same origin.** The refresh cookie is `SameSite=Lax`, so
+a browser will not send it to an API on a different site and every page reload
+would drop the session. `client/public/_redirects` proxies `/api/*` through the
+Netlify domain to solve that without owning a domain: fill in the API host, and
+the browser only ever talks to one origin. That also makes CORS moot and lets
+`VITE_API_BASE_URL` stay unset, since a production build with no value talks to
+its own origin.
+
+The same file falls everything else back to `index.html`, which the router needs
+for direct links to `/kadro` or `/yonetim/maclar`. Order matters: the API rules
+sit above the catch-all, and Netlify takes the first match.
+
+On the API host:
+
+```bash
+npm run migrate                # schema; the server does not do this on boot
+npm run build --workspace server
+node server/dist/index.js
+```
+
+Set `NODE_ENV=production` (this is what makes the cookie `Secure`), a fresh
+`JWT_SECRET`, `CLIENT_ORIGIN` to the Netlify URL with no trailing slash, and
+`SYNC_SCHEDULER_ENABLED=true` so scores arrive without anyone pressing a button.
+Point the platform's health probes at `/health` and `/health/ready`.
+
+The rate limiter and the background jobs live in the process, so run **one**
+instance. Two would each keep their own login counter and each poll the
+provider.
+
 ## Auth model
 
 - **No public registration.** Admins create all accounts.

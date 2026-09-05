@@ -1,0 +1,13 @@
+# Netlify builds the client workspace out of the monorepo root, so `npm install`
+# resolves the whole workspace tree before Vite runs.
+#
+# Redirects deliberately live in `client/public/_redirects` instead of here:
+# netlify.toml rules win over that file, and having two places to look is how
+# an API proxy ends up silently ignored.
+
+[build]
+  command = "npm run build --workspace client"
+  publish = "client/dist"
+
+[build.environment]
+  NODE_VERSION = "20"
