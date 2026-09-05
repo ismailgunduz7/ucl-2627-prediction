@@ -1,7 +1,8 @@
-import type { PoolClient } from 'pg';
+import type { PoolClient, QueryResultRow } from 'pg';
 import { query, withTransaction } from '../db/pool.ts';
 import { pairSeeds, resolveTie, type TieLeg } from '../domain/knockout.ts';
 import type { StandingRow } from '../domain/standings.ts';
+import { getConfigValue } from './tournament-config-service.ts';
 
 /**
  * Knockout path (PLAN.md §2.4): play-offs for ranks 9-24, then the round of 16
@@ -37,13 +38,55 @@ const NEXT_STAGE: Record<Stage, Stage | null> = {
 function matchweekId(stage: Stage, leg: number, legs: number): string {
   return legs === 1 ? stage : `${stage}-leg${leg}`;
 }
+
+/** True for the five knockout stage slugs, false for 'league_phase'. */
+export function isKnockoutStage(stage: string): stage is Stage {
+  return ROUNDS.some((r) => r.stage === stage);
+}
+
+/** How many legs the competition plays in this round. */
+export function legsForStage(stage: Stage): number {
+  return ROUNDS.find((r) => r.stage === stage)!.legs;
+}
+
+/**
+ * The matchweek a knockout leg belongs to, or null when the round does not run
+ * to that many legs and the fixture cannot be placed.
+ */
+export function knockoutMatchweekId(stage: Stage, leg: number): string | null {
+  const legs = legsForStage(stage);
+  if (leg < 1 || leg > legs) return null;
+  return matchweekId(stage, leg, legs);
+}
+
+/**
+ * Whether we are the ones drawing the bracket.
+ *
+ * The mock has no draw of its own: it reports back on fixtures already in our
+ * table, so a mock season only reaches the knockout if we seed one. A real
+ * provider publishes UEFA's actual draw, and inventing a second bracket
+ * alongside it would put two sets of fixtures in the same matchweek.
+ */
+async function bracketIsOursToDraw(): Promise<boolean> {
+  return (await getConfigValue('sync_provider')) === 'mock';
+}
+
 function matchweekLabel(spec: RoundSpec, leg: number): string {
   return spec.legs === 1 ? spec.label : `${spec.label} ${leg}. maç`;
 }
 
-/** Creates the knockout matchweek registry rows if they are not there yet. */
-export async function ensureKnockoutMatchweeks(): Promise<void> {
-  const last = await query<{ first_kickoff_at: Date | null }>(
+/**
+ * Creates the knockout matchweek registry rows if they are not there yet.
+ *
+ * The kickoff dates here are placeholders a whole round wide. Once real
+ * fixtures land in a week, `refreshMatchweekLifecycle` replaces them with the
+ * earliest actual kickoff, so a week that has not started never keeps a guess.
+ */
+export async function ensureKnockoutMatchweeks(client?: PoolClient): Promise<void> {
+  const run = <T extends QueryResultRow>(text: string, params?: unknown[]) =>
+    client ? client.query<T>(text, params as unknown[]) : query<T>(text, params);
+
+  const last = await run<{ first_kickoff_at: Date | null }>(
     `SELECT first_kickoff_at FROM matchweeks
      WHERE act = 'league_phase' ORDER BY sort_order DESC LIMIT 1`,
   );
@@ -57,7 +100,7 @@ export async function ensureKnockoutMatchweeks(): Promise<void> {
       const id = matchweekId(spec.stage, leg, spec.legs);
       const kickoff = new Date(base.getTime());
       kickoff.setUTCDate(kickoff.getUTCDate() + (spec.weekOffset + (leg - 1)) * 7);
-      await query(
+      await run(
         `INSERT INTO matchweeks (id, act, sort_order, label, status, first_kickoff_at)
          VALUES ($1, 'knockout', $2, $3, 'upcoming', $4)
          ON CONFLICT (id) DO NOTHING`,
@@ -91,9 +134,14 @@ export async function isSeasonComplete(): Promise<boolean> {
   return (rowCount ?? 0) > 0;
 }
 
-/** Builds the play-off ties from ranks 9-24 and their two legs (§2.4). */
+/**
+ * Builds the play-off ties from ranks 9-24 and their two legs (§2.4), but only
+ * when the bracket is ours to draw. Under a real provider the matchweeks are
+ * still made ready here, and UEFA's own draw fills them through the sync.
+ */
 export async function createPlayoffRound(standings: StandingRow[]): Promise<void> {
   await ensureKnockoutMatchweeks();
+  if (!(await bracketIsOursToDraw())) return;
   const seeds = standings.filter((r) => r.rank >= 9 && r.rank <= 24);
   if (seeds.length < 2) return;
   await createTies('playoff', pairSeeds(seeds).map(([a, b]) => [a.teamId, b.teamId]));
@@ -144,6 +192,36 @@ async function createTies(stage: Stage, pairs: [string, string][]): Promise<void
       }
     }
   });
+}
+
+/**
+ * The tie a provider-drawn pair belongs to, created on first sight.
+ *
+ * Slots are handed out in the order ties are seen rather than by seeding,
+ * because a published draw has no seeding for us to read. The slot only has to
+ * be unique within the stage, which is all the schema asks of it.
+ */
+export async function findOrCreateTie(
+  client: PoolClient,
+  stage: Stage,
+  teamA: string,
+  teamB: string,
+): Promise<string> {
+  const existing = await client.query<{ id: string }>(
+    `SELECT id FROM knockout_ties
+     WHERE stage = $1 AND ((home_team_id = $2 AND away_team_id = $3)
+                        OR (home_team_id = $3 AND away_team_id = $2))`,
+    [stage, teamA, teamB],
+  );
+  if (existing.rows[0]) return existing.rows[0].id;
+
+  const inserted = await client.query<{ id: string }>(
+    `INSERT INTO knockout_ties (stage, slot, home_team_id, away_team_id)
+     VALUES ($1, (SELECT coalesce(max(slot) + 1, 0) FROM knockout_ties WHERE stage = $1), $2, $3)
+     RETURNING id`,
+    [stage, teamA, teamB],
+  );
+  return inserted.rows[0]!.id;
 }
 
 interface OpenTie {
@@ -252,6 +330,7 @@ async function awardRule(
 
 /** Once every tie in a stage is settled, seed the following stage. */
 async function buildNextStages(): Promise<void> {
+  if (!(await bracketIsOursToDraw())) return;
   for (const spec of ROUNDS) {
     const next = NEXT_STAGE[spec.stage];
     if (!next) continue;

@@ -545,6 +545,10 @@ Explicit registry:
 
 Sync **creates/updates** `matchweeks` rows whenever fixtures for that slug appear or change (league MW1…N and each knockout leg). Implementers do not hand-maintain the registry beyond seed templates.
 
+Sync also **creates the matches themselves** when the provider publishes a fixture we do not hold. This is how the knockout arrives: UEFA draws it months after the season is seeded, so there is nothing to map it onto until the provider says who plays whom. A league fixture lands in the matchweek its `matchday` names. Knockout fixtures are grouped into **ties** first, since a round is settled on aggregate but the provider publishes two matches that carry no marker saying they belong together: two fixtures in one round between one pair are one tie, numbered by kickoff, and a round with a single fixture is a one-legged tie, which is how the final arrives. A fixture naming a club that carries no provider id is counted as `unmapped` and left alone, never guessed at.
+
+Because the provider now supplies the draw, the app **stops inventing a bracket of its own** whenever a real provider is configured: `createPlayoffRound` and the next-stage builder only run under the mock, which has no draw to publish and reports back only on fixtures already in our table. Everything else about the transition is unchanged, so elimination, the top-8 bonus, the joker refresh and the act transfer all still happen when the league phase completes.
+
 **scoring_rule_types** / **tier_scoring_rules**  
 As in §4.2 (includes `league_top8_bonus`).
 

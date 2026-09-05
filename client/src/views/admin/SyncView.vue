@@ -8,7 +8,7 @@ import Tag from 'primevue/tag';
 import { api, ApiRequestError } from '@/lib/api';
 import PageHeader from '@/components/PageHeader.vue';
 
-interface SyncSummary { provider: string; fixturesSeen: number; matchesUpserted: number; matchesFinished: number; skippedOverride: number; unmapped: number }
+interface SyncSummary { provider: string; fixturesSeen: number; matchesCreated: number; matchesUpserted: number; matchesFinished: number; skippedOverride: number; unmapped: number }
 interface SyncRun { id: string; provider: string; status: string; trigger: string; finished_at: string; fixtures_seen: number; matches_upserted: number; matches_finished: number }
 interface SchedulerStatus { enabled: boolean; polling: boolean; provider: string | null; pausedReason: 'mock_provider' | null; nextRunAt: string | null; lastRunAt: string | null; lastStatus: 'success' | 'error' | null; lastError: string | null; consecutiveFailures: number; throttled: boolean }
 
@@ -105,8 +105,9 @@ onBeforeUnmount(() => { if (statusTimer) clearInterval(statusTimer); });
     </section>
 
     <Message severity="info" :closable="false">
-      Simülasyon, ileri tarihli fikstürleri verdiğin saate göre oynatır. Gerçek 2026/27 verisi
-      gelene kadar akışı böyle deneyebilirsin. Skorunu elle girdiğin maçlara dokunmaz.
+      Eleme turlarının fikstürü UEFA kurayı çektiğinde buradan kendiliğinden geliyor, elle maç
+      girmen gerekmiyor. Simülasyon ise ileri tarihli fikstürleri verdiğin saate göre oynatır.
+      İkisi de skorunu elle girdiğin maçlara dokunmaz.
     </Message>
 
     <section class="surface-card card-pad">
@@ -125,6 +126,7 @@ onBeforeUnmount(() => { if (statusTimer) clearInterval(statusTimer); });
 
     <div v-if="lastSummary" class="summary">
       <div class="surface-card card-pad stat"><b>{{ lastSummary.fixturesSeen }}</b><small class="text-muted">maç görüldü</small></div>
+      <div class="surface-card card-pad stat"><b>{{ lastSummary.matchesCreated }}</b><small class="text-muted">yeni eklendi</small></div>
       <div class="surface-card card-pad stat"><b>{{ lastSummary.matchesUpserted }}</b><small class="text-muted">güncellendi</small></div>
       <div class="surface-card card-pad stat"><b>{{ lastSummary.matchesFinished }}</b><small class="text-muted">bitti</small></div>
       <div class="surface-card card-pad stat"><b>{{ lastSummary.skippedOverride }}</b><small class="text-muted">elle girildiği için atlandı</small></div>

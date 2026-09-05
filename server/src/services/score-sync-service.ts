@@ -1,3 +1,4 @@
+import type { PoolClient } from 'pg';
 import { query, withTransaction } from '../db/pool.ts';
 import type { ScoreProvider, ProviderFixture } from './score-provider.ts';
 import { mockProvider } from './mock-provider.ts';
@@ -6,6 +7,13 @@ import { getConfigValue } from './tournament-config-service.ts';
 import { clearMatchLinesInTx, scoreFinishedMatchInTx } from './scoring-service.ts';
 import { refreshMatchweekLifecycle } from './matchweek-lifecycle-service.ts';
 import { progressSeason } from './act-service.ts';
+import {
+  ensureKnockoutMatchweeks,
+  findOrCreateTie,
+  isKnockoutStage,
+  knockoutMatchweekId,
+} from './knockout-service.ts';
+import { groupKnockoutFixtures, type DrawFixture } from '../domain/knockout-draw.ts';
 
 export function providerByName(name: string): ScoreProvider {
   return name === 'football_data' ? footballDataProvider : mockProvider;
@@ -23,6 +31,8 @@ export type SyncTrigger = 'manual' | 'scheduled';
 export interface SyncSummary {
   provider: string;
   fixturesSeen: number;
+  /** Fixtures the provider published that we did not have yet (§2.4). */
+  matchesCreated: number;
   matchesUpserted: number;
   matchesFinished: number;
   skippedOverride: number;
@@ -66,6 +76,7 @@ async function runSyncPass(opts: SyncOptions): Promise<SyncSummary> {
   let summary: SyncSummary = {
     provider: provider.name,
     fixturesSeen: 0,
+    matchesCreated: 0,
     matchesUpserted: 0,
     matchesFinished: 0,
     skippedOverride: 0,
@@ -77,6 +88,10 @@ async function runSyncPass(opts: SyncOptions): Promise<SyncSummary> {
     summary.fixturesSeen = fixtures.length;
 
     await withTransaction(async (client) => {
+      // A published draw arrives as fixtures we have never seen. Create them
+      // before the update pass so this run already scores them.
+      summary.matchesCreated = await createNewFixtures(client, fixtures);
+
       // Pre-load local matches by external id for the fixtures we received.
       const externalIds = fixtures.map((f) => f.externalId);
       const localRes = await client.query<LocalMatchRow & { external_id: string }>(
@@ -89,8 +104,9 @@ async function runSyncPass(opts: SyncOptions): Promise<SyncSummary> {
       for (const fx of fixtures) {
         const local = localByExternal.get(fx.externalId);
         if (!local) {
-          // Real-provider fixtures for un-mapped teams/matches are ignored in the
-          // mockup; production seeding maps external ids before enabling it.
+          // Creation above could not place it: either a club that carries no
+          // provider id, or a matchday with no matchweek to put it in. Counted
+          // rather than guessed at, so the admin page can show it.
           summary.unmapped++;
           continue;
         }
@@ -115,6 +131,129 @@ async function runSyncPass(opts: SyncOptions): Promise<SyncSummary> {
     await recordRun(startedAt, 'error', summary, message, opts.trigger ?? 'manual');
     throw err;
   }
+}
+
+/**
+ * Create the fixtures the provider has published that we do not hold yet.
+ *
+ * This is how the knockout arrives. UEFA draws it months after the season is
+ * seeded, so there is nothing to map it onto until the provider says who plays
+ * whom; the alternative is an admin typing sixty fixtures in by hand.
+ *
+ * League fixtures land in the matchweek their matchday names. Knockout
+ * fixtures are first grouped into ties, because a round is settled on aggregate
+ * and the provider publishes two unrelated-looking matches instead of a tie.
+ *
+ * A fixture naming a club we never mapped is left alone and counted unmapped,
+ * the same as before. Creating a match for it is impossible, and guessing is
+ * worse than reporting.
+ */
+async function createNewFixtures(
+  client: PoolClient,
+  fixtures: ProviderFixture[],
+): Promise<number> {
+  const known = await client.query<{ external_id: string }>(
+    `SELECT external_id FROM matches WHERE external_id = ANY($1::text[])`,
+    [fixtures.map((f) => f.externalId)],
+  );
+  const seen = new Set(known.rows.map((r) => r.external_id));
+  const fresh = fixtures.filter((f) => !seen.has(f.externalId));
+  if (fresh.length === 0) return 0;
+
+  const teams = await client.query<{ id: string; external_id: string }>(
+    'SELECT id, external_id FROM teams WHERE external_id IS NOT NULL',
+  );
+  const teamByExternal = new Map(teams.rows.map((t) => [t.external_id, t.id]));
+
+  const weeks = await client.query<{ id: string; sort_order: number }>(
+    `SELECT id, sort_order FROM matchweeks WHERE act = 'league_phase'`,
+  );
+  const leagueWeekByMatchday = new Map(weeks.rows.map((w) => [w.sort_order, w.id]));
+
+  let created = 0;
+  const knockout: DrawFixture[] = [];
+
+  for (const f of fresh) {
+    const homeTeamId = teamByExternal.get(f.homeTeamExternalId);
+    const awayTeamId = teamByExternal.get(f.awayTeamExternalId);
+    if (!homeTeamId || !awayTeamId) continue; // counted as unmapped below
+
+    if (isKnockoutStage(f.stage)) {
+      knockout.push({
+        externalId: f.externalId,
+        homeTeamId,
+        awayTeamId,
+        kickoffAt: f.kickoffAt,
+        stage: f.stage,
+      });
+      continue;
+    }
+
+    const matchweekId = f.matchday === null ? undefined : leagueWeekByMatchday.get(f.matchday);
+    if (!matchweekId) continue;
+    await insertMatch(client, {
+      externalId: f.externalId,
+      stage: 'league_phase',
+      matchweekId,
+      leg: null,
+      kickoffAt: f.kickoffAt,
+      status: f.status,
+      homeTeamId,
+      awayTeamId,
+      tieId: null,
+    });
+    created++;
+  }
+
+  if (knockout.length > 0) {
+    await ensureKnockoutMatchweeks(client);
+    for (const tie of groupKnockoutFixtures(knockout)) {
+      if (!isKnockoutStage(tie.stage)) continue;
+      const tieId = await findOrCreateTie(client, tie.stage, tie.teamA, tie.teamB);
+      for (const { fixture, leg } of tie.legs) {
+        const matchweekId = knockoutMatchweekId(tie.stage, leg);
+        if (!matchweekId) continue;
+        const source = fresh.find((f) => f.externalId === fixture.externalId)!;
+        await insertMatch(client, {
+          externalId: fixture.externalId,
+          stage: tie.stage,
+          matchweekId,
+          leg: tie.legs.length === 1 ? null : leg,
+          kickoffAt: fixture.kickoffAt,
+          status: source.status,
+          homeTeamId: fixture.homeTeamId,
+          awayTeamId: fixture.awayTeamId,
+          tieId,
+        });
+        created++;
+      }
+    }
+  }
+
+  return created;
+}
+
+interface NewMatch {
+  externalId: string;
+  stage: string;
+  matchweekId: string;
+  leg: number | null;
+  kickoffAt: Date;
+  status: string;
+  homeTeamId: string;
+  awayTeamId: string;
+  tieId: string | null;
+}
+
+/** Scores are left off on purpose: the update pass right after fills them in. */
+async function insertMatch(client: PoolClient, m: NewMatch): Promise<void> {
+  await client.query(
+    `INSERT INTO matches (external_id, stage, matchweek_id, leg, kickoff_at, status,
+                          home_team_id, away_team_id, tie_id)
+     VALUES ($1, $2, $3, $4, $5, 'scheduled', $6, $7, $8)
+     ON CONFLICT (external_id) DO NOTHING`,
+    [m.externalId, m.stage, m.matchweekId, m.leg, m.kickoffAt, m.homeTeamId, m.awayTeamId, m.tieId],
+  );
 }
 
 async function applyFixture(
