@@ -14,11 +14,11 @@ Phases 0-6 are built and running against a Supabase database. What follows is th
 
 **Deliberate deviations from the spec, all temporary:**
 
-- The 36 clubs and their pots are the **real 2026-27 field** (UEFA's confirmed draw pots, 26 Aug 2026), but the **fixture list is a random draw** under the competition's own constraints (two opponents per pot, one home one away, never a compatriot, eight full matchdays on the real calendar) because UEFA publishes the actual fixtures only after the draw ceremony (§2.3). Reseed the fixtures (keeping the clubs) when the real list lands.
-- A **mock provider** drives the fixtures off a simulated clock so the pipeline can be exercised before real data exists (§5.1). The football-data.org client is written and behind the same interface, but nothing maps to it until clubs carry real provider ids. The background sync job stays parked for as long as the mock is the configured provider.
 - Level knockout aggregates are settled by a **shootout seeded from the tie id** rather than real penalty data (§2.4), so recalculation always reaches the same winner.
 
-**Not built yet:** nothing user-facing is missing from the spec any more. What remains in §13 Phase 7 is production deploy configuration, deeper edge-case tests, and the real-data reseed once UEFA publishes the draw.
+**Running on real data:** all 36 clubs carry their football-data.org id and crest, and the league phase holds UEFA's published fixture list (`db/seed-provider.ts`). The mock provider stays in the tree for local work against a simulated clock; it reports only on `mock:` fixtures, so it goes quiet once a season has been seeded from the provider.
+
+**Not built yet:** nothing user-facing is missing from the spec any more. What remains in §13 Phase 7 is production deploy configuration and deeper edge-case tests.
 
 ---
 

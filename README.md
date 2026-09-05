@@ -16,11 +16,12 @@ real match results. See [PLAN.md](PLAN.md) for the authoritative product spec.
 > match), a live feed on the weekly hub that itemises each point as it lands,
 > and a season replay that unlocks once the final is played.
 >
-> Phase 7 in [PLAN.md](PLAN.md) §13 tracks the rest: production deploy
-> configuration, deeper edge-case tests, and swapping the drawn fixtures for
-> UEFA's real list once it is published. The clubs and pots are already the
-> official 2026-27 field. Until real provider ids are mapped, the mock
-> provider drives the season.
+> The season now runs on **real data**: all 36 clubs carry their
+> football-data.org ids and crests, and the league phase holds UEFA's published
+> fixture list rather than a stand-in draw. Phase 7 in [PLAN.md](PLAN.md) §13
+> tracks what is left, which is production deploy configuration and deeper
+> edge-case tests. The mock provider stays in the tree for local work against a
+> simulated clock.
 
 ## Stack
 
@@ -56,12 +57,17 @@ npm run seed --workspace server
 #    SEED_FORCE=1 wipes the whole season (accounts stay) and reseeds;
 #    SEED_DRAW_SEED=<n> reproduces a specific draw.
 npm run seed:domain --workspace server
+
+# 6. Point the season at football-data.org: stamp provider ids and crests onto
+#    the 36 clubs, swap the drawn fixtures for the published ones, and switch
+#    the configured provider over. Needs FOOTBALL_DATA_API_TOKEN.
+npm run seed:provider --workspace server
 ```
 
 > The clubs and pots are the **official 2026-27 field** (UEFA, 26 Aug 2026).
-> The fixture list is a **random draw**, made under the real constraints: two
-> opponents per pot, one at home and one away, never a same-country pairing.
-> It stands in until UEFA publishes the actual fixtures (PLAN.md §2.3).
+> The fixture list this step draws is **random**, made under the real
+> constraints: two opponents per pot, one at home and one away, never a
+> same-country pairing. Step 6 replaces it with the real one.
 
 The seed creates an admin and a default competition. The account is `admin` /
 `changeme123` unless you set `SEED_ADMIN_USERNAME` and `SEED_ADMIN_PASSWORD`.
@@ -99,6 +105,7 @@ it rather than off the wall clock.
 | `npm run migrate:status -w server` | Show applied/pending migrations        |
 | `npm run seed --workspace server` | Seed first admin + default competition  |
 | `npm run seed:domain --workspace server` | Seed the 2026-27 pots, matchweeks + a drawn fixture list |
+| `npm run seed:provider --workspace server` | Map the clubs onto football-data.org and load the real fixtures |
 | `npm run test`                   | Run server unit tests (node:test)        |
 
 ## Environment variables
