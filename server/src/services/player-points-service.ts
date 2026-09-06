@@ -21,6 +21,7 @@ export interface ClubBreakdown {
   teamId: string;
   name: string;
   shortName: string;
+  crestUrl: string | null;
   basePoints: number;
   benched: boolean;
   captain: boolean;
@@ -171,6 +172,7 @@ export async function getPlayerPoints(
       teamId: l.teamId,
       name: l.name,
       shortName: l.shortName,
+      crestUrl: l.crestUrl,
       basePoints: l.basePoints,
       benched: l.benched,
       captain: l.captain,

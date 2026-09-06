@@ -16,13 +16,17 @@ import JokerIcon from '@/components/JokerIcon.vue';
 import CaptainBadge from '@/components/CaptainBadge.vue';
 import FixtureLine from '@/components/FixtureLine.vue';
 import OctopusMark from '@/components/OctopusMark.vue';
+import TeamCrest from '@/components/TeamCrest.vue';
 import { JOKER_ICONS, jokerName } from '@/lib/jokers';
 import { groupMatchweeks, matchweekTitle, type MatchweekMenu } from '@/lib/matchweeks';
 import { usePointerDrag } from '@/composables/usePointerDrag';
 import { lower, ordinal } from '@/lib/format';
 
 interface Mw { id: string; label: string; status: string; editable: boolean; opened: boolean; locked: boolean; menu: MatchweekMenu }
-interface SquadClub { teamId: string; tierId: number; name: string; shortName: string; eliminated: boolean }
+interface SquadClub {
+  teamId: string; tierId: number; name: string; shortName: string;
+  crestUrl: string | null; eliminated: boolean;
+}
 interface Lineup { benchTeamId: string; captainTeamId: string; saved: boolean; lockAt: string | null; locked: boolean; opened: boolean; editable: boolean }
 interface ScoreLine { teamId: string; name: string; basePoints: number; benched: boolean; captain: boolean; multiplier: number; contributed: number }
 interface PredictionTally { settled: number; correct: number; points: number; provisional: number }
@@ -31,7 +35,10 @@ interface Inventory { code: string; name: string; remaining: number }
 interface ActiveJoker { code: string; payload: Record<string, unknown> }
 interface BriefingClub { teamId: string; name: string; fixtures: { opponentName: string; opponentTierId: number; home: boolean }[]; difficulty: string | null }
 interface OpenPick { userId: string; displayName: string; benchName: string; captainName: string; jokerCode: string | null; jokerDetail: string | null }
-interface Pot { tierId: number; teams: { id: string; name: string; eliminated: boolean; isActive: boolean }[] }
+interface Pot {
+  tierId: number;
+  teams: { id: string; name: string; crestUrl: string | null; eliminated: boolean; isActive: boolean }[];
+}
 type Pick = 'home' | 'draw' | 'away';
 interface PredictionMatch {
   matchId: string; homeName: string; awayName: string; kickoffAt: string | null; status: string;
@@ -124,7 +131,6 @@ const countdown = computed(() => {
 });
 const drama = computed(() => countdownMs.value !== null && countdownMs.value > 0 && countdownMs.value < 7200_000);
 
-function initials(name: string) { return name.split(' ').map((w) => w[0]).slice(0, 3).join('').toUpperCase(); }
 function signed(n: number) { return n > 0 ? `+${n}` : `${n}`; }
 function difficultySeverity(d: string | null) { return d === 'hard' ? 'danger' : d === 'medium' ? 'warn' : 'success'; }
 function lineFor(teamId: string) { return score.value?.lines.find((l) => l.teamId === teamId); }
@@ -433,7 +439,7 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
             @pointerdown="startDrag($event, club.teamId)"
           >
             <RouterLink :to="`/takim/${club.teamId}`" class="crest-link" draggable="false">
-              <span class="crest crest-lg">{{ initials(club.name) }}</span>
+              <TeamCrest :name="club.name" :crest-url="club.crestUrl" size="lg" />
             </RouterLink>
             <div class="club-name">{{ club.name }}</div>
 
@@ -501,7 +507,12 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
             @pointerdown="startDrag($event, benchClub.teamId)"
           >
             <RouterLink :to="`/takim/${benchClub.teamId}`" class="crest-link" draggable="false">
-              <span class="crest crest-lg" :class="{ dim: !benchBoost }">{{ initials(benchClub.name) }}</span>
+              <TeamCrest
+                :name="benchClub.name"
+                :crest-url="benchClub.crestUrl"
+                size="lg"
+                :class="{ dim: !benchBoost }"
+              />
             </RouterLink>
             <div class="club-name">{{ benchClub.name }}</div>
             <div v-if="editable" class="slot-actions">
@@ -743,7 +754,7 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
       <p class="text-muted" style="margin: 0 0 0.75rem">{{ $t('week.swapSubtitle') }}</p>
       <div class="swap-list">
         <button v-for="t in swapOptions()" :key="t.id" class="swap-option" @click="chooseSwap(t.id)">
-          <span class="crest crest-sm">{{ initials(t.name) }}</span>{{ t.name }}
+          <TeamCrest :name="t.name" :crest-url="t.crestUrl" size="sm" />{{ t.name }}
         </button>
         <p v-if="!swapOptions().length" class="text-muted" style="margin: 0">{{ $t('week.swapEmpty') }}</p>
       </div>

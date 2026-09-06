@@ -559,6 +559,19 @@ body.is-dragging {
   box-shadow: var(--shadow-sm);
   flex-shrink: 0;
 }
+/* A real crest is drawn for a white programme page, so it gets a light disc to
+   sit on rather than the letter badge's gradient. */
+.crest-badge {
+  background: #eef2fb;
+  padding: 12%;
+}
+.crest img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  display: block;
+}
+
 .crest-xs { width: 28px; height: 28px; font-size: 0.7rem; }
 .crest-sm { width: 34px; height: 34px; font-size: var(--text-2xs); }
 .crest-md { width: 46px; height: 46px; font-size: var(--text-2xs); }

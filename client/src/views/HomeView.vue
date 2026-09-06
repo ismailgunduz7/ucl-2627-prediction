@@ -8,8 +8,9 @@ import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import PageHeader from '@/components/PageHeader.vue';
 import BallLoader from '@/components/BallLoader.vue';
+import TeamCrest from '@/components/TeamCrest.vue';
 
-interface SquadEntry { teamId: string; shortName: string; name: string; eliminated: boolean }
+interface SquadEntry { teamId: string; shortName: string; name: string; crestUrl: string | null; eliminated: boolean }
 interface Mw { id: string; label: string; status: string }
 interface LbEntry { userId: string; displayName: string; total: number; rank: number }
 
@@ -82,7 +83,13 @@ onMounted(async () => {
         <template v-if="squadComplete">
           <div class="crest-row">
             <RouterLink v-for="s in squad" :key="s.teamId" :to="`/takim/${s.teamId}`" class="crest-mini">
-              <span class="crest crest-md" :class="{ elim: s.eliminated }">{{ s.shortName }}</span>
+              <TeamCrest
+                :name="s.name"
+                :crest-url="s.crestUrl"
+                :fallback="s.shortName"
+                size="md"
+                :class="{ elim: s.eliminated }"
+              />
               <small>{{ s.name }}</small>
             </RouterLink>
           </div>

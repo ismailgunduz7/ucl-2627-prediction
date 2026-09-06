@@ -17,7 +17,8 @@ real match results. See [PLAN.md](PLAN.md) for the authoritative product spec.
 > and a season replay that unlocks once the final is played.
 >
 > The season now runs on **real data**: all 36 clubs carry their
-> football-data.org ids and crests, and the league phase holds UEFA's published
+> football-data.org ids and crests, the badges on screen are those crests
+> rather than the club's initials, and the league phase holds UEFA's published
 > fixture list rather than a stand-in draw. The game is also **bilingual**:
 > every screen reads in Turkish or English, and the choice lives on the account
 > rather than the browser, so switching on a phone switches the desktop too.

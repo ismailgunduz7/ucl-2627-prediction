@@ -8,9 +8,13 @@ import { ArrowLeft } from '@lucide/vue';
 import { api, ApiRequestError } from '@/lib/api';
 import BallLoader from '@/components/BallLoader.vue';
 import FixtureLine from '@/components/FixtureLine.vue';
+import TeamCrest from '@/components/TeamCrest.vue';
 
 interface TeamDetail {
-  team: { id: string; name: string; shortName: string; tierName: string; country: string | null; eliminated: boolean };
+  team: {
+    id: string; name: string; shortName: string; tierName: string;
+    country: string | null; crestUrl: string | null; eliminated: boolean;
+  };
   totalPoints: number;
   matches: {
     matchId: string; matchweekLabel: string; status: string; isHome: boolean;
@@ -26,8 +30,6 @@ const detail = ref<TeamDetail | null>(null);
 const openMatch = ref<string | null>(null);
 const loading = ref(true);
 const error = ref<string | null>(null);
-
-function initials(name: string) { return name.split(' ').map((w) => w[0]).slice(0, 3).join('').toUpperCase(); }
 
 async function load(id: string) {
   loading.value = true;
@@ -56,7 +58,7 @@ watch(() => route.params.id, (id) => id && load(id as string));
 
     <template v-else-if="detail">
       <section class="surface-card card-pad team-head">
-        <span class="crest crest-xl">{{ initials(detail.team.name) }}</span>
+        <TeamCrest :name="detail.team.name" :crest-url="detail.team.crestUrl" size="xl" />
         <div style="flex: 1">
           <h1 style="margin: 0; font-size: var(--text-xl)">{{ detail.team.name }}</h1>
           <div class="tag-row" style="margin-top: 0.4rem">

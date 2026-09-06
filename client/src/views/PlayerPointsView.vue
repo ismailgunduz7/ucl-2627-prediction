@@ -17,6 +17,7 @@ import JokerIcon from '@/components/JokerIcon.vue';
 import CaptainBadge from '@/components/CaptainBadge.vue';
 import FixtureLine from '@/components/FixtureLine.vue';
 import OctopusMark from '@/components/OctopusMark.vue';
+import TeamCrest from '@/components/TeamCrest.vue';
 
 interface RuleEntry { ruleCode: string; ruleLabel: string; points: number }
 interface ClubFixture {
@@ -24,7 +25,7 @@ interface ClubFixture {
   teamScore: number | null; opponentScore: number | null;
 }
 interface ClubBreakdown {
-  teamId: string; name: string; shortName: string; basePoints: number;
+  teamId: string; name: string; shortName: string; crestUrl: string | null; basePoints: number;
   benched: boolean; captain: boolean; multiplier: number; contributed: number;
   fixtures: ClubFixture[]; entries: RuleEntry[];
 }
@@ -57,9 +58,6 @@ const bestWeek = computed(() => {
   return done.length ? done.reduce((a, b) => (b.total > a.total ? b : a)) : null;
 });
 
-function initials(name: string) {
-  return name.split(' ').map((w) => w[0]).slice(0, 3).join('').toUpperCase();
-}
 function signed(n: number) {
   return `${n > 0 ? '+' : ''}${n}`;
 }
@@ -135,7 +133,7 @@ watch(() => route.params.id, (id) => id && load(id as string));
               >
                 <div class="club-top">
                   <RouterLink :to="`/takim/${c.teamId}`" class="club-id">
-                    <span class="crest crest-xs">{{ initials(c.name) }}</span>
+                    <TeamCrest :name="c.name" :crest-url="c.crestUrl" size="xs" />
                   </RouterLink>
 
                   <div class="club-mid">

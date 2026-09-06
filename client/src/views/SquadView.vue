@@ -14,6 +14,7 @@ import { jokerName } from '@/lib/jokers';
 import PageHeader from '@/components/PageHeader.vue';
 import BallLoader from '@/components/BallLoader.vue';
 import ActTransferCard from '@/components/ActTransferCard.vue';
+import TeamCrest from '@/components/TeamCrest.vue';
 
 const { t } = useI18n();
 const store = useTournamentStore();
@@ -39,10 +40,6 @@ const countdown = computed(() => {
 });
 const pickedCount = computed(() => store.pots.filter((p) => picks.value[p.tierId]).length);
 const allPicked = computed(() => store.pots.length > 0 && pickedCount.value === store.pots.length);
-
-function initials(name: string) {
-  return name.split(' ').map((w) => w[0]).slice(0, 3).join('').toUpperCase();
-}
 
 async function load() {
   loading.value = true;
@@ -146,7 +143,7 @@ onUnmounted(() => window.clearInterval(timer));
             :disabled="locked"
             @click="select(pot.tierId, team.id)"
           >
-            <span class="crest crest-sm">{{ initials(team.name) }}</span>
+            <TeamCrest :name="team.name" :crest-url="team.crestUrl" size="sm" />
             <span class="team-meta">
               <span class="team-name">{{ team.name }}</span>
               <span v-if="team.country" class="text-muted" style="font-size: var(--text-2xs)">{{ team.country }}</span>

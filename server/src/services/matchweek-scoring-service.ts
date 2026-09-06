@@ -91,6 +91,7 @@ export async function shieldDeltaForTarget(mwId: string, targetTeamId: string): 
 export interface ParticipantWeekLine extends ClubLine {
   name: string;
   shortName: string;
+  crestUrl: string | null;
 }
 
 export interface ParticipantWeekScore {
@@ -113,6 +114,7 @@ function decorateLines(lines: ClubLine[], squad: EffectiveClub[]): ParticipantWe
     ...l,
     name: byId.get(l.teamId)?.name ?? '',
     shortName: byId.get(l.teamId)?.shortName ?? '',
+    crestUrl: byId.get(l.teamId)?.crestUrl ?? null,
   }));
 }
 
