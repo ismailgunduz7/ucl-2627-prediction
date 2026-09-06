@@ -17,6 +17,9 @@ const EnvSchema = z.object({
   ADMIN_PATH: z.string().startsWith('/').default('/yonetim'),
   CLIENT_ORIGIN: z.string().url().default('http://localhost:5173'),
   FOOTBALL_DATA_API_TOKEN: z.string().default(''),
+  // Shared secret for /api/cron/tick, the heartbeat an outside cron service
+  // pings on a host that sleeps between requests. Empty disables the endpoint.
+  CRON_SECRET: z.string().default(''),
   // Background provider polling (§5.2). Off by default so local runs and the
   // mock clock stay under the admin's control; on for a real deployment.
   SYNC_SCHEDULER_ENABLED: z

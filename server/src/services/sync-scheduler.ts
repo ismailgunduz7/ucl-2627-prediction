@@ -1,12 +1,14 @@
 import { query } from '../db/pool.ts';
 import {
   IN_PLAY_WINDOW_MS,
+  MIN_SYNC_INTERVAL_MS,
   SYNC_CADENCE_MS,
   isThrottleFailure,
   nextSyncDelayMs,
   type SyncWindowState,
 } from '../domain/sync-cadence.ts';
 import { resolveProvider, runSync } from './score-sync-service.ts';
+import { claimJob } from './job-claim.ts';
 
 /**
  * Background sync job (§5.2, §9.5). One timer, re-armed after every poll with a
@@ -83,6 +85,9 @@ async function poll(): Promise<void> {
       return;
     }
     pausedReason = null;
+    // Shared with the cron endpoint, so pointing an external cron at a server
+    // that also runs this timer does not double the provider's load.
+    if (!(await claimJob('provider_sync', MIN_SYNC_INTERVAL_MS))) return;
     lastRunAt = new Date();
     const summary = await runSync({ trigger: 'scheduled' });
     lastStatus = 'success';

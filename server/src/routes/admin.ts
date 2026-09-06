@@ -22,6 +22,8 @@ import {
 } from '../services/scoring-service.ts';
 import { runSync, listSyncRuns } from '../services/score-sync-service.ts';
 import { getSyncSchedulerStatus } from '../services/sync-scheduler.ts';
+import { lastJobRun } from '../services/job-claim.ts';
+import { getEnv } from '../config/env.ts';
 import { progressSeason } from '../services/act-service.ts';
 import { getLeagueStandings } from '../services/standings-service.ts';
 import { getInventory, setInventoryCount } from '../services/joker-service.ts';
@@ -253,8 +255,27 @@ adminRoutes.post('/sync', async (c) => {
 });
 
 adminRoutes.get('/sync/runs', async (c) => {
-  const runs = await listSyncRuns();
-  return c.json({ runs, scheduler: getSyncSchedulerStatus() });
+  const [runs, timer, claimed] = await Promise.all([
+    listSyncRuns(),
+    Promise.resolve(getSyncSchedulerStatus()),
+    lastJobRun('provider_sync'),
+  ]);
+
+  // What is actually driving the season. An in-process timer only exists on a
+  // host that stays awake; elsewhere an external cron pings /api/cron/tick, and
+  // reporting that as "off" would call a working season broken.
+  const driver = timer.enabled ? 'timer' : getEnv().CRON_SECRET ? 'cron' : 'off';
+
+  return c.json({
+    runs,
+    scheduler: {
+      ...timer,
+      driver,
+      // The claim row is written by whichever driver ran, so it is the honest
+      // answer to "when did this last poll" under either of them.
+      lastRunAt: claimed?.toISOString() ?? timer.lastRunAt,
+    },
+  });
 });
 
 // --- Season progression (§9.3 manual fallback) ----------------------------

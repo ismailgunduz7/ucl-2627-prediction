@@ -119,22 +119,38 @@ it rather than off the wall clock.
 | `ADMIN_PATH`               | Obscure base path gating the admin area              |
 | `CLIENT_ORIGIN`            | Allowed browser origin (CORS + refresh cookie)       |
 | `FOOTBALL_DATA_API_TOKEN`  | football-data.org API v4 token (server-side only)    |
-| `SYNC_SCHEDULER_ENABLED`   | Poll the provider in the background (default `false`) |
+| `SYNC_SCHEDULER_ENABLED`   | Poll the provider from an in-process timer (default `false`) |
+| `CRON_SECRET`              | Shared secret for `/api/cron/tick`; empty refuses every caller |
 | `PORT`                     | API port (default 8787)                              |
 | `VITE_API_BASE_URL`        | API base URL the client calls                        |
 
 ## Deploy
 
-The client is a static site on Netlify; the API is a **long-lived process** on
-Fly. `netlify.toml` builds the client workspace out of the repo root and
-publishes `client/dist`.
+The client is a static site on Netlify; the API is a container, built by the
+`Dockerfile` at the repository root and runnable on anything that takes one.
+`netlify.toml` builds the client workspace out of the repo root and publishes
+`client/dist`.
 
-Serverless is not an option for the API. Score polling and the refresh-token
-sweep are in-process timers, so a host that sleeps between requests would keep
-serving pages while quietly never advancing the season: scores would freeze on
-their last value and a published knockout draw would never be picked up.
-Nothing would error. `fly.toml` pins `auto_stop_machines = 'off'` and one
-machine running for exactly that reason.
+**Something has to drive the season.** Scores arrive because something polls
+the provider, and a host that sleeps between requests will happily serve pages
+while quietly never advancing anything: scores frozen on their last value, a
+published knockout draw never picked up, and nothing erroring anywhere. There
+are two ways to be that something, and you pick one:
+
+- **An in-process timer.** Set `SYNC_SCHEDULER_ENABLED=true` on a host that
+  keeps the process alive. `fly.toml` is set up for this: `auto_stop_machines`
+  is `'off'` with one machine running, which is the only reason to choose that
+  host over a cheaper one that scales to zero.
+- **An external cron.** Set `CRON_SECRET` and point any cron service at
+  `POST /api/cron/tick` once a minute, passing the secret as `X-Cron-Secret`
+  or a bearer token. This is what makes free hosting work, since the host no
+  longer needs to stay awake.
+
+The ping is deliberately dumber than the work: the cadence rules still decide
+whether the provider is actually called, so a minute-by-minute ping through a
+quiet week costs one cheap query and nothing more. Both paths take the same
+row lock before polling, so a server running the timer *and* answering a cron
+cannot double the provider's load.
 
 **Put the API behind the same origin.** The refresh cookie is `SameSite=Lax`, so
 a browser will not send it to an API on a different site and every page reload
@@ -161,8 +177,9 @@ npm run migrate          # schema; the server does not do this on boot
 
 `fly.toml` already sets `NODE_ENV=production` (this is what makes the cookie
 `Secure`), the port, `SYNC_SCHEDULER_ENABLED=true` so scores arrive without
-anyone pressing a button, and health checks against `/health/ready`. The
-secrets above are the ones that cannot live in the file. `JWT_SECRET` should be
+anyone pressing a button, and health checks against `/health/ready`. On a host
+that sleeps instead, drop that variable and set `CRON_SECRET`. The secrets
+above are the ones that cannot live in the file. `JWT_SECRET` should be
 freshly generated rather than carried over from development, and `CLIENT_ORIGIN`
 is the Netlify URL with no trailing slash.
 

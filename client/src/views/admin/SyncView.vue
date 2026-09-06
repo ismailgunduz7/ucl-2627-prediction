@@ -10,7 +10,8 @@ import PageHeader from '@/components/PageHeader.vue';
 
 interface SyncSummary { provider: string; fixturesSeen: number; matchesCreated: number; matchesUpserted: number; matchesFinished: number; skippedOverride: number; unmapped: number }
 interface SyncRun { id: string; provider: string; status: string; trigger: string; finished_at: string; fixtures_seen: number; matches_upserted: number; matches_finished: number }
-interface SchedulerStatus { enabled: boolean; polling: boolean; provider: string | null; pausedReason: 'mock_provider' | null; nextRunAt: string | null; lastRunAt: string | null; lastStatus: 'success' | 'error' | null; lastError: string | null; consecutiveFailures: number; throttled: boolean }
+type SyncDriver = 'timer' | 'cron' | 'off';
+interface SchedulerStatus { driver: SyncDriver; enabled: boolean; polling: boolean; provider: string | null; pausedReason: 'mock_provider' | null; nextRunAt: string | null; lastRunAt: string | null; lastStatus: 'success' | 'error' | null; lastError: string | null; consecutiveFailures: number; throttled: boolean }
 
 const toast = useToast();
 const provider = ref<'mock' | 'football_data'>('mock');
@@ -40,7 +41,13 @@ async function loadRuns() {
 const scheduleLine = computed(() => {
   const s = scheduler.value;
   if (!s) return '';
-  if (!s.enabled) return 'Arka planda kimse veri çekmiyor. Skorlar sadece sen buradan çektiğinde güncelleniyor.';
+  if (s.driver === 'off') return 'Arka planda kimse skor çekmiyor. Skorlar sadece sen buradan çektiğinde güncelleniyor.';
+  if (s.driver === 'cron') {
+    if (s.pausedReason === 'mock_provider') {
+      return 'Simülasyon seçili olduğu için dışarıdan gelen tetikler skor çekmiyor. Gerçek sağlayıcıya geçtiğinde kendiliğinden başlar.';
+    }
+    return `Skorları dışarıdan gelen düzenli bir tetik çekiyor. Son çekim ${time(s.lastRunAt)}.`;
+  }
   if (s.pausedReason === 'mock_provider') {
     return 'Simülasyon seçili olduğu için arka plan beklemede: saati sen veriyorsun. Gerçek sağlayıcıya geçtiğinde kendiliğinden başlar.';
   }
@@ -52,6 +59,11 @@ const scheduleLine = computed(() => {
   return `Sıradaki kontrol ${time(s.nextRunAt)}. Maç oynanırken sıklaşır, sakin dönemde seyrelir.`;
 });
 
+function driverLabel(s: SchedulerStatus) {
+  if (s.driver === 'off') return 'Kapalı';
+  if (s.pausedReason) return 'Beklemede';
+  return s.driver === 'cron' ? 'Dış tetik' : 'Otomatik';
+}
 function time(iso: string | null) {
   return iso ? new Date(iso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-';
 }
@@ -97,8 +109,8 @@ onBeforeUnmount(() => { if (statusTimer) clearInterval(statusTimer); });
 
     <section v-if="scheduler" class="surface-card card-pad schedule">
       <Tag
-        :severity="!scheduler.enabled || scheduler.pausedReason ? 'secondary' : scheduler.consecutiveFailures ? 'warn' : 'success'"
-        :value="!scheduler.enabled ? 'Kapalı' : scheduler.pausedReason ? 'Beklemede' : 'Otomatik'"
+        :severity="scheduler.driver === 'off' || scheduler.pausedReason ? 'secondary' : scheduler.consecutiveFailures ? 'warn' : 'success'"
+        :value="driverLabel(scheduler)"
       />
       <p>{{ scheduleLine }}</p>
       <small v-if="scheduler.lastError" class="text-muted">{{ scheduler.lastError }}</small>
