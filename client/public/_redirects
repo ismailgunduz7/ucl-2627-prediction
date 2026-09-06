@@ -2,9 +2,10 @@
 # siteyle konuşur: refresh çerezi birinci taraf kalır (SameSite=Lax çalışır) ve
 # CORS hiç devreye girmez. Alan adı satın almadan aynı köken elde etmenin yolu.
 #
-# Aşağıdaki API-SUNUCUN.example.com yerine sunucunun gerçek adresini yaz.
-/api/*     https://API-SUNUCUN.example.com/api/:splat     200
-/health/*  https://API-SUNUCUN.example.com/health/:splat  200
+# Hedef, fly.toml'daki uygulama adından geliyor. `fly launch` adı değiştirirse
+# (isim doluysa değiştirir) buradaki iki satırı da güncelle.
+/api/*     https://ucl-2627-api.fly.dev/api/:splat     200
+/health/*  https://ucl-2627-api.fly.dev/health/:splat  200
 
 # Statik site: geri kalan tüm yollar index.html'e (Vue Router devralır).
 /*         /index.html                                     200

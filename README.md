@@ -125,15 +125,22 @@ it rather than off the wall clock.
 
 ## Deploy
 
-The client is a static site on Netlify; the API runs anywhere that keeps a Node
-process alive. `netlify.toml` builds the client workspace out of the repo root
-and publishes `client/dist`.
+The client is a static site on Netlify; the API is a **long-lived process** on
+Fly. `netlify.toml` builds the client workspace out of the repo root and
+publishes `client/dist`.
+
+Serverless is not an option for the API. Score polling and the refresh-token
+sweep are in-process timers, so a host that sleeps between requests would keep
+serving pages while quietly never advancing the season: scores would freeze on
+their last value and a published knockout draw would never be picked up.
+Nothing would error. `fly.toml` pins `auto_stop_machines = 'off'` and one
+machine running for exactly that reason.
 
 **Put the API behind the same origin.** The refresh cookie is `SameSite=Lax`, so
 a browser will not send it to an API on a different site and every page reload
 would drop the session. `client/public/_redirects` proxies `/api/*` through the
-Netlify domain to solve that without owning a domain: fill in the API host, and
-the browser only ever talks to one origin. That also makes CORS moot and lets
+Netlify domain to solve that without owning a domain, so the browser only ever
+talks to one origin. That also makes CORS moot and lets
 `VITE_API_BASE_URL` stay unset, since a production build with no value talks to
 its own origin.
 
@@ -141,18 +148,26 @@ The same file falls everything else back to `index.html`, which the router needs
 for direct links to `/kadro` or `/yonetim/maclar`. Order matters: the API rules
 sit above the catch-all, and Netlify takes the first match.
 
-On the API host:
+The API, from the repository root:
 
 ```bash
-npm run migrate                # schema; the server does not do this on boot
-npm run build --workspace server
-node server/dist/index.js
+fly launch --no-deploy   # first time only, and keep the app name in fly.toml
+fly secrets set DATABASE_URL=... JWT_SECRET=... \
+                CLIENT_ORIGIN=https://<site>.netlify.app \
+                FOOTBALL_DATA_API_TOKEN=... ADMIN_PATH=/<obscure>
+fly deploy
+npm run migrate          # schema; the server does not do this on boot
 ```
 
-Set `NODE_ENV=production` (this is what makes the cookie `Secure`), a fresh
-`JWT_SECRET`, `CLIENT_ORIGIN` to the Netlify URL with no trailing slash, and
-`SYNC_SCHEDULER_ENABLED=true` so scores arrive without anyone pressing a button.
-Point the platform's health probes at `/health` and `/health/ready`.
+`fly.toml` already sets `NODE_ENV=production` (this is what makes the cookie
+`Secure`), the port, `SYNC_SCHEDULER_ENABLED=true` so scores arrive without
+anyone pressing a button, and health checks against `/health/ready`. The
+secrets above are the ones that cannot live in the file. `JWT_SECRET` should be
+freshly generated rather than carried over from development, and `CLIENT_ORIGIN`
+is the Netlify URL with no trailing slash.
+
+If `fly launch` renames the app because the name is taken, two places follow it:
+`app` in `fly.toml` and both proxy targets in `_redirects`.
 
 The rate limiter and the background jobs live in the process, so run **one**
 instance. Two would each keep their own login counter and each poll the
@@ -175,6 +190,9 @@ provider.
   PLAN.md                 # authoritative product spec
   package.json            # npm workspaces root
   AGENTS.md               # working agreement for contributors
+  Dockerfile              # API image, built from the repo root
+  fly.toml                # API host: one machine, never stopped
+  netlify.toml            # client build for Netlify
   client/                 # participant + admin SPA (Vue 3)
   server/                 # HTTP API, auth, scoring, provider sync, migrations
   supabase/migrations/    # forward-only SQL migrations
