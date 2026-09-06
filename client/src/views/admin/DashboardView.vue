@@ -20,25 +20,25 @@ onMounted(async () => {
 });
 
 const links = [
-  { to: '/yonetim/kullanicilar', label: 'Kullanıcılar', icon: Users, desc: 'Hesap aç, şifre değiştir, joker haklarını düzelt' },
-  { to: '/yonetim/yarismalar', label: 'Yarışmalar', icon: Network, desc: 'Kim kimin sıralamasında görünüyor' },
-  { to: '/yonetim/kurallar', label: 'Kurallar', icon: Calculator, desc: 'Hangi sonuç hangi pota kaç puan yazıyor' },
-  { to: '/yonetim/maclar', label: 'Maçlar', icon: Flag, desc: 'Skor gir, elle girdiğin sonucu geri al' },
-  { to: '/yonetim/sync', label: 'Skor çekme', icon: RefreshCw, desc: 'Sağlayıcıdan skorları getir' },
-  { to: '/yonetim/ayarlar', label: 'Ayarlar', icon: Settings, desc: 'Sağlayıcı, joker dağıtımı, kilit uyarısı' },
+  { to: '/yonetim/kullanicilar', key: 'users', icon: Users },
+  { to: '/yonetim/yarismalar', key: 'competitions', icon: Network },
+  { to: '/yonetim/kurallar', key: 'rules', icon: Calculator },
+  { to: '/yonetim/maclar', key: 'matches', icon: Flag },
+  { to: '/yonetim/sync', key: 'sync', icon: RefreshCw },
+  { to: '/yonetim/ayarlar', key: 'config', icon: Settings },
 ];
 </script>
 
 <template>
   <div class="page-stack">
-    <PageHeader title="Yönetim paneli" />
+    <PageHeader :title="$t('admin.dashboard.title')" />
 
     <div class="stat-row">
       <div class="surface-card card-pad stat">
-        <span class="stat-num">{{ stats.users }}</span><span class="text-muted">kullanıcı</span>
+        <span class="stat-num">{{ stats.users }}</span><span class="text-muted">{{ $t('admin.dashboard.users') }}</span>
       </div>
       <div class="surface-card card-pad stat">
-        <span class="stat-num">{{ stats.competitions }}</span><span class="text-muted">yarışma</span>
+        <span class="stat-num">{{ stats.competitions }}</span><span class="text-muted">{{ $t('admin.dashboard.competitions') }}</span>
       </div>
     </div>
 
@@ -46,8 +46,8 @@ const links = [
       <RouterLink v-for="l in links" :key="l.to" :to="l.to" class="surface-card card-pad link-card">
         <span class="link-icon"><component :is="l.icon" :size="20" aria-hidden="true" /></span>
         <span class="link-body">
-          <span class="link-title">{{ l.label }}</span>
-          <span class="text-muted link-desc">{{ l.desc }}</span>
+          <span class="link-title">{{ $t(`nav.admin.${l.key}`) }}</span>
+          <span class="text-muted link-desc">{{ $t(`admin.dashboard.desc.${l.key}`) }}</span>
         </span>
         <ChevronRight class="link-chevron" :size="18" aria-hidden="true" />
       </RouterLink>

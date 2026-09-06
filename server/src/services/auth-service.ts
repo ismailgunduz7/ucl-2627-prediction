@@ -9,6 +9,7 @@ import {
   type AccessTokenClaims,
 } from '../lib/tokens.ts';
 import { grantInitialInventory } from './joker-service.ts';
+import type { Locale } from '../lib/i18n.ts';
 
 export interface UserRow {
   id: string;
@@ -17,6 +18,7 @@ export interface UserRow {
   display_name: string;
   is_admin: boolean;
   competition_id: string | null;
+  language: Locale;
 }
 
 export interface PublicUser {
@@ -25,6 +27,8 @@ export interface PublicUser {
   displayName: string;
   isAdmin: boolean;
   competitionId: string | null;
+  /** The language this account reads the game in, on any device (§3.1). */
+  language: Locale;
 }
 
 export interface SessionResult {
@@ -46,6 +50,7 @@ function toPublicUser(row: UserRow): PublicUser {
     displayName: row.display_name,
     isAdmin: row.is_admin,
     competitionId: row.competition_id,
+    language: row.language,
   };
 }
 
@@ -82,7 +87,7 @@ export async function login(
   meta: RequestMeta = {},
 ): Promise<SessionResult> {
   const { rows } = await query<UserRow>(
-    `SELECT id, username, password_hash, display_name, is_admin, competition_id
+    `SELECT id, username, password_hash, display_name, is_admin, competition_id, language
      FROM users WHERE lower(username) = lower($1)`,
     [username],
   );
@@ -92,7 +97,7 @@ export async function login(
     ? await verifyPassword(password, user.password_hash)
     : await verifyPassword(password, '$2a$12$0000000000000000000000000000000000000000000000000000');
   if (!user || !ok) {
-    throw ApiError.unauthorized('Kullanıcı adı veya şifre hatalı', 'invalid_credentials');
+    throw ApiError.unauthorized('invalid_credentials');
   }
 
   const accessToken = signAccessToken(claimsFor(user));
@@ -110,7 +115,7 @@ export async function refresh(rawToken: string, meta: RequestMeta = {}): Promise
     const { rows } = await client.query(
       `SELECT rt.id, rt.user_id, rt.expires_at, rt.rotated_at, rt.revoked_at,
               u.id AS u_id, u.username, u.password_hash, u.display_name,
-              u.is_admin, u.competition_id
+              u.is_admin, u.competition_id, u.language
        FROM refresh_tokens rt
        JOIN users u ON u.id = rt.user_id
        WHERE rt.token_hash = $1
@@ -118,12 +123,12 @@ export async function refresh(rawToken: string, meta: RequestMeta = {}): Promise
       [tokenHash],
     );
     const row = rows[0];
-    if (!row) throw ApiError.unauthorized('Oturum geçersiz', 'invalid_refresh_token');
+    if (!row) throw ApiError.unauthorized('invalid_refresh_token');
     if (row.revoked_at || row.rotated_at) {
-      throw ApiError.unauthorized('Oturum süresi doldu', 'refresh_token_reused');
+      throw ApiError.unauthorized('refresh_token_reused');
     }
     if (new Date(row.expires_at).getTime() <= Date.now()) {
-      throw ApiError.unauthorized('Oturum süresi doldu', 'refresh_token_expired');
+      throw ApiError.unauthorized('refresh_token_expired');
     }
 
     await client.query(`UPDATE refresh_tokens SET rotated_at = now() WHERE id = $1`, [row.id]);
@@ -135,6 +140,7 @@ export async function refresh(rawToken: string, meta: RequestMeta = {}): Promise
       display_name: row.display_name,
       is_admin: row.is_admin,
       competition_id: row.competition_id,
+      language: row.language,
     };
     // Issue the replacement refresh token within the same transaction.
     const { REFRESH_TOKEN_TTL_SECONDS } = getEnv();
@@ -171,7 +177,7 @@ export async function logout(rawToken: string | undefined): Promise<void> {
 /** Fetch a user by id for the /me endpoint. */
 export async function getUserById(id: string): Promise<PublicUser | null> {
   const { rows } = await query<UserRow>(
-    `SELECT id, username, password_hash, display_name, is_admin, competition_id
+    `SELECT id, username, password_hash, display_name, is_admin, competition_id, language
      FROM users WHERE id = $1`,
     [id],
   );
@@ -190,14 +196,14 @@ export interface CreateUserInput {
 export async function createUser(input: CreateUserInput): Promise<PublicUser> {
   const isAdmin = input.isAdmin ?? false;
   if (!isAdmin && !input.competitionId) {
-    throw ApiError.badRequest('Katılımcıyı bir yarışmaya atamalısın', 'competition_required');
+    throw ApiError.badRequest('competition_required');
   }
   const passwordHash = await hashPassword(input.password);
   try {
     const { rows } = await query<UserRow>(
       `INSERT INTO users (username, password_hash, display_name, is_admin, competition_id)
        VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, username, password_hash, display_name, is_admin, competition_id`,
+       RETURNING id, username, password_hash, display_name, is_admin, competition_id, language`,
       [input.username, passwordHash, input.displayName, isAdmin, input.competitionId ?? null],
     );
     // Participants get their Act I joker inventory before the MW1 lock (§3.6).
@@ -205,7 +211,7 @@ export async function createUser(input: CreateUserInput): Promise<PublicUser> {
     return toPublicUser(rows[0]!);
   } catch (err) {
     if (err && typeof err === 'object' && 'code' in err && err.code === '23505') {
-      throw ApiError.badRequest('Bu kullanıcı adı zaten kullanımda', 'username_taken');
+      throw ApiError.badRequest('username_taken');
     }
     throw err;
   }
@@ -223,7 +229,7 @@ export async function setUserPassword(userId: string, newPassword: string): Prom
       userId,
     ]);
     if (res.rowCount === 0) {
-      throw ApiError.badRequest('Kullanıcı bulunamadı', 'user_not_found');
+      throw ApiError.badRequest('user_not_found');
     }
     await client.query(
       `UPDATE refresh_tokens SET revoked_at = now()
@@ -240,7 +246,7 @@ export async function setUserPassword(userId: string, newPassword: string): Prom
  */
 export async function deleteUser(userId: string, actingAdminId: string): Promise<void> {
   if (userId === actingAdminId) {
-    throw ApiError.badRequest('Kendi hesabını silemezsin', 'cannot_delete_self');
+    throw ApiError.badRequest('cannot_delete_self');
   }
   await withTransaction(async (client) => {
     const target = await client.query<{ is_admin: boolean }>(
@@ -248,16 +254,29 @@ export async function deleteUser(userId: string, actingAdminId: string): Promise
       [userId],
     );
     if (target.rowCount === 0) {
-      throw ApiError.badRequest('Kullanıcı bulunamadı', 'user_not_found');
+      throw ApiError.badRequest('user_not_found');
     }
     if (target.rows[0]!.is_admin) {
       const admins = await client.query<{ count: string }>(
         'SELECT count(*)::text AS count FROM users WHERE is_admin',
       );
       if (Number(admins.rows[0]!.count) <= 1) {
-        throw ApiError.badRequest('Son yönetici silinemez', 'cannot_delete_last_admin');
+        throw ApiError.badRequest('cannot_delete_last_admin');
       }
     }
     await client.query('DELETE FROM users WHERE id = $1', [userId]);
   });
+}
+
+/** Remembers the language this account reads the game in, on every device. */
+export async function setLanguage(userId: string, language: Locale): Promise<PublicUser> {
+  const { rows } = await query<UserRow>(
+    `UPDATE users SET language = $2, updated_at = now()
+     WHERE id = $1
+     RETURNING id, username, password_hash, display_name, is_admin, competition_id, language`,
+    [userId, language],
+  );
+  const row = rows[0];
+  if (!row) throw ApiError.badRequest('user_not_found');
+  return toPublicUser(row);
 }

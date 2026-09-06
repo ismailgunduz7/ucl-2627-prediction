@@ -57,22 +57,27 @@ onMounted(async () => {
 
 <template>
   <div class="page-stack">
-    <PageHeader :title="`Selam ${auth.user?.displayName} 👋`" />
+    <PageHeader :title="$t('home.greeting', { name: auth.user?.displayName })" />
 
     <BallLoader v-if="loading" />
 
     <RouterLink v-if="!loading && seasonOver" to="/sezon" class="surface-card card-pad replay-banner">
-      <span class="replay-title">🏆 Sezon bitti, filmin hazır</span>
-      <span class="text-muted">Sıralaman, en iyi haftan, jokerlerin ve puanının yolculuğu</span>
-      <Button label="İzle" size="small"><template #icon><Play :size="15" /></template></Button>
+      <span class="replay-title">{{ $t('home.replayTitle') }}</span>
+      <span class="text-muted">{{ $t('home.replaySubtitle') }}</span>
+      <Button :label="$t('home.replayAction')" size="small">
+        <template #icon><Play :size="15" /></template>
+      </Button>
     </RouterLink>
 
     <div v-if="!loading" class="dash-grid">
       <!-- Squad -->
       <section class="surface-card card-pad">
         <div class="card-top">
-          <h2 class="section-title" style="margin: 0">Kadrom</h2>
-          <Tag :severity="squadComplete ? 'success' : 'warn'" :value="squadComplete ? 'Hazır' : 'Eksik'" />
+          <h2 class="section-title" style="margin: 0">{{ $t('home.squadTitle') }}</h2>
+          <Tag
+            :severity="squadComplete ? 'success' : 'warn'"
+            :value="squadComplete ? $t('home.squadReady') : $t('home.squadIncomplete')"
+          />
         </div>
         <template v-if="squadComplete">
           <div class="crest-row">
@@ -82,40 +87,40 @@ onMounted(async () => {
             </RouterLink>
           </div>
           <RouterLink to="/kadro">
-            <Button :label="squadLocked ? 'Kadroyu gör' : 'Kadroyu düzenle'" outlined size="small">
+            <Button :label="squadLocked ? $t('home.squadView') : $t('home.squadEdit')" outlined size="small">
               <template #icon><Users :size="15" /></template>
             </Button>
           </RouterLink>
         </template>
         <template v-else>
-          <p class="text-muted" style="margin: 0 0 1rem">Her pottan bir kulüp seçerek başla.</p>
+          <p class="text-muted" style="margin: 0 0 1rem">{{ $t('home.squadEmpty') }}</p>
           <RouterLink to="/kadro">
-            <Button label="Kadroyu kur"><template #icon><Plus :size="16" /></template></Button>
+            <Button :label="$t('home.squadBuild')"><template #icon><Plus :size="16" /></template></Button>
           </RouterLink>
         </template>
       </section>
 
       <!-- This week -->
       <section class="surface-card card-pad">
-        <h2 class="section-title" style="margin: 0 0 0.75rem">{{ currentMw?.label ?? 'Hafta' }}</h2>
+        <h2 class="section-title" style="margin: 0 0 0.75rem">{{ currentMw?.label ?? $t('home.weekFallback') }}</h2>
         <template v-if="currentMw">
           <div class="week-score">
             <span class="big-num">{{ weekTotal ?? '-' }}</span>
-            <span class="text-muted">{{ weekFinal ? 'kesin puan' : 'anlık puan' }}</span>
+            <span class="text-muted">{{ weekFinal ? $t('home.finalPoints') : $t('home.livePoints') }}</span>
           </div>
           <RouterLink to="/hafta">
-            <Button label="Dizilişini ayarla" size="small">
+            <Button :label="$t('home.weekAction')" size="small">
               <template #icon><CalendarDays :size="15" /></template>
             </Button>
           </RouterLink>
         </template>
-        <p v-else class="text-muted" style="margin: 0">Sezon henüz başlamadı.</p>
+        <p v-else class="text-muted" style="margin: 0">{{ $t('home.seasonNotStarted') }}</p>
       </section>
 
       <!-- Standings -->
       <section class="surface-card card-pad">
         <div class="card-top">
-          <h2 class="section-title" style="margin: 0">Sıralama</h2>
+          <h2 class="section-title" style="margin: 0">{{ $t('home.rankTitle') }}</h2>
           <Tag v-if="myRank" :value="`${myRank.rank}.`" severity="info" />
         </div>
         <ol v-if="topThree.length" class="mini-lb">
@@ -125,9 +130,11 @@ onMounted(async () => {
             <span class="lb-pts">{{ e.total }}</span>
           </li>
         </ol>
-        <p v-else class="text-muted" style="margin: 0">Henüz sıralama yok.</p>
+        <p v-else class="text-muted" style="margin: 0">{{ $t('home.rankEmpty') }}</p>
         <RouterLink to="/puan-durumu">
-          <Button label="Tüm sıralama" text size="small"><template #icon><ChartColumn :size="15" /></template></Button>
+          <Button :label="$t('home.rankAll')" text size="small">
+            <template #icon><ChartColumn :size="15" /></template>
+          </Button>
         </RouterLink>
       </section>
     </div>

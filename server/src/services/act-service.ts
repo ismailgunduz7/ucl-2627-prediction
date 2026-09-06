@@ -233,12 +233,12 @@ export async function setActTransfer(
   cancelJokers = false,
 ): Promise<ActTransferState> {
   const current = await getTransferRow(userId);
-  if (!current) throw ApiError.badRequest('Transfer hakkın bulunmuyor', 'no_transfer_grant');
+  if (!current) throw ApiError.badRequest('no_transfer_grant');
   if (current.status === 'expired') {
-    throw ApiError.forbidden('Transfer penceresi kapandı', 'transfer_expired');
+    throw ApiError.forbidden('transfer_expired');
   }
   if (await isTransferWindowLocked()) {
-    throw ApiError.forbidden('Transfer penceresi kapandı', 'transfer_locked');
+    throw ApiError.forbidden('transfer_locked');
   }
 
   // A live weekly swap for the first knockout week blocks squad edits (§3.6).
@@ -246,10 +246,7 @@ export async function setActTransfer(
   if (koId) {
     const joker = await getActiveJokerRaw(userId, koId);
     if (joker?.code === 'weekly_swap') {
-      throw ApiError.badRequest(
-        'Önce bu haftanın değişim jokerini iptal et',
-        'weekly_swap_active',
-      );
+      throw ApiError.badRequest('weekly_swap_active');
     }
   }
 
@@ -261,9 +258,9 @@ export async function setActTransfer(
       ? current.from_team_id
       : fromTeamId;
   const from = original.find((c) => c.teamId === effectiveFrom);
-  if (!from) throw ApiError.badRequest('Çıkacak kulüp kadroda değil', 'invalid_from');
+  if (!from) throw ApiError.badRequest('invalid_from');
   if (original.some((c) => c.teamId === toTeamId)) {
-    throw ApiError.badRequest('Bu kulüp zaten kadronda', 'to_in_squad');
+    throw ApiError.badRequest('to_in_squad');
   }
 
   const to = await query<{ tier_id: number; is_active: boolean; eliminated_at: Date | null }>(
@@ -271,10 +268,10 @@ export async function setActTransfer(
     [toTeamId],
   );
   const toRow = to.rows[0];
-  if (!toRow) throw ApiError.badRequest('Geçersiz kulüp', 'invalid_to');
-  if (toRow.tier_id !== from.tierId) throw ApiError.badRequest('Aynı pottan olmalı', 'wrong_pot');
+  if (!toRow) throw ApiError.badRequest('invalid_to');
+  if (toRow.tier_id !== from.tierId) throw ApiError.badRequest('wrong_pot');
   if (!toRow.is_active || toRow.eliminated_at) {
-    throw ApiError.badRequest('Elenmiş kulüp seçilemez', 'to_ineligible');
+    throw ApiError.badRequest('to_ineligible');
   }
 
   // A club leaving the effective squad may carry an active joker, a shield for
@@ -287,12 +284,7 @@ export async function setActTransfer(
   const conflicts = await findSquadEditConflicts(userId, removed);
   if (conflicts.length > 0) {
     if (!cancelJokers) {
-      throw new ApiError(
-        409,
-        'joker_squad_conflict',
-        'Çıkardığın kulüpte aktif joker var; transfer jokeri iptal eder ve hakkını iade eder',
-        { conflicts },
-      );
+      throw new ApiError(409, 'joker_squad_conflict', undefined, { conflicts });
     }
     for (const conflict of conflicts) await cancelJoker(userId, conflict.matchweekId);
   }
@@ -320,7 +312,7 @@ export async function setActTransfer(
     );
     if (applied.rowCount === 0) {
       // The squad moved between validation and the write (e.g. two tabs).
-      throw ApiError.badRequest('Kadron bu arada değişmiş, tekrar dene', 'transfer_conflict');
+      throw ApiError.badRequest('transfer_conflict');
     }
     await client.query(
       `UPDATE act_transfers SET status = 'committed', from_team_id = $1, to_team_id = $2

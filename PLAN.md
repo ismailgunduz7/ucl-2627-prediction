@@ -16,6 +16,8 @@ Phases 0-6 are built and running against a Supabase database. What follows is th
 
 - Level knockout aggregates are settled by a **shootout seeded from the tie id** rather than real penalty data (§2.4), so recalculation always reaches the same winner.
 
+**Bilingual:** every screen reads in Turkish or English. The interface owns its own copy (`client/src/i18n`), the API owns the words it produces itself (error messages plus the matchweek, round, difficulty and rule labels it derives rather than stores, in `server/src/i18n`), and the client tells the API which language to answer in with `Accept-Language`. The choice is a column on `users`, so it follows a player between devices. The browser's memory and its own language setting only cover a session that has not signed in.
+
 **Running on real data:** all 36 clubs carry their football-data.org id and crest, and the league phase holds UEFA's published fixture list (`db/seed-provider.ts`). The mock provider stays in the tree for local work against a simulated clock; it reports only on `mock:` fixtures, so it goes quiet once a season has been seeded from the provider.
 
 **Not built yet:** nothing user-facing is missing from the spec any more. What remains in §13 Phase 7 is production deploy configuration and deeper edge-case tests.
@@ -113,6 +115,7 @@ After the league phase:
 - Optional grouping into **competitions**. A competition is **only** a way to isolate a set of participants from each other (e.g. work, school, friends, family) so each user sees **only their own competition's** participants, leaderboard, and open picks. **All game rules, config, scoring, jokers, matchweeks, acts, and tournament data are global/shared** across competitions; competitions never change the rules, only *who is grouped with whom*. First season may use a **single** competition; the schema and admin UI must support multiple.
 - Roles: **participant** and **admin**. Admins manage the system and do not play on the same account (excluded from participant leaderboards).
 - New participants may be added only **before permanent squad lock**. After lock, no new players join that season.
+- Every account carries the **language it reads the game in** (`tr` or `en`, Turkish by default). It is stored on the account rather than in the browser, so a change on one device shows on the next.
 
 ### 3.2 Squad selection (permanent)
 
@@ -622,6 +625,7 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 ### 9.1 Auth
 
 - `POST /api/auth/login`, `POST /api/auth/logout`, `POST /api/auth/refresh`
+- `GET /api/auth/me`, `PUT /api/auth/me/language` (the account's reading language, `tr` or `en`)
 - **No** public `register`
 - Access JWT short-lived; refresh httpOnly cookie with rotation
 - Middleware: `auth`, `admin`, `participant`

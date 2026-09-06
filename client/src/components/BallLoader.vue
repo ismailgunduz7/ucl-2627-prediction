@@ -1,25 +1,17 @@
 <script setup lang="ts">
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import StarBall from '@/components/StarBall.vue';
 
+const { t } = useI18n();
 const props = defineProps<{ message?: string }>();
 
-const MESSAGES = [
-  'Saha hazırlanıyor…',
-  'Çimler biçiliyor…',
-  'Isınma turları atılıyor…',
-  'Kadrolar açıklanıyor…',
-  'Tribünler doluyor…',
-  'Taktik tahtası kuruluyor…',
-  'Formalar giyiliyor…',
-  'Top orta yuvarlakta…',
-  'Hakem düdüğünü bekliyor…',
-  'Yedek kulübesi kuruluyor…',
-];
+const MESSAGE_COUNT = 10;
 
-// Picked once per mount so the text doesn't shuffle on every re-render.
-const fallback = MESSAGES[Math.floor(Math.random() * MESSAGES.length)]!;
-const text = computed(() => props.message ?? fallback);
+// Picked once per mount so the line doesn't shuffle on every re-render, but
+// still follows the language if it changes while the page is loading.
+const pick = Math.floor(Math.random() * MESSAGE_COUNT);
+const text = computed(() => props.message ?? t(`loading.${pick}`));
 </script>
 
 <template>

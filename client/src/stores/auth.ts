@@ -1,6 +1,7 @@
 import { defineStore } from 'pinia';
 import { ref, computed } from 'vue';
 import { api, setAccessToken } from '@/lib/api';
+import { useLocaleStore } from '@/stores/locale';
 
 export interface AuthUser {
   id: string;
@@ -8,6 +9,8 @@ export interface AuthUser {
   displayName: string;
   isAdmin: boolean;
   competitionId: string | null;
+  /** The language this account reads the game in, on any device. */
+  language: string;
 }
 
 interface SessionResponse {
@@ -25,6 +28,8 @@ export const useAuthStore = defineStore('auth', () => {
   function applySession(session: SessionResponse): void {
     setAccessToken(session.accessToken);
     user.value = session.user;
+    // The account's language outranks whatever this browser last remembered.
+    useLocaleStore().adoptAccount(session.user.language);
   }
 
   async function login(username: string, password: string): Promise<void> {
@@ -38,6 +43,7 @@ export const useAuthStore = defineStore('auth', () => {
     } finally {
       setAccessToken(null);
       user.value = null;
+      useLocaleStore().forgetAccount();
     }
   }
 

@@ -22,7 +22,7 @@ export async function requireAuth(c: Context, next: Next): Promise<void | Respon
   try {
     c.set('auth', verifyAccessToken(token));
   } catch {
-    throw ApiError.unauthorized('Oturumun düşmüş, tekrar giriş yap', 'invalid_access_token');
+    throw ApiError.unauthorized('invalid_access_token');
   }
   await next();
 }

@@ -1,6 +1,7 @@
 import { Hono } from 'hono';
 import { z } from 'zod';
 import { ApiError } from '../lib/errors.ts';
+import { matchweekLabel } from '../lib/labels.ts';
 import { requireAuth, type AuthVariables } from '../middleware/auth.ts';
 import { listTeamsByPot } from '../services/team-service.ts';
 import { getSquad, setSquad } from '../services/selection-service.ts';
@@ -119,7 +120,7 @@ participantRoutes.get('/tournament/status', async (c) => {
         id: mw.id,
         act: mw.act,
         sortOrder: mw.sort_order,
-        label: mw.label,
+        label: matchweekLabel(mw),
         // How a week picker should file this week (§10.1).
         menu,
         status: mw.status,
@@ -174,7 +175,7 @@ const LineupSchema = z.object({
 participantRoutes.put('/matchweeks/:id/lineup', async (c) => {
   const auth = c.get('auth');
   const body = LineupSchema.safeParse(await c.req.json().catch(() => null));
-  if (!body.success) throw ApiError.badRequest('Bench ve kaptan gerekli', 'invalid_body');
+  if (!body.success) throw ApiError.badRequest('lineup_body_required');
   const lineup = await setLineup(auth.sub, c.req.param('id'), body.data.benchTeamId, body.data.captainTeamId);
   return c.json({
     lineup: {
@@ -231,7 +232,7 @@ const PredictionSchema = z.object({
 participantRoutes.put('/matchweeks/:id/predictions', async (c) => {
   const auth = c.get('auth');
   const body = PredictionSchema.safeParse(await c.req.json().catch(() => null));
-  if (!body.success) throw ApiError.badRequest('Geçersiz tahmin isteği', 'invalid_body');
+  if (!body.success) throw ApiError.badRequest('invalid_prediction_request');
   const predictions = await savePrediction(
     auth.sub,
     c.req.param('id'),
@@ -260,7 +261,7 @@ const ActivateJokerSchema = z.object({
 participantRoutes.post('/matchweeks/:id/jokers', async (c) => {
   const auth = c.get('auth');
   const body = ActivateJokerSchema.safeParse(await c.req.json().catch(() => null));
-  if (!body.success) throw ApiError.badRequest('Geçersiz joker isteği', 'invalid_body');
+  if (!body.success) throw ApiError.badRequest('invalid_joker_request');
   const active = await activateJoker(auth.sub, c.req.param('id'), body.data.code as JokerCode, body.data.payload);
   return c.json({ active });
 });
@@ -320,7 +321,7 @@ const ActTransferSchema = z.object({
 participantRoutes.put('/act-transfer', async (c) => {
   const auth = c.get('auth');
   const body = ActTransferSchema.safeParse(await c.req.json().catch(() => null));
-  if (!body.success) throw ApiError.badRequest('Geçersiz transfer isteği', 'invalid_body');
+  if (!body.success) throw ApiError.badRequest('invalid_transfer_request');
   return c.json(
     await setActTransfer(auth.sub, body.data.fromTeamId, body.data.toTeamId, body.data.cancelJokers),
   );
@@ -355,7 +356,7 @@ participantRoutes.put('/squad', async (c) => {
   const auth = c.get('auth');
   const body = PutSquadSchema.safeParse(await c.req.json().catch(() => null));
   if (!body.success) {
-    throw ApiError.badRequest(`Tam olarak ${SQUAD_SIZE} kulüp gönderilmeli`, 'invalid_body');
+    throw ApiError.badRequest('squad_size_required', { size: SQUAD_SIZE });
   }
   const squad = await setSquad(auth.sub, body.data.teamIds, body.data.cancelJokers);
   return c.json({ squad: squad.map((s) => ({ ...s, eliminated: s.eliminatedAt !== null })) });

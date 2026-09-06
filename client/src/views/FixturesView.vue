@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import Select from 'primevue/select';
 import BallLoader from '@/components/BallLoader.vue';
 import PageHeader from '@/components/PageHeader.vue';
 import CaptainBadge from '@/components/CaptainBadge.vue';
 import { api } from '@/lib/api';
 import { roundKeyOf, type MatchweekMenu, type RoundOption } from '@/lib/matchweeks';
+import { formatDayLong, formatTime } from '@/lib/format';
 
 interface Mw { id: string; label: string; status: string; opened: boolean; menu: MatchweekMenu }
 type Outcome = 'home' | 'draw' | 'away';
@@ -25,6 +27,7 @@ interface RoundFixtures {
   roundKey: string; roundLabel: string; sections: Section[]; lastSyncAt: string | null;
 }
 
+const { t } = useI18n();
 const matchweeks = ref<Mw[]>([]);
 const rounds = ref<RoundOption[]>([]);
 const selectedRound = ref<string | null>(null);
@@ -50,21 +53,14 @@ function daysOf(section: Section) {
   }
   return [...groups.entries()].map(([key, list]) => ({
     key: `${section.matchweekId}:${key}`,
-    label: key === 'tbd' ? 'Tarihi belli değil' : dayLabel(list[0]!.kickoffAt!),
+    label: key === 'tbd' ? t('fixtures.dateUnknown') : formatDayLong(list[0]!.kickoffAt!),
     fixtures: list,
   }));
 }
 
 function isMine(f: Fixture) { return f.home.mine || f.away.mine; }
-function dayLabel(iso: string) {
-  return new Date(iso).toLocaleDateString('tr-TR', { weekday: 'long', day: 'numeric', month: 'long' });
-}
-function timeLabel(iso: string | null) {
-  return iso ? new Date(iso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-';
-}
-function syncLabel(iso: string | null) {
-  return iso ? new Date(iso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : null;
-}
+function timeLabel(iso: string | null) { return formatTime(iso); }
+function syncLabel(iso: string | null) { return iso ? formatTime(iso) : null; }
 function signed(n: number) { return n > 0 ? `+${n}` : `${n}`; }
 function tone(n: number) { return n > 0 ? 'up' : n < 0 ? 'down' : 'flat'; }
 
@@ -111,14 +107,14 @@ watch(liveOnes, schedulePoll);
 
 <template>
   <div class="page-stack">
-    <PageHeader title="Fikstür">
+    <PageHeader :title="$t('fixtures.title')">
       <template #actions>
         <Select
           v-model="selectedRound"
           :options="rounds"
           option-label="label"
           option-value="value"
-          placeholder="Hafta seç"
+          :placeholder="$t('fixtures.pickRound')"
           style="min-width: 200px"
         />
       </template>
@@ -128,15 +124,17 @@ watch(liveOnes, schedulePoll);
 
     <template v-else>
       <div class="fx-meta-row">
-        <span v-if="liveOnes.length" class="live-pill"><span class="dot" />{{ liveOnes.length }} maç oynanıyor</span>
-        <span v-if="mineCount" class="text-muted">{{ mineCount }} maçta senin kulübün var</span>
+        <span v-if="liveOnes.length" class="live-pill">
+          <span class="dot" />{{ $t('fixtures.livePill', { count: liveOnes.length }) }}
+        </span>
+        <span v-if="mineCount" class="text-muted">{{ $t('fixtures.mineCount', { count: mineCount }) }}</span>
         <span v-if="syncLabel(data?.lastSyncAt ?? null)" class="text-muted sync">
-          son güncelleme {{ syncLabel(data?.lastSyncAt ?? null) }}
+          {{ $t('fixtures.lastSync', { time: syncLabel(data?.lastSyncAt ?? null) }) }}
         </span>
       </div>
 
       <div v-if="!fixtures.length" class="surface-card card-pad empty-state">
-        Bu haftanın fikstürü henüz belli değil.
+        {{ $t('fixtures.empty') }}
       </div>
 
       <template v-for="section in sections" :key="section.matchweekId">
@@ -151,9 +149,9 @@ watch(liveOnes, schedulePoll);
             :class="{ mine: isMine(f), live: f.status === 'live' }"
           >
             <span class="fx-time">
-              <span v-if="f.status === 'live'" class="live-tag">CANLI</span>
-              <span v-else-if="f.status === 'postponed'" class="text-muted">Ertelendi</span>
-              <span v-else-if="f.status === 'cancelled'" class="text-muted">İptal</span>
+              <span v-if="f.status === 'live'" class="live-tag">{{ $t('fixtures.liveTag') }}</span>
+              <span v-else-if="f.status === 'postponed'" class="text-muted">{{ $t('matchStatus.postponed') }}</span>
+              <span v-else-if="f.status === 'cancelled'" class="text-muted">{{ $t('matchStatus.cancelled') }}</span>
               <span v-else>{{ timeLabel(f.kickoffAt) }}</span>
             </span>
 
@@ -162,7 +160,7 @@ watch(liveOnes, schedulePoll);
                 {{ signed(f.home.points) }}
               </span>
               <CaptainBadge v-if="f.home.captain" :multiplier="section.captainMultiplier" :size="18" />
-              <span v-else-if="f.home.benched && !section.benchBoost" class="role-chip">Yedek</span>
+              <span v-else-if="f.home.benched && !section.benchBoost" class="role-chip">{{ $t('week.bench') }}</span>
               <RouterLink :to="`/takim/${f.home.teamId}`" class="fx-club" :class="{ own: f.home.mine }">
                 {{ f.home.name }}
               </RouterLink>
@@ -172,7 +170,7 @@ watch(liveOnes, schedulePoll);
               <template v-if="f.home.score !== null && f.away.score !== null">
                 {{ f.home.score }}-{{ f.away.score }}
               </template>
-              <template v-else>vs</template>
+              <template v-else>{{ $t('common.versus') }}</template>
             </span>
 
             <span class="fx-side away">
@@ -180,7 +178,7 @@ watch(liveOnes, schedulePoll);
                 {{ f.away.name }}
               </RouterLink>
               <CaptainBadge v-if="f.away.captain" :multiplier="section.captainMultiplier" :size="18" />
-              <span v-else-if="f.away.benched && !section.benchBoost" class="role-chip">Yedek</span>
+              <span v-else-if="f.away.benched && !section.benchBoost" class="role-chip">{{ $t('week.bench') }}</span>
               <span v-if="f.away.points !== null" class="fx-pts" :class="tone(f.away.points)">
                 {{ signed(f.away.points) }}
               </span>

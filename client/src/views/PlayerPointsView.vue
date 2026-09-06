@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import Button from 'primevue/button';
 import Tag from 'primevue/tag';
@@ -37,6 +38,7 @@ interface PlayerPoints {
   weeks: WeekBreakdown[];
 }
 
+const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const data = ref<PlayerPoints | null>(null);
@@ -71,7 +73,7 @@ async function load(id: string) {
     const last = [...weeks.value].reverse().find(isPlayed);
     open.value = last ? [last.matchweekId] : [];
   } catch (e) {
-    error.value = e instanceof ApiRequestError ? e.message : 'Yüklenemedi';
+    error.value = e instanceof ApiRequestError ? e.message : t('common.loadFailed');
   } finally {
     loading.value = false;
   }
@@ -83,7 +85,7 @@ watch(() => route.params.id, (id) => id && load(id as string));
 
 <template>
   <div class="page-stack">
-    <Button label="Geri" text style="align-self: flex-start" @click="router.back()">
+    <Button :label="$t('common.back')" text style="align-self: flex-start" @click="router.back()">
       <template #icon><ArrowLeft :size="16" /></template>
     </Button>
 
@@ -95,13 +97,13 @@ watch(() => route.params.id, (id) => id && load(id as string));
 
       <div class="stat-row">
         <div class="surface-card card-pad stat">
-          <span class="stat-num">{{ data.player.totalPoints }}</span><small class="text-muted">toplam puan</small>
+          <span class="stat-num">{{ data.player.totalPoints }}</span><small class="text-muted">{{ $t('player.totalPoints') }}</small>
         </div>
         <div class="surface-card card-pad stat">
-          <span class="stat-num">{{ playedWeeks.length }}</span><small class="text-muted">oynanan hafta</small>
+          <span class="stat-num">{{ playedWeeks.length }}</span><small class="text-muted">{{ $t('player.weeksPlayed') }}</small>
         </div>
         <div v-if="bestWeek" class="surface-card card-pad stat">
-          <span class="stat-num">{{ bestWeek.total }}</span><small class="text-muted">en iyi hafta · {{ bestWeek.label }}</small>
+          <span class="stat-num">{{ bestWeek.total }}</span><small class="text-muted">{{ $t('player.bestWeek', { week: bestWeek.label }) }}</small>
         </div>
       </div>
 
@@ -114,10 +116,10 @@ watch(() => route.params.id, (id) => id && load(id as string));
               <Tag
                 v-if="isPlayed(w) && !w.final"
                 severity="info"
-                value="kesinleşmedi"
-                title="Hafta bitmedi, puanlar hâlâ değişebilir"
+                :value="$t('player.provisional')"
+                :title="$t('player.provisionalHint')"
               />
-              <Tag v-else-if="!isPlayed(w)" severity="secondary" value="oynanmadı" />
+              <Tag v-else-if="!isPlayed(w)" severity="secondary" :value="$t('player.notPlayed')" />
               <span v-if="isPlayed(w)" class="week-total" :class="w.total >= 0 ? 'text-positive' : 'text-negative'">
                 {{ signed(w.total) }}
               </span>
@@ -146,12 +148,12 @@ watch(() => route.params.id, (id) => id && load(id as string));
                       :team-score="f.teamScore"
                       :opponent-score="f.opponentScore"
                     />
-                    <span v-if="!c.fixtures.length" class="text-muted no-fixture">bu hafta maçı yok</span>
+                    <span v-if="!c.fixtures.length" class="text-muted no-fixture">{{ $t('week.noFixture') }}</span>
                   </div>
 
                   <template v-if="isPlayed(w)">
                     <CaptainBadge v-if="c.captain" :multiplier="c.multiplier" :joker-code="w.jokerCode" :size="26" />
-                    <span v-else-if="c.benched" class="role-chip">Yedek</span>
+                    <span v-else-if="c.benched" class="role-chip">{{ $t('week.bench') }}</span>
 
                     <span class="club-pts">
                       <span v-if="c.captain && c.multiplier > 1" class="text-muted base">
@@ -171,8 +173,10 @@ watch(() => route.params.id, (id) => id && load(id as string));
               </div>
 
               <div v-if="w.predictions.correct" class="club-row paul-row">
-                <span class="paul-name"><OctopusMark :size="17" /> Ahtapot Paul</span>
-                <span class="text-muted">{{ w.predictions.correct }}/{{ w.predictions.settled }} doğru</span>
+                <span class="paul-name"><OctopusMark :size="17" /> {{ $t('paul.name') }}</span>
+                <span class="text-muted">
+                  {{ $t('paul.correctOf', { correct: w.predictions.correct, settled: w.predictions.settled }) }}
+                </span>
                 <strong class="text-positive">{{ signed(w.predictions.points) }}</strong>
               </div>
             </div>

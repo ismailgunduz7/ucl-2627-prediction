@@ -33,16 +33,18 @@ onMounted(async () => {
 
 <template>
   <div class="page-stack">
-    <PageHeader title="Lig tablosu" subtitle="Lig aşaması sonunda ilk 8 doğrudan son 16'ya, 9-24 play-off oynar." />
+    <PageHeader :title="$t('standings.title')" :subtitle="$t('standings.subtitle')" />
 
     <BallLoader v-if="loading" />
-    <Message v-else-if="!rows.length" severity="secondary" :closable="false">Henüz maç oynanmadı.</Message>
+    <Message v-else-if="!rows.length" severity="secondary" :closable="false">
+      {{ $t('standings.empty') }}
+    </Message>
 
     <template v-else>
       <div class="legend">
-        <span><i class="dot top8" />Son 16'ya doğrudan</span>
-        <span><i class="dot playoff" />Play-off</span>
-        <span><i class="dot out" />Eleniyor</span>
+        <span><i class="dot top8" />{{ $t('standings.legendDirect') }}</span>
+        <span><i class="dot playoff" />{{ $t('standings.legendPlayoff') }}</span>
+        <span><i class="dot out" />{{ $t('standings.legendOut') }}</span>
       </div>
 
       <div class="surface-card table-scroll">
@@ -50,9 +52,15 @@ onMounted(async () => {
           <thead>
             <tr>
               <th>#</th>
-              <th style="text-align: left">Kulüp</th>
-              <th>O</th><th>G</th><th>B</th><th>M</th>
-              <th>A</th><th>Y</th><th>Av</th><th>P</th>
+              <th style="text-align: left">{{ $t('standings.club') }}</th>
+              <th :title="$t('standings.played')">{{ $t('standings.playedShort') }}</th>
+              <th :title="$t('standings.won')">{{ $t('standings.wonShort') }}</th>
+              <th :title="$t('standings.drawn')">{{ $t('standings.drawnShort') }}</th>
+              <th :title="$t('standings.lost')">{{ $t('standings.lostShort') }}</th>
+              <th :title="$t('standings.goalsFor')">{{ $t('standings.goalsForShort') }}</th>
+              <th :title="$t('standings.goalsAgainst')">{{ $t('standings.goalsAgainstShort') }}</th>
+              <th :title="$t('standings.goalDifference')">{{ $t('standings.goalDifferenceShort') }}</th>
+              <th :title="$t('standings.points')">{{ $t('standings.pointsShort') }}</th>
             </tr>
           </thead>
           <tbody>

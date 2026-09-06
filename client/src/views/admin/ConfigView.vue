@@ -1,5 +1,6 @@
 <script setup lang="ts">
-import { ref, onMounted } from 'vue';
+import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useToast } from 'primevue/usetoast';
 import Select from 'primevue/select';
 import InputNumber from 'primevue/inputnumber';
@@ -7,7 +8,6 @@ import Button from 'primevue/button';
 import { Check, FastForward } from '@lucide/vue';
 import Tag from 'primevue/tag';
 import { api, ApiRequestError } from '@/lib/api';
-import { JOKER_NAMES } from '@/lib/jokers';
 import PageHeader from '@/components/PageHeader.vue';
 import BallLoader from '@/components/BallLoader.vue';
 import JokerIcon from '@/components/JokerIcon.vue';
@@ -21,6 +21,7 @@ interface Config {
   sync_provider: 'mock' | 'football_data';
 }
 
+const { t } = useI18n();
 const toast = useToast();
 const config = ref<Config | null>(null);
 const loading = ref(true);
@@ -29,14 +30,11 @@ const advancing = ref(false);
 const dramaHours = ref(2);
 
 const JOKER_CODES: JokerCode[] = ['weekly_swap', 'triple_boost', 'clean_sheet_shield', 'bench_boost'];
-const ACTS: { key: Act; label: string }[] = [
-  { key: 'league_phase', label: 'Lig aşaması' },
-  { key: 'knockout', label: 'Eleme turları' },
-];
-const providerOptions = [
-  { label: 'Simülasyon', value: 'mock' },
+const ACTS: Act[] = ['league_phase', 'knockout'];
+const providerOptions = computed(() => [
+  { label: t('admin.sync.providerMock'), value: 'mock' },
   { label: 'football-data.org', value: 'football_data' },
-];
+]);
 
 async function load() {
   loading.value = true;
@@ -45,7 +43,7 @@ async function load() {
     config.value = res.config;
     dramaHours.value = Math.round((res.config.deadline_drama_window_seconds / 3600) * 10) / 10;
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Yüklenemedi', detail: msg(e), life: 4000 });
+    toast.add({ severity: 'error', summary: t('common.loadFailed'), detail: msg(e), life: 4000 });
   } finally {
     loading.value = false;
   }
@@ -65,10 +63,10 @@ async function save() {
         { key: 'deadline_drama_window_seconds', value: Math.round(dramaHours.value * 3600) },
       ],
     });
-    toast.add({ severity: 'success', summary: 'Ayarlar kaydedildi', life: 2500 });
+    toast.add({ severity: 'success', summary: t('admin.config.saved'), life: 2500 });
     await load();
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Kaydedilemedi', detail: msg(e), life: 4500 });
+    toast.add({ severity: 'error', summary: t('common.saveFailed'), detail: msg(e), life: 4500 });
   } finally {
     saving.value = false;
   }
@@ -79,24 +77,24 @@ async function advanceSeason() {
   advancing.value = true;
   try {
     await api.post('/api/admin/acts/advance');
-    toast.add({ severity: 'success', summary: 'Sezon kontrol edildi', life: 3000 });
+    toast.add({ severity: 'success', summary: t('admin.config.seasonChecked'), life: 3000 });
     await load();
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Sezon kontrol edilemedi', detail: msg(e), life: 4000 });
+    toast.add({ severity: 'error', summary: t('admin.config.seasonCheckFailed'), detail: msg(e), life: 4000 });
   } finally {
     advancing.value = false;
   }
 }
 
-function msg(e: unknown) { return e instanceof ApiRequestError ? e.message : 'Beklenmeyen hata'; }
+function msg(e: unknown) { return e instanceof ApiRequestError ? e.message : t('common.unexpectedError'); }
 onMounted(load);
 </script>
 
 <template>
   <div class="page-stack">
-    <PageHeader title="Ayarlar">
+    <PageHeader :title="$t('nav.admin.config')">
       <template #actions>
-        <Button label="Kaydet" :loading="saving" :disabled="loading" @click="save">
+        <Button :label="$t('common.save')" :loading="saving" :disabled="loading" @click="save">
           <template #icon><Check :size="16" /></template>
         </Button>
       </template>
@@ -106,7 +104,7 @@ onMounted(load);
 
     <template v-else-if="config">
       <section class="surface-card card-pad">
-        <div class="section-title">Skor sağlayıcısı</div>
+        <div class="section-title">{{ $t('admin.config.providerTitle') }}</div>
         <div class="row">
           <Select
             v-model="config.sync_provider"
@@ -115,37 +113,31 @@ onMounted(load);
             option-value="value"
             style="min-width: 220px"
           />
-          <p class="text-muted note">
-            Skorlar buradan geliyor. Simülasyondayken arka plan işi beklemeye geçer, çünkü saati
-            sen veriyorsun. football-data.org için sunucuda <code>FOOTBALL_DATA_API_TOKEN</code>
-            tanımlı olmalı.
-          </p>
+          <i18n-t keypath="admin.config.providerNote" tag="p" class="text-muted note" scope="global">
+            <template #token><code>FOOTBALL_DATA_API_TOKEN</code></template>
+          </i18n-t>
         </div>
       </section>
 
       <section class="surface-card card-pad">
-        <div class="section-title">Joker hakları</div>
-        <p class="text-muted note" style="margin-bottom: 1rem">
-          Lig değerleri yeni açılan hesaplara verilir. Eleme değerleri lig biterken herkese
-          yeniden dağıtılır. Buradaki değişiklik kimsenin elindeki hakları değiştirmez, tek tek
-          düzeltmek için Kullanıcılar sayfasına bak.
-        </p>
+        <div class="section-title">{{ $t('admin.users.jokersTitle') }}</div>
+        <p class="text-muted note" style="margin-bottom: 1rem">{{ $t('admin.config.jokersNote') }}</p>
         <div class="table-scroll">
           <table class="grants">
             <thead>
               <tr>
-                <th style="text-align: left">Dönem</th>
+                <th style="text-align: left">{{ $t('admin.config.phase') }}</th>
                 <th v-for="code in JOKER_CODES" :key="code">
-                  <span class="joker-head"><JokerIcon :code="code" :size="14" /> {{ JOKER_NAMES[code] }}</span>
+                  <span class="joker-head"><JokerIcon :code="code" :size="14" /> {{ $t(`joker.${code}`) }}</span>
                 </th>
               </tr>
             </thead>
             <tbody>
-              <tr v-for="act in ACTS" :key="act.key">
-                <td style="text-align: left"><b>{{ act.label }}</b></td>
+              <tr v-for="act in ACTS" :key="act">
+                <td style="text-align: left"><b>{{ $t(`admin.config.act.${act}`) }}</b></td>
                 <td v-for="code in JOKER_CODES" :key="code">
                   <InputNumber
-                    v-model="config.joker_inventory_defaults[act.key][code]"
+                    v-model="config.joker_inventory_defaults[act][code]"
                     :min="0"
                     :max="99"
                     :use-grouping="false"
@@ -163,32 +155,28 @@ onMounted(load);
       </section>
 
       <section class="surface-card card-pad">
-        <div class="section-title">Kilit uyarısı</div>
+        <div class="section-title">{{ $t('admin.config.dramaTitle') }}</div>
         <div class="row">
           <InputNumber
             v-model="dramaHours"
             :min="0"
             :max="48"
             :max-fraction-digits="1"
-            suffix=" saat"
+            :suffix="$t('admin.config.hoursSuffix')"
             show-buttons
             :input-style="{ width: '6rem' }"
           />
-          <p class="text-muted note">Kilide bu kadar kalınca haftalık sayfadaki sayaç uyarı rengine geçer.</p>
+          <p class="text-muted note">{{ $t('admin.config.dramaNote') }}</p>
         </div>
       </section>
 
       <section class="surface-card card-pad">
-        <div class="section-title">Sezon</div>
+        <div class="section-title">{{ $t('admin.config.seasonTitle') }}</div>
         <div class="row">
-          <Tag :value="config.current_act === 'league_phase' ? 'Lig aşaması' : 'Eleme turları'" />
-          <p class="text-muted note">
-            Sezon kendi kendine ilerliyor. Lig bitince eleme turları kuruluyor, biten turların
-            galipleri bir sonrakine yazılıyor. Skorlar geciktiyse aynı kontrolü buradan elle
-            çalıştırabilirsin.
-          </p>
+          <Tag :value="$t(`admin.config.act.${config.current_act}`)" />
+          <p class="text-muted note">{{ $t('admin.config.seasonNote') }}</p>
           <Button
-            label="Sezonu kontrol et"
+            :label="$t('admin.config.checkSeason')"
             severity="secondary"
             outlined
             :loading="advancing"

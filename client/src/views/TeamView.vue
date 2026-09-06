@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import Button from 'primevue/button';
 import Tag from 'primevue/tag';
@@ -18,16 +19,13 @@ interface TeamDetail {
   }[];
 }
 
+const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const detail = ref<TeamDetail | null>(null);
 const openMatch = ref<string | null>(null);
 const loading = ref(true);
 const error = ref<string | null>(null);
-
-const statusLabel: Record<string, string> = {
-  scheduled: 'Planlandı', live: 'Canlı', finished: 'Bitti', postponed: 'Ertelendi', cancelled: 'İptal',
-};
 
 function initials(name: string) { return name.split(' ').map((w) => w[0]).slice(0, 3).join('').toUpperCase(); }
 
@@ -37,7 +35,7 @@ async function load(id: string) {
   try {
     detail.value = await api.get<TeamDetail>(`/api/teams/${id}`);
   } catch (e) {
-    error.value = e instanceof ApiRequestError ? e.message : 'Yüklenemedi';
+    error.value = e instanceof ApiRequestError ? e.message : t('common.loadFailed');
   } finally {
     loading.value = false;
   }
@@ -49,7 +47,7 @@ watch(() => route.params.id, (id) => id && load(id as string));
 
 <template>
   <div class="page-stack">
-    <Button label="Geri" text style="align-self: flex-start" @click="router.back()">
+    <Button :label="$t('common.back')" text style="align-self: flex-start" @click="router.back()">
       <template #icon><ArrowLeft :size="16" /></template>
     </Button>
 
@@ -64,19 +62,24 @@ watch(() => route.params.id, (id) => id && load(id as string));
           <div class="tag-row" style="margin-top: 0.4rem">
             <Tag :value="detail.team.tierName" />
             <span v-if="detail.team.country" class="text-muted">{{ detail.team.country }}</span>
-            <Tag v-if="detail.team.eliminated" severity="danger" value="Elendi" />
+            <Tag v-if="detail.team.eliminated" severity="danger" :value="$t('common.eliminated')" />
           </div>
         </div>
         <div class="total">
           <div class="total-num">{{ detail.totalPoints }}</div>
-          <small class="text-muted">toplam puan</small>
+          <small class="text-muted">{{ $t('team.totalPoints') }}</small>
         </div>
       </section>
 
       <section class="surface-card table-scroll">
         <table class="matches">
           <thead>
-            <tr><th style="text-align: left">Hafta</th><th style="text-align: left">Maç</th><th>Durum</th><th>Puan</th></tr>
+            <tr>
+              <th style="text-align: left">{{ $t('team.weekColumn') }}</th>
+              <th style="text-align: left">{{ $t('team.matchColumn') }}</th>
+              <th>{{ $t('team.statusColumn') }}</th>
+              <th>{{ $t('team.pointsColumn') }}</th>
+            </tr>
           </thead>
           <tbody>
             <template v-for="m in detail.matches" :key="m.matchId">
@@ -94,12 +97,12 @@ watch(() => route.params.id, (id) => id && load(id as string));
                   :opponent-score="m.opponentScore"
                 />
               </td>
-              <td class="text-muted" style="font-size: 0.85rem">{{ statusLabel[m.status] ?? m.status }}</td>
+              <td class="text-muted" style="font-size: 0.85rem">{{ $t(`matchStatus.${m.status}`) }}</td>
               <td>
                 <strong v-if="m.points !== null" :class="m.points >= 0 ? 'text-positive' : 'text-negative'">
                   {{ m.points > 0 ? '+' : '' }}{{ m.points }}
                 </strong>
-                <span v-else class="text-muted">-</span>
+                <span v-else class="text-muted">{{ $t('common.none') }}</span>
               </td>
             </tr>
             <tr v-if="openMatch === m.matchId" class="entry-row">

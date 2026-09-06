@@ -18,10 +18,12 @@ real match results. See [PLAN.md](PLAN.md) for the authoritative product spec.
 >
 > The season now runs on **real data**: all 36 clubs carry their
 > football-data.org ids and crests, and the league phase holds UEFA's published
-> fixture list rather than a stand-in draw. Phase 7 in [PLAN.md](PLAN.md) §13
-> tracks what is left, which is production deploy configuration and deeper
-> edge-case tests. The mock provider stays in the tree for local work against a
-> simulated clock.
+> fixture list rather than a stand-in draw. The game is also **bilingual**:
+> every screen reads in Turkish or English, and the choice lives on the account
+> rather than the browser, so switching on a phone switches the desktop too.
+> Phase 7 in [PLAN.md](PLAN.md) §13 tracks what is left, which is production
+> deploy configuration and deeper edge-case tests. The mock provider stays in
+> the tree for local work against a simulated clock.
 
 ## Stack
 
@@ -190,6 +192,28 @@ it.
 The rate limiter and the background jobs live in the process, so run **one**
 instance. Two would each keep their own login counter and each poll the
 provider.
+
+## Languages
+
+The interface is Turkish and English. Nothing a person reads is written where
+it is used:
+
+| Where the words live               | What is in it                                                  |
+| ---------------------------------- | -------------------------------------------------------------- |
+| `client/src/i18n/tr.ts`, `en.ts`   | every string on screen                                          |
+| `server/src/i18n/messages.ts`      | API error messages, and the labels the API derives (matchweek names, knockout rounds, fixture difficulty, scoring rules) |
+
+The client sends its active language as `Accept-Language` on every request, and
+the API answers in it. Turkish is the fallback for anything either catalogue is
+missing.
+
+A player's choice is stored on their account (`users.language`) and read back at
+sign-in, so it follows them between devices. `localStorage` and the browser's
+own language setting only decide what a session that has not signed in yet sees.
+
+Adding a language means adding a catalogue on both sides and a code to `LOCALES`
+in `client/src/i18n/index.ts` and `server/src/i18n/messages.ts`, plus the
+`users_language_supported` check constraint.
 
 ## Auth model
 

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useToast } from 'primevue/usetoast';
 import Select from 'primevue/select';
 import InputNumber from 'primevue/inputnumber';
@@ -11,6 +12,7 @@ import { api, ApiRequestError } from '@/lib/api';
 import PageHeader from '@/components/PageHeader.vue';
 import BallLoader from '@/components/BallLoader.vue';
 import { groupMatchweeks, matchweekTitle, type MatchweekMenu } from '@/lib/matchweeks';
+import { formatShortDateTime } from '@/lib/format';
 
 interface MatchRow {
   id: string; matchweek_id: string; status: string;
@@ -19,6 +21,7 @@ interface MatchRow {
 }
 interface MwOption { id: string; label: string; menu: MatchweekMenu }
 
+const { t } = useI18n();
 const toast = useToast();
 const matchweeks = ref<MwOption[]>([]);
 const weekGroups = computed(() => groupMatchweeks(matchweeks.value));
@@ -27,10 +30,10 @@ const matches = ref<MatchRow[]>([]);
 const loading = ref(false);
 const savingId = ref<string | null>(null);
 
-const statusOptions = [
-  { label: 'Planlandı', value: 'scheduled' }, { label: 'Canlı', value: 'live' },
-  { label: 'Bitti', value: 'finished' }, { label: 'Ertelendi', value: 'postponed' }, { label: 'İptal', value: 'cancelled' },
-];
+const STATUSES = ['scheduled', 'live', 'finished', 'postponed', 'cancelled'] as const;
+const statusOptions = computed(() =>
+  STATUSES.map((value) => ({ value, label: t(`matchStatus.${value}`) })),
+);
 
 async function loadMatchweeks() {
   const res = await api.get<{ matchweeks: MwOption[] }>('/api/tournament/status');
@@ -46,7 +49,7 @@ async function loadMatches() {
     const res = await api.get<{ matches: MatchRow[] }>(`/api/admin/matches?matchweek=${encodeURIComponent(selectedMw.value)}`);
     matches.value = res.matches;
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Maçlar yüklenemedi', detail: msg(e), life: 4000 });
+    toast.add({ severity: 'error', summary: t('admin.matches.loadFailed'), detail: msg(e), life: 4000 });
   } finally {
     loading.value = false;
   }
@@ -55,10 +58,10 @@ async function saveResult(m: MatchRow) {
   savingId.value = m.id;
   try {
     await api.put(`/api/admin/matches/${m.id}/result`, { homeScore: m.home_score, awayScore: m.away_score, status: m.status });
-    toast.add({ severity: 'success', summary: 'Skor kaydedildi', life: 2000 });
+    toast.add({ severity: 'success', summary: t('admin.matches.scoreSaved'), life: 2000 });
     await loadMatches();
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Kaydedilemedi', detail: msg(e), life: 4000 });
+    toast.add({ severity: 'error', summary: t('common.saveFailed'), detail: msg(e), life: 4000 });
   } finally {
     savingId.value = null;
   }
@@ -66,10 +69,10 @@ async function saveResult(m: MatchRow) {
 async function clearOverride(m: MatchRow) {
   try {
     await api.post(`/api/admin/matches/${m.id}/clear-override`);
-    toast.add({ severity: 'success', summary: 'Sonuç sağlayıcıya bırakıldı', life: 2000 });
+    toast.add({ severity: 'success', summary: t('admin.matches.overrideCleared'), life: 2000 });
     await loadMatches();
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Geri alınamadı', detail: msg(e), life: 4000 });
+    toast.add({ severity: 'error', summary: t('admin.matches.clearFailed'), detail: msg(e), life: 4000 });
   }
 }
 
@@ -86,20 +89,19 @@ const auditTarget = ref<MatchRow | null>(null);
 const audits = ref<Audit[]>([]);
 const auditLoading = ref(false);
 
-const FIELD_LABEL: Record<string, string> = {
-  home_score: 'ev skoru',
-  away_score: 'deplasman skoru',
-  status: 'durum',
-};
-const VALUE_LABEL: Record<string, string> = {
-  scheduled: 'planlandı', live: 'canlı', finished: 'bitti', postponed: 'ertelendi', cancelled: 'iptal',
-};
+function fieldLabel(field: string) {
+  const key = `admin.matches.field.${field}`;
+  const label = t(key);
+  return label === key ? field : label;
+}
 function auditValue(v: unknown) {
   if (v === null || v === undefined) return '-';
-  return VALUE_LABEL[String(v)] ?? String(v);
+  const key = `matchStatus.${String(v)}`;
+  const label = t(key);
+  return label === key ? String(v) : label.toLocaleLowerCase();
 }
 function auditWhen(iso: string) {
-  return new Date(iso).toLocaleString('tr-TR', { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
+  return formatShortDateTime(iso);
 }
 
 async function openAudits(m: MatchRow) {
@@ -112,19 +114,19 @@ async function openAudits(m: MatchRow) {
     audits.value = res.audits;
   } catch (e) {
     auditDialog.value = false;
-    toast.add({ severity: 'error', summary: 'Geçmiş açılamadı', detail: msg(e), life: 4000 });
+    toast.add({ severity: 'error', summary: t('admin.matches.auditFailed'), detail: msg(e), life: 4000 });
   } finally {
     auditLoading.value = false;
   }
 }
-function msg(e: unknown) { return e instanceof ApiRequestError ? e.message : 'Beklenmeyen hata'; }
+function msg(e: unknown) { return e instanceof ApiRequestError ? e.message : t('common.unexpectedError'); }
 onMounted(async () => { await loadMatchweeks(); await loadMatches(); });
 watch(selectedMw, loadMatches);
 </script>
 
 <template>
   <div class="page-stack">
-    <PageHeader title="Maçlar" subtitle="Bir maçı bitti yaptığın anda puanları işlenir. Elle girdiğin skoru sağlayıcı bir daha ezmez.">
+    <PageHeader :title="$t('nav.admin.matches')" :subtitle="$t('admin.matches.subtitle')">
       <template #actions>
         <Select
           v-model="selectedMw"
@@ -133,10 +135,10 @@ watch(selectedMw, loadMatches);
           option-group-children="items"
           option-label="label"
           option-value="value"
-          placeholder="Hafta"
+          :placeholder="$t('admin.matches.week')"
           style="min-width: 200px"
         >
-          <template #value="{ value }">{{ matchweekTitle(matchweeks, value) || 'Hafta' }}</template>
+          <template #value="{ value }">{{ matchweekTitle(matchweeks, value) || $t('admin.matches.week') }}</template>
         </Select>
       </template>
     </PageHeader>
@@ -157,14 +159,14 @@ watch(selectedMw, loadMatches);
         <div class="controls">
           <Select v-model="m.status" :options="statusOptions" option-label="label" option-value="value" class="status-select" />
           <span v-if="m.is_manual_override" class="override-mark">
-            <Tag severity="warn" value="elle girildi" />
+            <Tag severity="warn" :value="$t('admin.matches.manual')" />
             <Button
               size="small"
               severity="secondary"
               text
               rounded
-              :aria-label="`${m.home_name} - ${m.away_name}: skoru sağlayıcıya geri bırak`"
-              title="Skoru sağlayıcıya geri bırak"
+              :aria-label="$t('admin.matches.clearAria', { match: `${m.home_name} - ${m.away_name}` })"
+              :title="$t('admin.matches.clear')"
               @click="clearOverride(m)"
             >
               <template #icon><Undo2 :size="16" /></template>
@@ -175,35 +177,41 @@ watch(selectedMw, loadMatches);
             severity="secondary"
             text
             rounded
-            :aria-label="`${m.home_name} - ${m.away_name}: elle yapılan değişiklikler`"
-            title="Elle yapılan değişiklikler"
+            :aria-label="$t('admin.matches.auditAria', { match: `${m.home_name} - ${m.away_name}` })"
+            :title="$t('admin.matches.auditTitle')"
             @click="openAudits(m)"
           >
             <template #icon><History :size="16" /></template>
           </Button>
-          <Button label="Kaydet" size="small" :loading="savingId === m.id" @click="saveResult(m)" />
+          <Button :label="$t('common.save')" size="small" :loading="savingId === m.id" @click="saveResult(m)" />
         </div>
       </div>
-      <p v-if="!matches.length" class="empty-state">Bu hafta için maç yok.</p>
+      <p v-if="!matches.length" class="empty-state">{{ $t('admin.matches.empty') }}</p>
     </div>
 
     <Dialog
       v-model:visible="auditDialog"
       modal
-      :header="auditTarget ? `${auditTarget.home_name} - ${auditTarget.away_name}` : 'Elle yapılan değişiklikler'"
+      :header="
+        auditTarget
+          ? `${auditTarget.home_name} - ${auditTarget.away_name}`
+          : $t('admin.matches.auditTitle')
+      "
       :style="{ width: '460px' }"
     >
       <BallLoader v-if="auditLoading" />
-      <p v-else-if="!audits.length" class="text-muted" style="margin: 0">Bu maça kimse elle dokunmamış.</p>
+      <p v-else-if="!audits.length" class="text-muted" style="margin: 0">{{ $t('admin.matches.auditEmpty') }}</p>
       <ul v-else class="audit-list">
         <li v-for="a in audits" :key="a.id" class="audit-row">
           <div class="audit-head">
-            <b>{{ a.action === 'clear_override' ? 'Sağlayıcıya bırakıldı' : 'Skor elle girildi' }}</b>
-            <span class="text-muted">{{ a.adminName ?? 'silinmiş hesap' }} · {{ auditWhen(a.createdAt) }}</span>
+            <b>{{ a.action === 'clear_override' ? $t('admin.matches.auditCleared') : $t('admin.matches.auditManual') }}</b>
+            <span class="text-muted">
+              {{ a.adminName ?? $t('admin.matches.deletedAccount') }} · {{ auditWhen(a.createdAt) }}
+            </span>
           </div>
           <div v-if="Object.keys(a.changedFields).length" class="audit-changes">
             <span v-for="(change, field) in a.changedFields" :key="field" class="audit-chip">
-              {{ FIELD_LABEL[field] ?? field }}: {{ auditValue(change.from) }} → <b>{{ auditValue(change.to) }}</b>
+              {{ fieldLabel(String(field)) }}: {{ auditValue(change.from) }} → <b>{{ auditValue(change.to) }}</b>
             </span>
           </div>
         </li>

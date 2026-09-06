@@ -217,15 +217,15 @@ export async function setLineup(
   captainTeamId: string,
 ): Promise<ResolvedLineup> {
   const squad = await getEffectiveSquad(userId, mwId);
-  if (squad.length === 0) throw ApiError.badRequest('Önce kadronu kurmalısın', 'no_squad');
+  if (squad.length === 0) throw ApiError.badRequest('no_squad');
 
   const ordered = await getOrderedMatchweeks();
   const editability = lineupEditability(ordered, mwId);
   if (!editability.opened) {
-    throw ApiError.forbidden('Bu hafta henüz düzenlemeye açılmadı', 'matchweek_not_open');
+    throw ApiError.forbidden('matchweek_not_open');
   }
   if (editability.locked) {
-    throw ApiError.forbidden('Bu hafta kilitlendi', 'matchweek_locked');
+    throw ApiError.forbidden('matchweek_locked');
   }
 
   const active = await getActiveJokerRaw(userId, mwId);
@@ -235,22 +235,19 @@ export async function setLineup(
   const benchBoost = active?.code === 'bench_boost';
   const validation = validateLineup(squadClubs, benchTeamId, captainTeamId, benchBoost);
   if (!validation.ok) {
-    throw ApiError.badRequest(validation.error.message, validation.error.code);
+    throw ApiError.badRequest(validation.error.code);
   }
 
   // A club swapped in for this week came to play. It cannot be benched.
   if (active?.code === 'weekly_swap' && benchTeamId === active.payload.toTeamId) {
-    throw ApiError.badRequest(
-      'Bu hafta takasla gelen kulüp yedeğe çekilemez',
-      'swap_club_cannot_bench',
-    );
+    throw ApiError.badRequest('swap_club_cannot_bench');
   }
 
   // Benching a shielded club would cancel the joker (§3.6), so answer 409 and
   // let the client confirm first. One live joker per week is guaranteed by the
   // partial unique index, so `active` is the only activation there can be.
   if (active?.code === 'clean_sheet_shield' && benchTeamId === active.payload.teamId) {
-    throw new ApiError(409, 'joker_bench_conflict', 'Kalkan taktığın kulübü yedeğe çekiyorsun');
+    throw new ApiError(409, 'joker_bench_conflict');
   }
 
   await query(

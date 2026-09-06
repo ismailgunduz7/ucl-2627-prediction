@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { Zap, Shield, Repeat, Armchair } from '@lucide/vue';
 import { api } from '@/lib/api';
 import PageHeader from '@/components/PageHeader.vue';
@@ -10,47 +11,27 @@ interface Pot { tierId: number; tierName: string; teams: { id: string; name: str
 type JokerCounts = Record<string, number>;
 interface JokerGrants { league_phase: JokerCounts; knockout: JokerCounts }
 
+const { t } = useI18n();
 const rules = ref<RuleRow[]>([]);
 const pots = ref<Pot[]>([]);
 const predictionPoints = ref(3);
 const grants = ref<JokerGrants | null>(null);
 const loading = ref(true);
 
-const categoryLabel: Record<string, string> = { match: 'Maç', league: 'Lig', knockout: 'Eleme' };
-
 const jokers = [
-  {
-    code: 'triple_boost',
-    name: 'Üçlü kaptan',
-    icon: Zap,
-    desc: 'Kaptanın puanı iki yerine üç katına çıkar. Kilitten önce kaptan değiştirilirse joker yeni kaptana geçer.',
-  },
-  {
-    code: 'bench_boost',
-    name: 'Bench boost',
-    icon: Armchair,
-    desc: 'O hafta yedek dahil dört kulübün puanı birden yazılır. Kaptanlık yedekteki kulübe de verilebilir.',
-  },
-  {
-    code: 'clean_sheet_shield',
-    name: 'Gol yememe kalkanı',
-    icon: Shield,
-    desc: 'Sahadaki bir kulübe takılır. Kulüp tek gol yerse gol yememiş sayılır: gol yememe bonusu verilir, o golün cezası işlenmez. İki ve üzeri golde kalkan kırılır ve normal puanlama uygulanır. Kalkanlı kulüp yedeğe çekilirse joker iptal edilir ve hak iade edilir.',
-  },
-  {
-    code: 'weekly_swap',
-    name: 'Haftalık değişim',
-    icon: Repeat,
-    desc: 'Bir kulübün yerine aynı pottan, kadroda olmayan ve elenmemiş bir kulüp yalnızca o haftalık alınır. Gelen kulüp yedeğe çekilemez. Çıkan kulüp kaptansa kaptanlık gelen kulübe geçer. Hafta bitince kadro kendiliğinden eski haline döner.',
-  },
+  { code: 'triple_boost', icon: Zap },
+  { code: 'bench_boost', icon: Armchair },
+  { code: 'clean_sheet_shield', icon: Shield },
+  { code: 'weekly_swap', icon: Repeat },
 ];
 
 function grantLine(code: string): string | null {
   const g = grants.value;
   if (!g) return null;
-  const league = g.league_phase[code] ?? 0;
-  const ko = g.knockout[code] ?? 0;
-  return `Lig aşamasında ${league}, eleme turlarında ${ko} hak`;
+  return t('rules.jokerGrant', {
+    league: g.league_phase[code] ?? 0,
+    knockout: g.knockout[code] ?? 0,
+  });
 }
 
 onMounted(async () => {
@@ -73,45 +54,31 @@ onMounted(async () => {
 
 <template>
   <div class="page-stack rules-page">
-    <PageHeader title="Nasıl oynanır" />
+    <PageHeader :title="$t('rules.title')" />
 
     <BallLoader v-if="loading" />
 
     <template v-else>
       <section class="surface-card card-pad">
-        <div class="section-title">Kadro</div>
-        <p>
-          Her pottan bir kulüp seçilerek dört kulüplük kadro kurulur. Kadro ilk haftanın kilidine
-          kadar serbestçe değiştirilebilir, sonrasında sezon boyunca sabit kalır. Tek kalıcı
-          değişiklik hakkı lig aşaması bitince tanınır. Her hafta dört kulüpten biri yedeğe
-          çekilir, sahada kalan üçten birine kaptanlık verilir. Yedeğe çekilen kulübün puanı o
-          hafta yazılmaz, kaptanın puanı ise ikiyle çarpılır. Elenen kulüp kadrodan düşmez ama
-          maçı kalmadığı için puan da getirmez.
-        </p>
+        <div class="section-title">{{ $t('rules.squadTitle') }}</div>
+        <p>{{ $t('rules.squadBody') }}</p>
       </section>
 
       <section class="surface-card card-pad">
-        <div class="section-title">Kilitler</div>
-        <p>
-          Bir hafta, o haftanın ilk maçından <b>beş dakika önce</b> kilitlenir. Diziliş, joker ve
-          kupon o ana kadar serbestçe değiştirilebilir. İlk maçın başlamasıyla iki şey olur:
-          sıradaki hafta düzenlemeye açılır ve tüm oyuncuların tercihleri (yedek, kaptan, varsa
-          joker) birbirine görünür hale gelir. Kilitten önce hiçbir tercih başkasına gösterilmez.
-        </p>
+        <div class="section-title">{{ $t('rules.locksTitle') }}</div>
+        <i18n-t keypath="rules.locksBody" tag="p" scope="global">
+          <template #fiveMinutes><b>{{ $t('rules.fiveMinutes') }}</b></template>
+        </i18n-t>
       </section>
 
       <section class="surface-card card-pad">
-        <div class="section-title">Puan tablosu</div>
-        <p>
-          Aynı sonuç, zayıf pottaki bir kulüp için daha değerlidir. Güçlü bir kulübün kötü sonucu
-          ise daha ağır cezalandırılır. Bir kulüp aynı hafta iki maç oynarsa ikisinin puanı da
-          yazılır.
-        </p>
+        <div class="section-title">{{ $t('rules.tableTitle') }}</div>
+        <p>{{ $t('rules.tableBody') }}</p>
         <div class="table-scroll">
           <table class="rules">
             <thead>
               <tr>
-                <th style="text-align: left">Kural</th>
+                <th style="text-align: left">{{ $t('rules.ruleColumn') }}</th>
                 <th v-for="p in pots" :key="p.tierId">{{ p.tierName }}</th>
               </tr>
             </thead>
@@ -119,7 +86,7 @@ onMounted(async () => {
               <tr v-for="r in rules" :key="r.code">
                 <td style="text-align: left">
                   <strong>{{ r.label }}</strong>
-                  <span class="rule-cat">{{ categoryLabel[r.category] ?? r.category }}</span>
+                  <span class="rule-cat">{{ $t(`rules.category.${r.category}`) }}</span>
                 </td>
                 <td v-for="p in pots" :key="p.tierId" :class="(r.points[p.tierId] ?? 0) < 0 ? 'text-negative' : ''">
                   {{ r.points[p.tierId] ?? 0 }}
@@ -131,54 +98,36 @@ onMounted(async () => {
       </section>
 
       <section class="surface-card card-pad">
-        <div class="section-title">Jokerler</div>
-        <p>
-          Haftada en fazla bir joker oynanabilir. Kilitten önce vazgeçilirse hak iade edilir.
-          Haklar lig aşamasının başında verilir, lig bitince eleme turları için yeniden dağıtılır.
-        </p>
+        <div class="section-title">{{ $t('rules.jokersTitle') }}</div>
+        <p>{{ $t('rules.jokersBody') }}</p>
         <div class="joker-grid stagger">
           <div v-for="j in jokers" :key="j.code" class="joker-card">
             <div class="joker-head">
               <component :is="j.icon" :size="18" />
-              <b>{{ j.name }}</b>
+              <b>{{ $t(`joker.${j.code}`) }}</b>
             </div>
-            <p class="joker-desc">{{ j.desc }}</p>
+            <p class="joker-desc">{{ $t(`rules.jokerDesc.${j.code}`) }}</p>
             <small v-if="grantLine(j.code)" class="joker-grant">{{ grantLine(j.code) }}</small>
           </div>
         </div>
       </section>
 
       <section class="surface-card card-pad">
-        <div class="section-title">Lig bitince</div>
-        <p>
-          Lig aşaması tamamlandığında 25-36. sıradaki kulüpler elenir. İlk sekize giren kulüpler
-          play-off oynamadan son 16'ya geçer ve boşta geçirecekleri haftalar için tek seferlik
-          "Lig ilk 8 bonusu" alır.
-        </p>
-        <p>
-          Joker hakları eleme turları için yeniden dağıtılır. Ayrıca bir transfer hakkı tanınır:
-          kadrodan bir kulüp, aynı pottan başka bir kulüple <b>kalıcı olarak</b> değiştirilebilir.
-          Pencere ilk eleme haftasının kilidine kadar açık kalır, bu süre içinde seçim istenildiği
-          kadar güncellenebilir. Kullanılmayan hak yanar.
-        </p>
-        <p>
-          Eleme turlarında her ayak kendi haftasıdır. Diziliş, joker ve kupon ayak ayak kilitlenir.
-        </p>
+        <div class="section-title">{{ $t('rules.knockoutTitle') }}</div>
+        <p>{{ $t('rules.knockoutBody1') }}</p>
+        <i18n-t keypath="rules.knockoutBody2" tag="p" scope="global">
+          <template #permanently><b>{{ $t('rules.permanently') }}</b></template>
+        </i18n-t>
+        <p>{{ $t('rules.knockoutBody3') }}</p>
       </section>
 
       <section class="surface-card card-pad">
-        <div class="section-title">Ahtapot Paul</div>
-        <p>
-          Haftanın her maçı için ev sahibi galibiyeti (MS1), beraberlik (MS0) ya da deplasman
-          galibiyeti (MS2) tahmini yapılabilir. Maçın oyuncunun kendi kulüplerine ait olması
-          gerekmez. Tutan her tahmin {{ predictionPoints }} puan kazandırır ve haftalık toplama
-          eklenir. Kupon dizilişle aynı anda kilitlenir. Seçili tahmine yeniden basıldığında
-          tahmin geri alınır.
-        </p>
+        <div class="section-title">{{ $t('paul.name') }}</div>
+        <p>{{ $t('rules.paulBody', { points: predictionPoints }) }}</p>
       </section>
 
       <section class="surface-card card-pad">
-        <div class="section-title">Potlar ve kulüpler</div>
+        <div class="section-title">{{ $t('rules.potsTitle') }}</div>
         <div class="pot-grid">
           <div v-for="p in pots" :key="p.tierId" class="pot-box">
             <div class="pot-box-head">{{ p.tierName }}</div>

@@ -63,9 +63,9 @@ export async function getPlayerPoints(
     [playerId],
   );
   const user = userRes.rows[0];
-  if (!user || user.is_admin) throw ApiError.badRequest('Oyuncu bulunamadı', 'player_not_found');
+  if (!user || user.is_admin) throw ApiError.badRequest('player_not_found');
   if (!viewerCompetitionId || user.competition_id !== viewerCompetitionId) {
-    throw ApiError.forbidden('Bu oyuncuyu görüntüleyemezsin', 'different_competition');
+    throw ApiError.forbidden('different_competition');
   }
 
   const mwRes = await query<{ id: string; label: string; status: string }>(

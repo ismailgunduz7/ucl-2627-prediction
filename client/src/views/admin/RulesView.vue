@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useToast } from 'primevue/usetoast';
 import InputNumber from 'primevue/inputnumber';
 import Button from 'primevue/button';
@@ -11,14 +12,13 @@ import OctopusMark from '@/components/OctopusMark.vue';
 
 interface RuleRow { code: string; category: string; label: string; points: Record<number, number> }
 
+const { t } = useI18n();
 const toast = useToast();
 const rules = ref<RuleRow[]>([]);
 const predictionPoints = ref(3);
 const loading = ref(true);
 const saving = ref(false);
 const recalculating = ref(false);
-
-const categoryLabel: Record<string, string> = { match: 'Maç', league: 'Lig', knockout: 'Eleme' };
 
 async function load() {
   loading.value = true;
@@ -30,7 +30,7 @@ async function load() {
     rules.value = res.rules;
     predictionPoints.value = cfg.config.prediction_points_per_correct;
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Kurallar yüklenemedi', detail: msg(e), life: 4000 });
+    toast.add({ severity: 'error', summary: t('admin.rules.loadFailed'), detail: msg(e), life: 4000 });
   } finally {
     loading.value = false;
   }
@@ -47,9 +47,9 @@ async function save() {
       }),
     ]);
     rules.value = res.rules;
-    toast.add({ severity: 'success', summary: 'Kurallar kaydedildi', life: 2500 });
+    toast.add({ severity: 'success', summary: t('admin.rules.saved'), life: 2500 });
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Kaydedilemedi', detail: msg(e), life: 4000 });
+    toast.add({ severity: 'error', summary: t('common.saveFailed'), detail: msg(e), life: 4000 });
   } finally {
     saving.value = false;
   }
@@ -58,26 +58,32 @@ async function recalculate() {
   recalculating.value = true;
   try {
     const res = await api.post<{ matchesScored: number }>('/api/admin/recalculate');
-    toast.add({ severity: 'success', summary: `${res.matchesScored} maç yeniden puanlandı`, life: 3500 });
+    toast.add({ severity: 'success', summary: t('admin.rules.recalculated', { count: res.matchesScored }), life: 3500 });
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Yeniden hesaplanamadı', detail: msg(e), life: 4000 });
+    toast.add({ severity: 'error', summary: t('admin.rules.recalculateFailed'), detail: msg(e), life: 4000 });
   } finally {
     recalculating.value = false;
   }
 }
-function msg(e: unknown) { return e instanceof ApiRequestError ? e.message : 'Beklenmeyen hata'; }
+function msg(e: unknown) { return e instanceof ApiRequestError ? e.message : t('common.unexpectedError'); }
 onMounted(load);
 </script>
 
 <template>
   <div class="page-stack">
-    <PageHeader title="Puanlama kuralları" subtitle="Her kuralın puanını pot pot ayarla. Cezalar eksi yazılır.">
+    <PageHeader :title="$t('admin.rules.title')" :subtitle="$t('admin.rules.subtitle')">
       <template #actions>
         <div style="display: flex; gap: 0.5rem">
-          <Button label="Yeniden hesapla" severity="secondary" outlined :loading="recalculating" @click="recalculate">
+          <Button
+            :label="$t('admin.rules.recalculate')"
+            severity="secondary"
+            outlined
+            :loading="recalculating"
+            @click="recalculate"
+          >
             <template #icon><RefreshCw :size="16" /></template>
           </Button>
-          <Button label="Kaydet" :loading="saving" @click="save">
+          <Button :label="$t('common.save')" :loading="saving" @click="save">
             <template #icon><Check :size="16" /></template>
           </Button>
         </div>
@@ -87,8 +93,8 @@ onMounted(load);
     <BallLoader v-if="loading" />
 
     <section v-if="!loading" class="surface-card card-pad paul-config">
-      <span class="paul-name"><OctopusMark :size="19" /> Ahtapot Paul</span>
-      <label for="paulPoints" class="text-muted">tutan her tahmin</label>
+      <span class="paul-name"><OctopusMark :size="19" /> {{ $t('paul.name') }}</span>
+      <label for="paulPoints" class="text-muted">{{ $t('admin.rules.perCorrect') }}</label>
       <InputNumber
         v-model="predictionPoints"
         input-id="paulPoints"
@@ -101,22 +107,24 @@ onMounted(load);
         decrement-button-class="p-button-secondary"
         increment-button-class="p-button-secondary"
       />
-      <span class="text-muted">puan</span>
+      <span class="text-muted">{{ $t('admin.rules.pointsWord') }}</span>
     </section>
 
     <section v-if="!loading" class="surface-card table-scroll">
       <table class="rules">
         <thead>
           <tr>
-            <th style="text-align: left">Kural</th>
-            <th>Pot 1</th><th>Pot 2</th><th>Pot 3</th><th>Pot 4</th>
+            <th style="text-align: left">{{ $t('rules.ruleColumn') }}</th>
+            <th v-for="p in [1, 2, 3, 4]" :key="p">{{ $t('common.pot', { number: p }) }}</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="r in rules" :key="r.code">
             <td style="text-align: left">
               <strong>{{ r.label }}</strong>
-              <span class="text-muted" style="font-size: 0.75rem; display: block">{{ categoryLabel[r.category] ?? r.category }}</span>
+              <span class="text-muted" style="font-size: 0.75rem; display: block">
+                {{ $t(`rules.category.${r.category}`) }}
+              </span>
             </td>
             <td v-for="p in [1, 2, 3, 4]" :key="p">
               <InputNumber v-model="r.points[p]" :use-grouping="false" show-buttons button-layout="horizontal"

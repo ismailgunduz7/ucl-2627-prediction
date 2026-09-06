@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { JOKER_ICONS, jokerName } from '@/lib/jokers';
+import { useI18n } from 'vue-i18n';
+import { JOKER_ICONS } from '@/lib/jokers';
 
 // The armband shows a plain C normally. When a joker lifts the captain (triple
 // boost), it carries that joker's icon instead so the boost is obvious.
@@ -9,10 +10,14 @@ const props = withDefaults(
   { multiplier: 2, jokerCode: null, size: 26 },
 );
 
+const { t } = useI18n();
+
 const boosted = computed(() => props.multiplier > 2 && !!props.jokerCode);
 const icon = computed(() => (boosted.value ? JOKER_ICONS[props.jokerCode!] : null));
 const label = computed(() =>
-  boosted.value ? `Kaptan · ${jokerName(props.jokerCode)}` : 'Kaptan',
+  boosted.value
+    ? `${t('week.captain')} · ${t(`joker.${props.jokerCode}`)}`
+    : t('week.captain'),
 );
 </script>
 

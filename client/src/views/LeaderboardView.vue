@@ -41,10 +41,12 @@ onMounted(async () => {
 
 <template>
   <div class="page-stack">
-    <PageHeader title="Puan durumu" />
+    <PageHeader :title="$t('leaderboard.title')" />
 
     <BallLoader v-if="loading" />
-    <Message v-else-if="!rows.length" severity="secondary" :closable="false">Bu yarışmada henüz oyuncu yok.</Message>
+    <Message v-else-if="!rows.length" severity="secondary" :closable="false">
+      {{ $t('leaderboard.empty') }}
+    </Message>
 
     <template v-else>
       <div class="surface-card table-scroll">
@@ -52,9 +54,9 @@ onMounted(async () => {
           <thead>
             <tr>
               <th>#</th>
-              <th style="text-align: left">Oyuncu</th>
-              <th v-for="pot in POTS" :key="pot" class="pot-col">Pot {{ pot }}</th>
-              <th>Puan</th>
+              <th style="text-align: left">{{ $t('leaderboard.player') }}</th>
+              <th v-for="pot in POTS" :key="pot" class="pot-col">{{ $t('common.pot', { number: pot }) }}</th>
+              <th>{{ $t('leaderboard.points') }}</th>
             </tr>
           </thead>
           <tbody>
@@ -62,7 +64,7 @@ onMounted(async () => {
               <td class="rank">{{ e.rank }}</td>
               <td style="text-align: left">
                 <RouterLink :to="`/oyuncu/${e.userId}`" class="player-link">{{ e.displayName }}</RouterLink>
-                <span v-if="e.userId === meId" class="you"> · sen</span>
+                <span v-if="e.userId === meId" class="you"> · {{ $t('common.you') }}</span>
               </td>
               <td v-for="pot in POTS" :key="pot" class="pot-col">
                 <RouterLink
@@ -71,16 +73,16 @@ onMounted(async () => {
                   class="club-link"
                   :title="clubOf(e, pot)!.name"
                 >{{ clubOf(e, pot)!.shortName }}</RouterLink>
-                <span v-else class="text-muted">-</span>
+                <span v-else class="text-muted">{{ $t('common.none') }}</span>
               </td>
               <td class="total-cell">
                 <strong>{{ e.total }}</strong>
                 <span
                   v-if="e.provisionalPoints !== 0"
                   class="live-part"
-                  title="Oynanan maçlardan gelen pay. Maçlar bitince kesinleşir"
+                  :title="$t('leaderboard.liveHint')"
                 >
-                  <span class="dot" aria-hidden="true" />{{ signed(e.provisionalPoints) }} canlı
+                  <span class="dot" aria-hidden="true" />{{ signed(e.provisionalPoints) }} {{ $t('common.live') }}
                 </span>
               </td>
             </tr>

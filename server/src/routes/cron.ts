@@ -26,11 +26,11 @@ function assertAuthorised(header: string | undefined, bearer: string | undefined
   const { CRON_SECRET } = getEnv();
   if (!CRON_SECRET) {
     // Refusing beats running unauthenticated: this endpoint calls the provider.
-    throw ApiError.forbidden('CRON_SECRET tanımlı değil', 'cron_disabled');
+    throw ApiError.forbidden('cron_disabled');
   }
   const provided = header ?? bearer?.replace(/^Bearer\s+/i, '') ?? '';
   if (!secretMatches(provided, CRON_SECRET)) {
-    throw ApiError.unauthorized('Geçersiz cron anahtarı', 'invalid_cron_secret');
+    throw ApiError.unauthorized('invalid_cron_secret');
   }
 }
 

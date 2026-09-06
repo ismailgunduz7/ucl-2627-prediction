@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { getCookie } from 'hono/cookie';
 import { z } from 'zod';
 import { ApiError } from '../lib/errors.ts';
+import { LOCALES } from '../lib/i18n.ts';
 import { clearRefreshCookie, REFRESH_COOKIE, setRefreshCookie } from '../lib/cookies.ts';
 import { checkLoginRate, resetLoginRate } from '../lib/rate-limit.ts';
 import * as authService from '../services/auth-service.ts';
@@ -24,7 +25,7 @@ function clientIp(c: Parameters<typeof requireAuth>[0]): string {
 
 authRoutes.post('/login', async (c) => {
   const body = LoginSchema.safeParse(await c.req.json().catch(() => null));
-  if (!body.success) throw ApiError.badRequest('Kullanıcı adı ve şifre gerekli', 'invalid_body');
+  if (!body.success) throw ApiError.badRequest('credentials_required');
 
   const ip = clientIp(c);
   const { username, password } = body.data;
@@ -32,10 +33,7 @@ authRoutes.post('/login', async (c) => {
   const rate = checkLoginRate(ip, username);
   if (!rate.allowed) {
     c.header('Retry-After', String(rate.retryAfterSeconds));
-    throw ApiError.tooManyRequests(
-      `Çok fazla deneme yaptın, ${Math.ceil(rate.retryAfterSeconds / 60)} dakika sonra tekrar dene`,
-      rate.retryAfterSeconds,
-    );
+    throw ApiError.tooManyRequests(rate.retryAfterSeconds);
   }
 
   const session = await authService.login(username, password, {
@@ -50,7 +48,7 @@ authRoutes.post('/login', async (c) => {
 
 authRoutes.post('/refresh', async (c) => {
   const raw = getCookie(c, REFRESH_COOKIE);
-  if (!raw) throw ApiError.unauthorized('Oturum bulunamadı', 'no_refresh_cookie');
+  if (!raw) throw ApiError.unauthorized('no_refresh_cookie');
   const session = await authService.refresh(raw, {
     ip: clientIp(c),
     userAgent: c.req.header('user-agent'),
@@ -71,5 +69,21 @@ authRoutes.get('/me', requireAuth, async (c) => {
   const auth = c.get('auth');
   const user = await authService.getUserById(auth.sub);
   if (!user) throw ApiError.unauthorized();
+  return c.json({ user });
+});
+
+const LanguageSchema = z.object({ language: z.enum(LOCALES) });
+
+/**
+ * The language this account reads the game in.
+ *
+ * It is stored on the account rather than in the browser, so switching on a
+ * phone switches the desktop session too the next time it loads.
+ */
+authRoutes.put('/me/language', requireAuth, async (c) => {
+  const body = LanguageSchema.safeParse(await c.req.json().catch(() => null));
+  if (!body.success) throw ApiError.badRequest('invalid_language');
+  const auth = c.get('auth');
+  const user = await authService.setLanguage(auth.sub, body.data.language);
   return c.json({ user });
 });

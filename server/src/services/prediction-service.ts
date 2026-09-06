@@ -136,14 +136,14 @@ export async function savePrediction(
   const ordered = await getOrderedMatchweeks();
   const editability = lineupEditability(ordered, mwId);
   if (!editability.editable) {
-    throw ApiError.badRequest('Tahminler kilitlendi', 'predictions_locked');
+    throw ApiError.badRequest('predictions_locked');
   }
 
   const belongs = await query<{ id: string }>(
     'SELECT id FROM matches WHERE id = $1 AND matchweek_id = $2',
     [matchId, mwId],
   );
-  if (!belongs.rows[0]) throw ApiError.badRequest('Maç bu haftaya ait değil', 'match_not_in_week');
+  if (!belongs.rows[0]) throw ApiError.badRequest('match_not_in_week');
 
   if (pick === null) {
     await query('DELETE FROM match_predictions WHERE user_id = $1 AND match_id = $2', [
@@ -151,7 +151,7 @@ export async function savePrediction(
       matchId,
     ]);
   } else {
-    if (!isOutcome(pick)) throw ApiError.badRequest('Geçersiz tahmin', 'invalid_pick');
+    if (!isOutcome(pick)) throw ApiError.badRequest('invalid_pick');
     await query(
       `INSERT INTO match_predictions (user_id, match_id, pick) VALUES ($1, $2, $3)
        ON CONFLICT (user_id, match_id)

@@ -1,11 +1,13 @@
 <script setup lang="ts">
 import { computed } from 'vue';
-import { JOKER_ICONS, jokerName } from '@/lib/jokers';
+import { useI18n } from 'vue-i18n';
+import { JOKER_ICONS } from '@/lib/jokers';
 
 const props = withDefaults(defineProps<{ code: string; size?: number }>(), { size: 15 });
 
+const { t } = useI18n();
 const icon = computed(() => JOKER_ICONS[props.code]);
-const label = computed(() => jokerName(props.code));
+const label = computed(() => t(`joker.${props.code}`));
 </script>
 
 <template>

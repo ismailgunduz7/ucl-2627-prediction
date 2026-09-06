@@ -8,18 +8,18 @@
  * more than one seed of that gap.
  */
 
-export type DifficultyBand = 'kolay' | 'orta' | 'zor';
+export type DifficultyBand = 'easy' | 'medium' | 'hard';
 
 /** Ascending, so two fixtures can be compared for the harder one. */
-export const DIFFICULTY_ORDER: DifficultyBand[] = ['kolay', 'orta', 'zor'];
+export const DIFFICULTY_ORDER: DifficultyBand[] = ['easy', 'medium', 'hard'];
 
 const AWAY_PENALTY = 1.5;
 
 export function difficultyFor(ownTier: number, opponentTier: number, isAway: boolean): DifficultyBand {
   const score = ownTier - opponentTier + (isAway ? AWAY_PENALTY : 0);
-  if (score >= 2.5) return 'zor';
-  if (score >= 0) return 'orta';
-  return 'kolay';
+  if (score >= 2.5) return 'hard';
+  if (score >= 0) return 'medium';
+  return 'easy';
 }
 
 /** The harder of two bands, so a club playing twice is judged on its worst. */

@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useToast } from 'primevue/usetoast';
 import Select from 'primevue/select';
 import Button from 'primevue/button';
@@ -8,12 +9,14 @@ import Message from 'primevue/message';
 import Tag from 'primevue/tag';
 import { api, ApiRequestError } from '@/lib/api';
 import PageHeader from '@/components/PageHeader.vue';
+import { formatDateTime, formatTime } from '@/lib/format';
 
 interface SyncSummary { provider: string; fixturesSeen: number; matchesCreated: number; matchesUpserted: number; matchesFinished: number; skippedOverride: number; unmapped: number }
 interface SyncRun { id: string; provider: string; status: string; trigger: string; finished_at: string; fixtures_seen: number; matches_upserted: number; matches_finished: number }
 type SyncDriver = 'timer' | 'cron' | 'off';
 interface SchedulerStatus { driver: SyncDriver; enabled: boolean; polling: boolean; provider: string | null; pausedReason: 'mock_provider' | null; nextRunAt: string | null; lastRunAt: string | null; lastStatus: 'success' | 'error' | null; lastError: string | null; consecutiveFailures: number; throttled: boolean }
 
+const { t } = useI18n();
 const toast = useToast();
 const provider = ref<'mock' | 'football_data'>('mock');
 const simulatedNow = ref<string>('');
@@ -23,15 +26,13 @@ const runs = ref<SyncRun[]>([]);
 const scheduler = ref<SchedulerStatus | null>(null);
 let statusTimer: ReturnType<typeof setInterval> | null = null;
 
-const providerOptions = [
-  { label: 'Simülasyon', value: 'mock' },
+const providerOptions = computed(() => [
+  { label: t('admin.sync.providerMock'), value: 'mock' },
   { label: 'football-data.org', value: 'football_data' },
-];
-const PROVIDER_LABEL: Record<string, string> = {
-  mock: 'simülasyon',
-  football_data: 'football-data.org',
-};
-function providerLabel(name: string) { return PROVIDER_LABEL[name] ?? name; }
+]);
+function providerLabel(name: string) {
+  return name === 'mock' ? t('admin.sync.providerMockShort') : 'football-data.org';
+}
 
 async function loadRuns() {
   const res = await api.get<{ runs: SyncRun[]; scheduler: SchedulerStatus }>('/api/admin/sync/runs');
@@ -42,31 +43,31 @@ async function loadRuns() {
 const scheduleLine = computed(() => {
   const s = scheduler.value;
   if (!s) return '';
-  if (s.driver === 'off') return 'Arka planda kimse skor çekmiyor. Skorlar sadece sen buradan çektiğinde güncelleniyor.';
+  if (s.driver === 'off') return t('admin.sync.scheduleOff');
   if (s.driver === 'cron') {
-    if (s.pausedReason === 'mock_provider') {
-      return 'Simülasyon seçili olduğu için dışarıdan gelen tetikler skor çekmiyor. Gerçek sağlayıcıya geçtiğinde kendiliğinden başlar.';
-    }
-    return `Skorları dışarıdan gelen düzenli bir tetik çekiyor. Son çekim ${time(s.lastRunAt)}.`;
+    if (s.pausedReason === 'mock_provider') return t('admin.sync.scheduleCronPaused');
+    return t('admin.sync.scheduleCron', { time: time(s.lastRunAt) });
   }
-  if (s.pausedReason === 'mock_provider') {
-    return 'Simülasyon seçili olduğu için arka plan beklemede: saati sen veriyorsun. Gerçek sağlayıcıya geçtiğinde kendiliğinden başlar.';
-  }
-  if (s.polling) return 'Şu anda skorlar çekiliyor.';
+  if (s.pausedReason === 'mock_provider') return t('admin.sync.scheduleTimerPaused');
+  if (s.polling) return t('admin.sync.schedulePolling');
   if (s.consecutiveFailures > 0) {
-    const reason = s.throttled ? 'Sağlayıcı istek sınırına takıldı' : 'Son deneme başarısız oldu';
-    return `${reason}. ${s.consecutiveFailures}. denemeden sonra tekrar ${time(s.nextRunAt)} deneyecek.`;
+    const reason = s.throttled ? t('admin.sync.throttled') : t('admin.sync.lastFailed');
+    return t('admin.sync.scheduleRetry', {
+      reason,
+      attempts: s.consecutiveFailures,
+      time: time(s.nextRunAt),
+    });
   }
-  return `Sıradaki kontrol ${time(s.nextRunAt)}. Maç oynanırken sıklaşır, sakin dönemde seyrelir.`;
+  return t('admin.sync.scheduleNext', { time: time(s.nextRunAt) });
 });
 
 function driverLabel(s: SchedulerStatus) {
-  if (s.driver === 'off') return 'Kapalı';
-  if (s.pausedReason) return 'Beklemede';
-  return s.driver === 'cron' ? 'Dış tetik' : 'Otomatik';
+  if (s.driver === 'off') return t('admin.sync.driverOff');
+  if (s.pausedReason) return t('admin.sync.driverPaused');
+  return s.driver === 'cron' ? t('admin.sync.driverCron') : t('admin.sync.driverTimer');
 }
 function time(iso: string | null) {
-  return iso ? new Date(iso).toLocaleTimeString('tr-TR', { hour: '2-digit', minute: '2-digit' }) : '-';
+  return formatTime(iso);
 }
 async function runSync() {
   running.value = true;
@@ -75,16 +76,16 @@ async function runSync() {
     if (provider.value === 'mock' && simulatedNow.value) body.simulatedNow = new Date(simulatedNow.value).toISOString();
     const res = await api.post<{ summary: SyncSummary }>('/api/admin/sync', body);
     lastSummary.value = res.summary;
-    toast.add({ severity: 'success', summary: `${res.summary.matchesFinished} maç bitti`, life: 3500 });
+    toast.add({ severity: 'success', summary: t('admin.sync.finishedCount', { count: res.summary.matchesFinished }), life: 3500 });
     await loadRuns();
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Skorlar çekilemedi', detail: msg(e), life: 5000 });
+    toast.add({ severity: 'error', summary: t('admin.sync.failed'), detail: msg(e), life: 5000 });
   } finally {
     running.value = false;
   }
 }
-function msg(e: unknown) { return e instanceof ApiRequestError ? e.message : 'Beklenmeyen hata'; }
-function fmt(iso: string) { return new Date(iso).toLocaleString('tr-TR'); }
+function msg(e: unknown) { return e instanceof ApiRequestError ? e.message : t('common.unexpectedError'); }
+function fmt(iso: string) { return formatDateTime(iso); }
 
 /** Start on whichever provider the season is actually configured for (§5.1). */
 async function loadConfiguredProvider() {
@@ -106,7 +107,7 @@ onBeforeUnmount(() => { if (statusTimer) clearInterval(statusTimer); });
 
 <template>
   <div class="page-stack">
-    <PageHeader title="Skor çekme" subtitle="Maç sonuçları buradan geliyor. Oyuncuların gördüğü her şey veritabanından okunur, sağlayıcıya sadece bu sayfa ve arka plan işi gider." />
+    <PageHeader :title="$t('nav.admin.sync')" :subtitle="$t('admin.sync.subtitle')" />
 
     <section v-if="scheduler" class="surface-card card-pad schedule">
       <Tag
@@ -117,60 +118,68 @@ onBeforeUnmount(() => { if (statusTimer) clearInterval(statusTimer); });
       <small v-if="scheduler.lastError" class="text-muted">{{ scheduler.lastError }}</small>
     </section>
 
-    <Message severity="info" :closable="false">
-      Eleme turlarının fikstürü UEFA kurayı çektiğinde buradan kendiliğinden geliyor, elle maç
-      girmen gerekmiyor. Simülasyon ise ileri tarihli fikstürleri verdiğin saate göre oynatır.
-      İkisi de skorunu elle girdiğin maçlara dokunmaz.
-    </Message>
+    <Message severity="info" :closable="false">{{ $t('admin.sync.notice') }}</Message>
 
     <section class="surface-card card-pad">
       <div class="controls">
         <div class="form-field">
-          <label>Sağlayıcı</label>
+          <label>{{ $t('admin.sync.provider') }}</label>
           <Select v-model="provider" :options="providerOptions" option-label="label" option-value="value" style="min-width: 200px" />
         </div>
         <div v-if="provider === 'mock'" class="form-field">
-          <label>Simülasyon saati</label>
+          <label>{{ $t('admin.sync.simulatedClock') }}</label>
           <input v-model="simulatedNow" type="datetime-local" class="dt" />
         </div>
-        <Button label="Skorları çek" :loading="running" @click="runSync">
+        <Button :label="$t('admin.sync.run')" :loading="running" @click="runSync">
           <template #icon><RefreshCw :size="16" /></template>
         </Button>
       </div>
     </section>
 
     <div v-if="lastSummary" class="summary">
-      <div class="surface-card card-pad stat"><b>{{ lastSummary.fixturesSeen }}</b><small class="text-muted">maç görüldü</small></div>
-      <div class="surface-card card-pad stat"><b>{{ lastSummary.matchesCreated }}</b><small class="text-muted">yeni eklendi</small></div>
-      <div class="surface-card card-pad stat"><b>{{ lastSummary.matchesUpserted }}</b><small class="text-muted">güncellendi</small></div>
-      <div class="surface-card card-pad stat"><b>{{ lastSummary.matchesFinished }}</b><small class="text-muted">bitti</small></div>
-      <div class="surface-card card-pad stat"><b>{{ lastSummary.skippedOverride }}</b><small class="text-muted">elle girildiği için atlandı</small></div>
-      <div class="surface-card card-pad stat"><b>{{ lastSummary.unmapped }}</b><small class="text-muted">eşleşmedi</small></div>
+      <div class="surface-card card-pad stat"><b>{{ lastSummary.fixturesSeen }}</b><small class="text-muted">{{ $t('admin.sync.seen') }}</small></div>
+      <div class="surface-card card-pad stat"><b>{{ lastSummary.matchesCreated }}</b><small class="text-muted">{{ $t('admin.sync.created') }}</small></div>
+      <div class="surface-card card-pad stat"><b>{{ lastSummary.matchesUpserted }}</b><small class="text-muted">{{ $t('admin.sync.updated') }}</small></div>
+      <div class="surface-card card-pad stat"><b>{{ lastSummary.matchesFinished }}</b><small class="text-muted">{{ $t('admin.sync.finished') }}</small></div>
+      <div class="surface-card card-pad stat"><b>{{ lastSummary.skippedOverride }}</b><small class="text-muted">{{ $t('admin.sync.skipped') }}</small></div>
+      <div class="surface-card card-pad stat"><b>{{ lastSummary.unmapped }}</b><small class="text-muted">{{ $t('admin.sync.unmapped') }}</small></div>
     </div>
 
     <section class="surface-card" style="overflow: hidden">
-      <div class="card-pad section-title" style="margin: 0; border-bottom: 1px solid var(--color-border)">Son çekilenler</div>
+      <div class="card-pad section-title" style="margin: 0; border-bottom: 1px solid var(--color-border)">
+        {{ $t('admin.sync.recent') }}
+      </div>
       <div class="table-scroll">
         <table class="runs">
           <thead>
-            <tr><th>Zaman</th><th>Sağlayıcı</th><th>Kaynak</th><th>Sonuç</th><th>Görülen</th><th>Güncellenen</th><th>Biten</th></tr>
+            <tr>
+              <th>{{ $t('admin.sync.colTime') }}</th>
+              <th>{{ $t('admin.sync.provider') }}</th>
+              <th>{{ $t('admin.sync.colSource') }}</th>
+              <th>{{ $t('admin.sync.colResult') }}</th>
+              <th>{{ $t('admin.sync.colSeen') }}</th>
+              <th>{{ $t('admin.sync.colUpdated') }}</th>
+              <th>{{ $t('admin.sync.colFinished') }}</th>
+            </tr>
           </thead>
           <tbody>
             <tr v-for="r in runs" :key="r.id">
               <td>{{ fmt(r.finished_at) }}</td>
               <td>{{ providerLabel(r.provider) }}</td>
-              <td>{{ r.trigger === 'scheduled' ? 'otomatik' : 'elle' }}</td>
+              <td>{{ r.trigger === 'scheduled' ? $t('admin.sync.automatic') : $t('admin.sync.byHand') }}</td>
               <td>
                 <Tag
                   :severity="r.status === 'success' ? 'success' : 'danger'"
-                  :value="r.status === 'success' ? 'başarılı' : 'hata'"
+                  :value="r.status === 'success' ? $t('admin.sync.ok') : $t('admin.sync.error')"
                 />
               </td>
               <td>{{ r.fixtures_seen }}</td>
               <td>{{ r.matches_upserted }}</td>
               <td>{{ r.matches_finished }}</td>
             </tr>
-            <tr v-if="!runs.length"><td colspan="7" class="empty-state">Henüz skor çekilmedi.</td></tr>
+            <tr v-if="!runs.length">
+              <td colspan="7" class="empty-state">{{ $t('admin.sync.empty') }}</td>
+            </tr>
           </tbody>
         </table>
       </div>

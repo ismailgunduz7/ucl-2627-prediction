@@ -54,7 +54,7 @@ export async function setSquad(
 ): Promise<SquadEntry[]> {
   const lock = await getSelectionLockState();
   if (lock.locked) {
-    throw ApiError.forbidden('Kadro seçim süresi doldu', 'selection_locked');
+    throw ApiError.forbidden('selection_locked');
   }
 
   const oldSquad = await getSquad(userId);
@@ -63,12 +63,7 @@ export async function setSquad(
   const conflicts = await findSquadEditConflicts(userId, removed);
   if (conflicts.length > 0) {
     if (!cancelJokers) {
-      throw new ApiError(
-        409,
-        'joker_squad_conflict',
-        'Çıkardığın kulüpte aktif joker var; değişiklik jokeri iptal eder ve hakkını iade eder',
-        { conflicts },
-      );
+      throw new ApiError(409, 'joker_squad_conflict', undefined, { conflicts });
     }
     for (const conflict of conflicts) await cancelJoker(userId, conflict.matchweekId);
   }
@@ -93,7 +88,7 @@ export async function setSquad(
 
     const validation = validateSquadSelection(teams, selectedTeamIds);
     if (!validation.ok) {
-      throw ApiError.badRequest(validation.error.message, validation.error.code, validation.error);
+      throw ApiError.badRequest(validation.error.code, validation.error.params, validation.error);
     }
 
     // Replace all four rows atomically. tier_id comes from the resolved map,

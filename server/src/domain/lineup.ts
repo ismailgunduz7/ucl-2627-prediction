@@ -11,10 +11,10 @@ export interface SquadClub {
   tierId: number;
 }
 
-export type LineupError =
-  | { code: 'bench_not_in_squad'; message: string }
-  | { code: 'captain_not_in_squad'; message: string }
-  | { code: 'captain_on_bench'; message: string };
+/** Why a lineup was refused. The words come from the catalogue, not from here. */
+export interface LineupError {
+  code: 'bench_not_in_squad' | 'captain_not_in_squad' | 'captain_on_bench';
+}
 
 export function validateLineup(
   squad: SquadClub[],
@@ -24,17 +24,14 @@ export function validateLineup(
 ): { ok: true } | { ok: false; error: LineupError } {
   const ids = new Set(squad.map((s) => s.teamId));
   if (!ids.has(benchTeamId)) {
-    return { ok: false, error: { code: 'bench_not_in_squad', message: 'Yedeğe çektiğin kulüp kadroda değil' } };
+    return { ok: false, error: { code: 'bench_not_in_squad' } };
   }
   if (!ids.has(captainTeamId)) {
-    return { ok: false, error: { code: 'captain_not_in_squad', message: 'Kaptan yaptığın kulüp kadroda değil' } };
+    return { ok: false, error: { code: 'captain_not_in_squad' } };
   }
   // A benched club can never hold the captaincy except under bench_boost (§3.5).
   if (!benchBoost && captainTeamId === benchTeamId) {
-    return {
-      ok: false,
-      error: { code: 'captain_on_bench', message: 'Yedekteki kulüp kaptan olamaz' },
-    };
+    return { ok: false, error: { code: 'captain_on_bench' } };
   }
   return { ok: true };
 }

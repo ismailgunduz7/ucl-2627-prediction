@@ -1,8 +1,9 @@
 /**
  * Week pickers all read the same way: the final at the top, the league phase at
- * the bottom, and a two-legged round as one heading with "İlk maçlar" above
- * "Rövanş maçları". The grouping itself is decided by the server (§10.1); this
- * only turns it into the shape PrimeVue's Select wants.
+ * the bottom, and a two-legged round as one heading with its first legs above
+ * its return legs. The grouping and the wording are both decided by the server
+ * (§10.1), in the language the request asked for; this only turns them into the
+ * shape PrimeVue's Select wants.
  */
 
 export interface MatchweekMenu {

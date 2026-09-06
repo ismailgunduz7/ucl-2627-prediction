@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import Select from 'primevue/select';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
@@ -18,6 +19,7 @@ interface State {
   options: Option[];
 }
 
+const { t } = useI18n();
 const emit = defineEmits<{ changed: [] }>();
 const toast = useToast();
 
@@ -38,8 +40,8 @@ const committedNames = computed(() => {
   if (!s || s.status !== 'committed') return null;
   const option = s.options.find((o) => o.fromTeamId === s.fromTeamId);
   return {
-    from: option?.fromName ?? 'kulüp',
-    to: option?.candidates.find((c) => c.id === s.toTeamId)?.name ?? 'yeni kulübün',
+    from: option?.fromName ?? t('transfer.aClub'),
+    to: option?.candidates.find((c) => c.id === s.toTeamId)?.name ?? t('transfer.newClub'),
   };
 });
 
@@ -67,8 +69,8 @@ function conflictText(e: ApiRequestError): { teamName: string; jokerName: string
     for (const c of o.candidates) names.set(c.id, c.name);
   }
   return {
-    teamName: (first && names.get(first.teamId)) ?? 'bu kulüp',
-    jokerName: jokerName(first?.code) || 'joker',
+    teamName: (first && names.get(first.teamId)) ?? t('squad.thisClub'),
+    jokerName: jokerName(first?.code) || t('joker.generic'),
   };
 }
 
@@ -81,7 +83,7 @@ async function submit(cancelJokers = false) {
       toTeamId: toId.value,
       cancelJokers,
     });
-    toast.add({ severity: 'success', summary: 'Transfer uygulandı', life: 2500 });
+    toast.add({ severity: 'success', summary: t('transfer.applied'), life: 2500 });
     emit('changed');
   } catch (e) {
     if (e instanceof ApiRequestError && e.code === 'joker_squad_conflict') {
@@ -89,8 +91,8 @@ async function submit(cancelJokers = false) {
     } else {
       toast.add({
         severity: 'error',
-        summary: 'Olmadı',
-        detail: e instanceof ApiRequestError ? e.message : 'Beklenmeyen hata',
+        summary: t('transfer.failed'),
+        detail: e instanceof ApiRequestError ? e.message : t('common.unexpectedError'),
         life: 4500,
       });
     }
@@ -111,77 +113,88 @@ onMounted(load);
   <section v-if="show" class="surface-card card-pad">
     <div class="head">
       <div>
-        <div class="section-title" style="margin: 0">Eleme turu transferi</div>
+        <div class="section-title" style="margin: 0">{{ $t('transfer.title') }}</div>
         <p class="text-muted" style="margin: 0.25rem 0 0; font-size: 0.88rem">
-          Eleme turlarına girerken bir kulübünü aynı pottan biriyle kalıcı olarak
-          değiştirebilirsin. Kullanmak zorunda değilsin.
+          {{ $t('transfer.subtitle') }}
         </p>
       </div>
       <Tag
         :severity="state!.status === 'committed' ? 'success' : state!.status === 'expired' ? 'danger' : 'info'"
-        :value="state!.status === 'committed' ? 'kullanıldı' : state!.status === 'expired' ? 'süresi doldu' : 'hakkın var'"
+        :value="
+          state!.status === 'committed'
+            ? $t('transfer.used')
+            : state!.status === 'expired'
+              ? $t('transfer.expired')
+              : $t('transfer.available')
+        "
       />
     </div>
 
     <Message v-if="state!.status === 'expired'" severity="secondary" :closable="false">
-      Transfer penceresi kapandı, kadron sabit.
+      {{ $t('transfer.expiredNotice') }}
     </Message>
     <Message v-else-if="state!.locked" severity="warn" :closable="false">
-      Eleme turu başladı, transfer artık değiştirilemez.
+      {{ $t('transfer.lockedNotice') }}
     </Message>
 
     <template v-if="editable">
       <div class="row">
         <div class="form-field">
-          <label>Çıkacak kulüp</label>
+          <label>{{ $t('transfer.outLabel') }}</label>
           <Select
             v-model="fromId"
             :options="state!.options"
             option-label="fromName"
             option-value="fromTeamId"
-            placeholder="Kadrondan seç"
+            :placeholder="$t('transfer.outPlaceholder')"
             @change="toId = null"
           />
         </div>
         <div class="form-field">
-          <label>Gelecek kulüp</label>
+          <label>{{ $t('transfer.inLabel') }}</label>
           <Select
             v-model="toId"
             :options="candidates"
             option-label="name"
             option-value="id"
             :disabled="!fromId"
-            placeholder="Aynı pottan seç"
+            :placeholder="$t('transfer.inPlaceholder')"
           />
         </div>
         <Button
-          :label="state!.status === 'committed' ? 'Transferi değiştir' : 'Transferi uygula'"
+          :label="state!.status === 'committed' ? $t('transfer.change') : $t('transfer.apply')"
           :disabled="!fromId || !toId"
           :loading="saving"
           @click="submit()"
         />
       </div>
-      <p v-if="committedNames" class="text-muted" style="margin: 0.75rem 0 0; font-size: 0.85rem">
-        Şu an <strong>{{ committedNames.from }}</strong> yerine
-        <strong>{{ committedNames.to }}</strong> kadronda. Pencere kapanana kadar
-        fikrini değiştirebilirsin.
-      </p>
+      <i18n-t
+        v-if="committedNames"
+        keypath="transfer.committed"
+        tag="p"
+        class="text-muted"
+        style="margin: 0.75rem 0 0; font-size: 0.85rem"
+        scope="global"
+      >
+        <template #clubOut><strong>{{ committedNames.from }}</strong></template>
+        <template #clubIn><strong>{{ committedNames.to }}</strong></template>
+      </i18n-t>
     </template>
 
     <Dialog
       :visible="jokerConflict !== null"
       modal
-      header="Joker çakışması"
+      :header="$t('squad.conflictTitle')"
       :style="{ width: '400px' }"
       @update:visible="jokerConflict = null"
     >
-      <p style="margin: 0">
-        <strong>{{ jokerConflict?.teamName }}</strong> üzerinde {{ jokerConflict?.jokerName }} oynanmış.
-        Transferi uygularsan joker iptal edilir ve hakkın iade edilir.
-      </p>
+      <i18n-t keypath="transfer.conflictBody" tag="p" style="margin: 0" scope="global">
+        <template #club><strong>{{ jokerConflict?.teamName }}</strong></template>
+        <template #joker>{{ jokerConflict?.jokerName }}</template>
+      </i18n-t>
       <template #footer>
-        <Button label="Vazgeç" text @click="jokerConflict = null" />
-        <Button label="Devam et" severity="danger" @click="confirmJokerCancel" />
+        <Button :label="$t('common.cancel')" text @click="jokerConflict = null" />
+        <Button :label="$t('common.continue')" severity="danger" @click="confirmJokerCancel" />
       </template>
     </Dialog>
   </section>

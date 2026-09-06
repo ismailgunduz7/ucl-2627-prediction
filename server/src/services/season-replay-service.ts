@@ -1,6 +1,7 @@
 import { query } from '../db/pool.ts';
 import { isSeasonComplete } from './knockout-service.ts';
 import { getLeaderboard } from './leaderboard-service.ts';
+import { matchweekLabel } from '../lib/labels.ts';
 
 /**
  * Season replay (§18.8): the end-of-season retrospective. Everything is read
@@ -68,7 +69,12 @@ export async function getSeasonReplay(
   let cumulative = 0;
   const timeline: ReplayWeek[] = weeks.rows.map((w) => {
     cumulative += w.points;
-    return { matchweekId: w.matchweek_id, label: w.label, points: w.points, cumulative };
+    return {
+      matchweekId: w.matchweek_id,
+      label: matchweekLabel({ id: w.matchweek_id, label: w.label }),
+      points: w.points,
+      cumulative,
+    };
   });
 
   let bestWeek: SeasonReplay['bestWeek'] = null;
@@ -93,8 +99,8 @@ export async function getSeasonReplay(
     if (captain.basePoints >= top) captainHits++;
   }
 
-  const jokerRows = await query<{ code: string; week_label: string }>(
-    `SELECT a.joker_type_code AS code, mw.label AS week_label
+  const jokerRows = await query<{ code: string; matchweek_id: string; week_label: string }>(
+    `SELECT a.joker_type_code AS code, a.matchweek_id, mw.label AS week_label
      FROM joker_activations a
      JOIN matchweeks mw ON mw.id = a.matchweek_id
      WHERE a.user_id = $1 AND a.cancelled_at IS NULL
@@ -135,7 +141,10 @@ export async function getSeasonReplay(
     worstWeek,
     captainHits,
     captainWeeks,
-    jokers: jokerRows.rows.map((r) => ({ code: r.code, weekLabel: r.week_label })),
+    jokers: jokerRows.rows.map((r) => ({
+      code: r.code,
+      weekLabel: matchweekLabel({ id: r.matchweek_id, label: r.week_label }),
+    })),
     transfer,
     timeline,
     podium,

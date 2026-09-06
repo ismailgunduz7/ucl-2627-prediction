@@ -1,9 +1,10 @@
 <script setup lang="ts">
 import { ref, computed, onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 import Tag from 'primevue/tag';
 import { api, ApiRequestError } from '@/lib/api';
+import { ordinal } from '@/lib/format';
 import { useAuthStore } from '@/stores/auth';
-import { jokerName } from '@/lib/jokers';
 import PageHeader from '@/components/PageHeader.vue';
 import BallLoader from '@/components/BallLoader.vue';
 import JokerIcon from '@/components/JokerIcon.vue';
@@ -25,6 +26,7 @@ interface SeasonReplay {
   podium: { userId: string; displayName: string; total: number; rank: number }[];
 }
 
+const { t } = useI18n();
 const auth = useAuthStore();
 const data = ref<SeasonReplay | null>(null);
 const loading = ref(true);
@@ -63,7 +65,7 @@ onMounted(async () => {
   try {
     data.value = await api.get<SeasonReplay>('/api/season/replay');
   } catch (e) {
-    error.value = e instanceof ApiRequestError ? e.message : 'Yüklenemedi';
+    error.value = e instanceof ApiRequestError ? e.message : t('common.loadFailed');
   } finally {
     loading.value = false;
   }
@@ -72,14 +74,14 @@ onMounted(async () => {
 
 <template>
   <div class="page-stack">
-    <PageHeader title="Sezonun filmi" />
+    <PageHeader :title="$t('replay.title')" />
 
     <BallLoader v-if="loading" />
     <p v-else-if="error" class="empty-state">{{ error }}</p>
 
     <div v-else-if="data && !data.finished" class="surface-card card-pad not-yet">
       <TrophyMark :size="42" class="not-yet-mark" />
-      <p style="margin: 0">Final daha oynanmadı. Kupa sahibini bulunca sezonun filmi burada olacak.</p>
+      <p style="margin: 0">{{ $t('replay.notYet') }}</p>
     </div>
 
     <template v-else-if="data">
@@ -87,27 +89,37 @@ onMounted(async () => {
         <TrophyMark :size="52" class="hero-mark" :class="{ gold: data.rank === 1 }" />
         <div>
           <h2 class="hero-line">
-            <template v-if="data.rank === 1">Sezonun şampiyonu sensin.</template>
-            <template v-else-if="data.rank !== null">Sezonu {{ data.rank }}. sırada bitirdin.</template>
-            <template v-else>Sezon tamamlandı.</template>
+            <template v-if="data.rank === 1">{{ $t('replay.champion') }}</template>
+            <template v-else-if="data.rank !== null">
+              {{ $t('replay.finishedRank', { rank: ordinal(data.rank) }) }}
+            </template>
+            <template v-else>{{ $t('replay.finished') }}</template>
           </h2>
-          <p class="hero-sub text-muted">{{ data.total }} puan · {{ data.timeline.length }} hafta</p>
+          <p class="hero-sub text-muted">
+            {{ $t('replay.summary', { points: data.total, weeks: data.timeline.length }) }}
+          </p>
         </div>
       </section>
 
       <section v-if="chart" class="surface-card card-pad">
-        <div class="section-title">Puanın haftalara yolculuğu</div>
+        <div class="section-title">{{ $t('replay.chartTitle') }}</div>
         <svg
           class="timeline-chart"
           :viewBox="`0 0 ${W} ${H}`"
           role="img"
-          aria-label="Kümülatif puan grafiği"
+          :aria-label="$t('replay.chartAlt')"
         >
           <line class="zero" x1="0" :y1="chart.zeroY" :x2="W" :y2="chart.zeroY" />
           <polyline class="line" :points="chart.polyline" />
           <g v-for="(p, i) in chart.points" :key="p.week.matchweekId">
             <circle class="dot" :class="{ last: i === chart.points.length - 1 }" :cx="p.x" :cy="p.y" :r="i === chart.points.length - 1 ? 5 : 3">
-              <title>{{ p.week.label }}: {{ signed(p.week.points) }} (toplam {{ p.week.cumulative }})</title>
+              <title>
+                {{ $t('replay.pointTitle', {
+                  week: p.week.label,
+                  points: signed(p.week.points),
+                  total: p.week.cumulative,
+                }) }}
+              </title>
             </circle>
           </g>
         </svg>
@@ -120,36 +132,38 @@ onMounted(async () => {
       <div class="stat-row">
         <div v-if="data.bestWeek" class="surface-card card-pad stat">
           <span class="stat-num text-positive">{{ signed(data.bestWeek.points) }}</span>
-          <small class="text-muted">en iyi haftan · {{ data.bestWeek.label }}</small>
+          <small class="text-muted">{{ $t('replay.bestWeek', { week: data.bestWeek.label }) }}</small>
         </div>
         <div v-if="data.worstWeek" class="surface-card card-pad stat">
           <span class="stat-num" :class="data.worstWeek.points < 0 ? 'text-negative' : ''">{{ signed(data.worstWeek.points) }}</span>
-          <small class="text-muted">en zor haftan · {{ data.worstWeek.label }}</small>
+          <small class="text-muted">{{ $t('replay.worstWeek', { week: data.worstWeek.label }) }}</small>
         </div>
         <div v-if="data.captainWeeks" class="surface-card card-pad stat">
           <span class="stat-num">{{ data.captainHits }}/{{ data.captainWeeks }}</span>
-          <small class="text-muted">kaptanın haftanın en iyisi çıktı</small>
+          <small class="text-muted">{{ $t('replay.captainHits') }}</small>
         </div>
         <div v-if="data.transfer !== 'unavailable'" class="surface-card card-pad stat">
           <span class="stat-num">{{ data.transfer === 'committed' ? '✓' : '-' }}</span>
-          <small class="text-muted">{{ data.transfer === 'committed' ? 'eleme transferini kullandın' : 'eleme transferine dokunmadın' }}</small>
+          <small class="text-muted">
+            {{ data.transfer === 'committed' ? $t('replay.transferUsed') : $t('replay.transferUnused') }}
+          </small>
         </div>
       </div>
 
       <section class="surface-card card-pad">
-        <div class="section-title">Oynadığın jokerler</div>
+        <div class="section-title">{{ $t('replay.jokersTitle') }}</div>
         <div v-if="data.jokers.length" class="joker-list">
           <span v-for="(j, i) in data.jokers" :key="i" class="joker-chip">
             <JokerIcon :code="j.code" :size="15" />
-            {{ jokerName(j.code) }}
+            {{ $t(`joker.${j.code}`) }}
             <small class="text-muted">{{ j.weekLabel }}</small>
           </span>
         </div>
-        <p v-else class="text-muted" style="margin: 0">Sezonu tek joker oynamadan bitirdin.</p>
+        <p v-else class="text-muted" style="margin: 0">{{ $t('replay.noJokers') }}</p>
       </section>
 
       <section v-if="data.podium.length" class="surface-card card-pad">
-        <div class="section-title">Kürsü</div>
+        <div class="section-title">{{ $t('replay.podiumTitle') }}</div>
         <ol class="podium">
           <li
             v-for="p in data.podium"
@@ -166,7 +180,7 @@ onMounted(async () => {
             <span class="podium-pts">{{ data.total }}</span>
           </li>
         </ol>
-        <Tag v-if="data.rank === 1" severity="warn" value="şampiyon" style="margin-top: 0.75rem" />
+        <Tag v-if="data.rank === 1" severity="warn" :value="$t('replay.championTag')" style="margin-top: 0.75rem" />
       </section>
     </template>
   </div>

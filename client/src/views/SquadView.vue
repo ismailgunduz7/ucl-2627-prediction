@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted } from 'vue';
 import { useRouter } from 'vue-router';
+import { useI18n } from 'vue-i18n';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
 import Message from 'primevue/message';
@@ -14,6 +15,7 @@ import PageHeader from '@/components/PageHeader.vue';
 import BallLoader from '@/components/BallLoader.vue';
 import ActTransferCard from '@/components/ActTransferCard.vue';
 
+const { t } = useI18n();
 const store = useTournamentStore();
 const toast = useToast();
 const router = useRouter();
@@ -31,9 +33,9 @@ const locked = computed(
 const countdown = computed(() => {
   if (!lockAt.value) return null;
   const ms = new Date(lockAt.value).getTime() - now.value;
-  if (ms <= 0) return 'kapandı';
+  if (ms <= 0) return t('squad.closed');
   const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000), m = Math.floor((ms % 3600000) / 60000);
-  return d > 0 ? `${d} gün ${h} saat` : `${h} saat ${m} dk`;
+  return d > 0 ? t('common.countdownDays', { d, h }) : t('common.countdownHours', { h, m });
 });
 const pickedCount = computed(() => store.pots.filter((p) => picks.value[p.tierId]).length);
 const allPicked = computed(() => store.pots.length > 0 && pickedCount.value === store.pots.length);
@@ -48,7 +50,7 @@ async function load() {
     await Promise.all([store.loadTeams(), store.loadStatus(), store.loadSquad()]);
     for (const entry of store.squad) picks.value[entry.tierId] = entry.teamId;
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Kadro yüklenemedi', detail: msg(e), life: 4000 });
+    toast.add({ severity: 'error', summary: t('squad.loadFailed'), detail: msg(e), life: 4000 });
   } finally {
     loading.value = false;
   }
@@ -67,7 +69,10 @@ function conflictText(e: ApiRequestError): { teamName: string; jokerName: string
   const details = e.details as { conflicts?: { code: string; teamId: string }[] } | undefined;
   const first = details?.conflicts?.[0];
   const team = store.pots.flatMap((p) => p.teams).find((t) => t.id === first?.teamId);
-  return { teamName: team?.name ?? 'bu kulüp', jokerName: jokerName(first?.code) || 'joker' };
+  return {
+    teamName: team?.name ?? t('squad.thisClub'),
+    jokerName: jokerName(first?.code) || t('joker.generic'),
+  };
 }
 
 async function save(cancelJokers = false) {
@@ -76,13 +81,13 @@ async function save(cancelJokers = false) {
   try {
     const teamIds = store.pots.map((p) => picks.value[p.tierId]!).filter(Boolean);
     await store.saveSquad(teamIds, cancelJokers);
-    toast.add({ severity: 'success', summary: 'Kadron kaydedildi', life: 2500 });
+    toast.add({ severity: 'success', summary: t('squad.saved'), life: 2500 });
     await router.push('/');
   } catch (e) {
     if (e instanceof ApiRequestError && e.code === 'joker_squad_conflict') {
       jokerConflict.value = conflictText(e);
     } else {
-      toast.add({ severity: 'error', summary: 'Kaydedilemedi', detail: msg(e), life: 5000 });
+      toast.add({ severity: 'error', summary: t('common.saveFailed'), detail: msg(e), life: 5000 });
     }
   } finally {
     saving.value = false;
@@ -95,7 +100,7 @@ async function confirmJokerCancel() {
 }
 
 function msg(e: unknown) {
-  return e instanceof ApiRequestError ? e.message : 'Beklenmeyen hata';
+  return e instanceof ApiRequestError ? e.message : t('common.unexpectedError');
 }
 
 onMounted(() => {
@@ -107,14 +112,18 @@ onUnmounted(() => window.clearInterval(timer));
 
 <template>
   <div class="page-stack">
-    <PageHeader title="Kadronu kur" subtitle="Her pottan bir kulüp seç. Bu dört kulüp sezon boyunca senin.">
+    <PageHeader :title="$t('squad.title')" :subtitle="$t('squad.subtitle')">
       <template #actions>
-        <Tag v-if="!loading && !locked && countdown" severity="info" :value="`Kapanışa ${countdown}`" />
+        <Tag
+          v-if="!loading && !locked && countdown"
+          severity="info"
+          :value="$t('squad.closesIn', { countdown })"
+        />
       </template>
     </PageHeader>
 
     <Message v-if="!loading && locked" severity="warn" :closable="false">
-      Seçim kapandı. Haftalık değişim jokeriyle geçici takas yapabilirsin.
+      {{ $t('squad.lockedNotice') }}
     </Message>
 
     <BallLoader v-if="loading" />
@@ -142,15 +151,15 @@ onUnmounted(() => window.clearInterval(timer));
               <span class="team-name">{{ team.name }}</span>
               <span v-if="team.country" class="text-muted" style="font-size: var(--text-2xs)">{{ team.country }}</span>
             </span>
-            <Tag v-if="team.eliminated" severity="danger" value="Elendi" />
+            <Tag v-if="team.eliminated" severity="danger" :value="$t('common.eliminated')" />
           </button>
         </section>
       </div>
 
       <div class="save-bar surface-card">
-        <span class="text-muted">{{ pickedCount }} / {{ store.pots.length }} pot seçildi</span>
+        <span class="text-muted">{{ $t('squad.progress', { picked: pickedCount, total: store.pots.length }) }}</span>
         <Button
-          :label="locked ? 'Kilitli' : 'Kadroyu kaydet'"
+          :label="locked ? $t('squad.lockedButton') : $t('squad.save')"
           :disabled="locked || !allPicked"
           :loading="saving"
           @click="save()"
@@ -163,17 +172,17 @@ onUnmounted(() => window.clearInterval(timer));
     <Dialog
       :visible="jokerConflict !== null"
       modal
-      header="Joker çakışması"
+      :header="$t('squad.conflictTitle')"
       :style="{ width: '400px' }"
       @update:visible="jokerConflict = null"
     >
-      <p style="margin: 0">
-        <strong>{{ jokerConflict?.teamName }}</strong> üzerinde {{ jokerConflict?.jokerName }} oynanmış.
-        Kadroyu böyle kaydedersen joker iptal edilir ve hakkın iade edilir.
-      </p>
+      <i18n-t keypath="squad.conflictBody" tag="p" style="margin: 0" scope="global">
+        <template #club><strong>{{ jokerConflict?.teamName }}</strong></template>
+        <template #joker>{{ jokerConflict?.jokerName }}</template>
+      </i18n-t>
       <template #footer>
-        <Button label="Vazgeç" text @click="jokerConflict = null" />
-        <Button label="Devam et" severity="danger" @click="confirmJokerCancel" />
+        <Button :label="$t('common.cancel')" text @click="jokerConflict = null" />
+        <Button :label="$t('common.continue')" severity="danger" @click="confirmJokerCancel" />
       </template>
     </Dialog>
   </div>

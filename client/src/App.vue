@@ -7,6 +7,7 @@ import { Home, Users, CalendarDays, BookOpen, LayoutGrid, Network, Calculator, F
 import { useAuthStore } from '@/stores/auth';
 import AppCursor from '@/components/AppCursor.vue';
 import StarBall from '@/components/StarBall.vue';
+import LanguagePicker from '@/components/LanguagePicker.vue';
 import TrophyMark from '@/components/TrophyMark.vue';
 
 const auth = useAuthStore();
@@ -18,22 +19,22 @@ const isLoginRoute = computed(() => route.name === 'login');
 const showShell = computed(() => auth.ready && auth.isAuthenticated && !isLoginRoute.value);
 
 const participantNav = [
-  { to: '/', label: 'Ana Sayfa', icon: Home },
-  { to: '/kadro', label: 'Kadrom', icon: Users },
-  { to: '/hafta', label: 'Bu Hafta', icon: CalendarDays },
-  { to: '/fikstur', label: 'Fikstür', icon: ListOrdered },
-  { to: '/lig', label: 'Lig Tablosu', icon: Table },
-  { to: '/puan-durumu', label: 'Puan Durumu', icon: TrophyMark },
-  { to: '/kurallar', label: 'Kurallar', icon: BookOpen },
+  { to: '/', key: 'nav.home', icon: Home },
+  { to: '/kadro', key: 'nav.squad', icon: Users },
+  { to: '/hafta', key: 'nav.week', icon: CalendarDays },
+  { to: '/fikstur', key: 'nav.fixtures', icon: ListOrdered },
+  { to: '/lig', key: 'nav.standings', icon: Table },
+  { to: '/puan-durumu', key: 'nav.leaderboard', icon: TrophyMark },
+  { to: '/kurallar', key: 'nav.rules', icon: BookOpen },
 ];
 const adminNav = [
-  { to: '/yonetim', label: 'Panel', icon: LayoutGrid },
-  { to: '/yonetim/kullanicilar', label: 'Kullanıcılar', icon: Users },
-  { to: '/yonetim/yarismalar', label: 'Yarışmalar', icon: Network },
-  { to: '/yonetim/kurallar', label: 'Kurallar', icon: Calculator },
-  { to: '/yonetim/maclar', label: 'Maçlar', icon: Flag },
-  { to: '/yonetim/sync', label: 'Skor Çekme', icon: RefreshCw },
-  { to: '/yonetim/ayarlar', label: 'Ayarlar', icon: Settings },
+  { to: '/yonetim', key: 'nav.admin.dashboard', icon: LayoutGrid },
+  { to: '/yonetim/kullanicilar', key: 'nav.admin.users', icon: Users },
+  { to: '/yonetim/yarismalar', key: 'nav.admin.competitions', icon: Network },
+  { to: '/yonetim/kurallar', key: 'nav.admin.rules', icon: Calculator },
+  { to: '/yonetim/maclar', key: 'nav.admin.matches', icon: Flag },
+  { to: '/yonetim/sync', key: 'nav.admin.sync', icon: RefreshCw },
+  { to: '/yonetim/ayarlar', key: 'nav.admin.config', icon: Settings },
 ];
 
 const navItems = computed(() => (auth.isAdmin ? adminNav : participantNav));
@@ -63,39 +64,56 @@ async function logout() {
   <Toast />
 
   <div v-if="showShell" class="app-shell">
-    <a class="skip-link" href="#main-content" @click.prevent="skipToContent">İçeriğe geç</a>
+    <a class="skip-link" href="#main-content" @click.prevent="skipToContent">{{ $t('common.skipToContent') }}</a>
     <header class="app-header">
       <div class="app-header-inner">
         <RouterLink :to="homeHref" class="brand">
           <StarBall class="brand-badge" />
-          <span>ŞL Fantazi</span>
+          <span>{{ $t('common.brand') }}</span>
         </RouterLink>
 
-        <nav class="main-nav" aria-label="Ana menü">
+        <nav class="main-nav" :aria-label="$t('nav.main')">
           <RouterLink v-for="item in navItems" :key="item.to" :to="item.to" class="nav-link">
             <component :is="item.icon" :size="17" aria-hidden="true" />
-            <span>{{ item.label }}</span>
+            <span>{{ $t(item.key) }}</span>
           </RouterLink>
         </nav>
 
         <div class="header-end">
           <span class="user-chip"><span class="role-dot" />{{ auth.user?.displayName }}</span>
-          <Button severity="secondary" text rounded aria-label="Çıkış" @click="logout">
+          <LanguagePicker class="header-lang" />
+          <Button severity="secondary" text rounded :aria-label="$t('common.signOut')" @click="logout">
             <LogOut :size="18" />
           </Button>
-          <Button class="nav-toggle" severity="secondary" text rounded aria-label="Menü" @click="mobileNavOpen = !mobileNavOpen">
+          <Button
+            class="nav-toggle"
+            severity="secondary"
+            text
+            rounded
+            :aria-label="$t('nav.menu')"
+            @click="mobileNavOpen = !mobileNavOpen"
+          >
             <component :is="mobileNavOpen ? X : Menu" :size="20" />
           </Button>
         </div>
       </div>
     </header>
 
-    <button v-if="mobileNavOpen" class="mobile-nav-backdrop" aria-label="Menüyü kapat" @click="mobileNavOpen = false" />
-    <nav class="mobile-nav" :class="{ 'is-open': mobileNavOpen }" aria-label="Mobil menü">
+    <button
+      v-if="mobileNavOpen"
+      class="mobile-nav-backdrop"
+      :aria-label="$t('nav.closeMenu')"
+      @click="mobileNavOpen = false"
+    />
+    <nav class="mobile-nav" :class="{ 'is-open': mobileNavOpen }" :aria-label="$t('nav.mobile')">
       <RouterLink v-for="item in navItems" :key="`m-${item.to}`" :to="item.to" class="mobile-nav-link" @click="mobileNavOpen = false">
         <component :is="item.icon" :size="18" aria-hidden="true" />
-        <span>{{ item.label }}</span>
+        <span>{{ $t(item.key) }}</span>
       </RouterLink>
+      <div class="mobile-nav-lang">
+        <span class="text-muted">{{ $t('common.language') }}</span>
+        <LanguagePicker />
+      </div>
     </nav>
 
     <main id="main-content" class="app-main" tabindex="-1">
@@ -113,6 +131,22 @@ async function logout() {
 </template>
 
 <style>
+.mobile-nav-lang {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-top: 0.4rem;
+  padding: 0.6rem 1rem 0;
+  border-top: 1px solid var(--color-border);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+/* The header is tight on a phone; the drawer carries the picker there. */
+@media (max-width: 600px) {
+  .header-lang { display: none; }
+}
+
 .page-enter-active {
   transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
 }

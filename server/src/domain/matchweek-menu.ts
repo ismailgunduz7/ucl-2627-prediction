@@ -13,6 +13,9 @@
  * keeps an unexpected row visible instead of hiding it.
  */
 
+import { translate } from '../lib/i18n.ts';
+import { matchweekLabel } from '../lib/labels.ts';
+
 export interface MatchweekMenuEntry {
   /** The round this week belongs to: both legs of a tie share one key. */
   roundKey: string;
@@ -27,25 +30,30 @@ export interface MatchweekMenuEntry {
 }
 
 interface KnockoutRound {
-  label: string;
+  /** Catalogue key for the round's name. */
+  key: string;
   /** Menu order, newest round first. */
   order: number;
 }
 
 const KNOCKOUT_ROUNDS: Record<string, KnockoutRound> = {
-  final: { label: 'Final', order: 0 },
-  sf: { label: 'Yarı final', order: 1 },
-  qf: { label: 'Çeyrek final', order: 2 },
-  r16: { label: 'Son 16', order: 3 },
-  playoff: { label: 'Play-off', order: 4 },
+  final: { key: 'round.final', order: 0 },
+  sf: { key: 'round.sf', order: 1 },
+  qf: { key: 'round.qf', order: 2 },
+  r16: { key: 'round.r16', order: 3 },
+  playoff: { key: 'round.playoff', order: 4 },
 };
 
 /** The league phase sits under every knockout round. */
-const LEAGUE_GROUP = 'Lig aşaması';
 const LEAGUE_GROUP_ORDER = 5;
 const UNKNOWN_GROUP_ORDER = 6;
 
-const LEG_LABELS: Record<number, string> = { 1: 'İlk maçlar', 2: 'Rövanş maçları' };
+const LEG_KEYS: Record<number, string> = { 1: 'leg.first', 2: 'leg.second' };
+
+function legLabel(leg: number): string {
+  const key = LEG_KEYS[leg];
+  return key ? translate(key) : translate('leg.nth', { number: leg });
+}
 
 export interface MatchweekMenuInput {
   id: string;
@@ -58,8 +66,8 @@ export function matchweekMenuEntry(mw: MatchweekMenuInput): MatchweekMenuEntry {
   if (mw.act === 'league_phase') {
     return {
       roundKey: mw.id,
-      group: LEAGUE_GROUP,
-      option: mw.label,
+      group: translate('matchweek.league_group'),
+      option: matchweekLabel(mw),
       groupOrder: LEAGUE_GROUP_ORDER,
       // Newest week at the top of its group, like the rounds above it.
       optionOrder: -mw.sortOrder,
@@ -79,11 +87,12 @@ export function matchweekMenuEntry(mw: MatchweekMenuInput): MatchweekMenuEntry {
   }
 
   const leg = match?.[2] ? Number(match[2]) : 0;
+  const roundLabel = translate(round.key);
   return {
     roundKey: match![1]!,
-    group: round.label,
-    // A one-legged round names itself rather than saying "İlk maçlar".
-    option: leg === 0 ? round.label : (LEG_LABELS[leg] ?? `${leg}. maç`),
+    group: roundLabel,
+    // A one-legged round names itself rather than saying "first legs".
+    option: leg === 0 ? roundLabel : legLabel(leg),
     groupOrder: round.order,
     optionOrder: leg,
   };
@@ -95,7 +104,9 @@ export function matchweekMenuEntry(mw: MatchweekMenuInput): MatchweekMenuEntry {
  */
 export function legHeading(mw: MatchweekMenuInput): string | null {
   const entry = matchweekMenuEntry(mw);
-  return entry.option === entry.group ? null : (LEG_LABELS[entry.optionOrder] ?? null);
+  if (entry.option === entry.group) return null;
+  // League weeks sort by a negative order and are not legs of anything.
+  return entry.optionOrder > 0 ? legLabel(entry.optionOrder) : null;
 }
 
 export interface RoundOption {

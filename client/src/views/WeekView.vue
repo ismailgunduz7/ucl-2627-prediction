@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import Select from 'primevue/select';
 import Message from 'primevue/message';
 import Tag from 'primevue/tag';
@@ -15,9 +16,10 @@ import JokerIcon from '@/components/JokerIcon.vue';
 import CaptainBadge from '@/components/CaptainBadge.vue';
 import FixtureLine from '@/components/FixtureLine.vue';
 import OctopusMark from '@/components/OctopusMark.vue';
-import { JOKER_ICONS, JOKER_NAMES } from '@/lib/jokers';
+import { JOKER_ICONS, jokerName } from '@/lib/jokers';
 import { groupMatchweeks, matchweekTitle, type MatchweekMenu } from '@/lib/matchweeks';
 import { usePointerDrag } from '@/composables/usePointerDrag';
+import { lower, ordinal } from '@/lib/format';
 
 interface Mw { id: string; label: string; status: string; editable: boolean; opened: boolean; locked: boolean; menu: MatchweekMenu }
 interface SquadClub { teamId: string; tierId: number; name: string; shortName: string; eliminated: boolean }
@@ -51,6 +53,7 @@ const PICK_OPTIONS: { value: Pick; label: string }[] = [
   { value: 'away', label: 'MS2' },
 ];
 
+const { t } = useI18n();
 const toast = useToast();
 const auth = useAuthStore();
 
@@ -117,13 +120,13 @@ const countdown = computed(() => {
   const ms = countdownMs.value;
   if (ms === null || ms <= 0) return null;
   const d = Math.floor(ms / 86400000), h = Math.floor((ms % 86400000) / 3600000), m = Math.floor((ms % 3600000) / 60000), s = Math.floor((ms % 60000) / 1000);
-  return d > 0 ? `${d}g ${h}s ${m}dk` : `${h}s ${m}dk ${s}sn`;
+  return d > 0 ? t('common.countdownFull', { d, h, m }) : t('common.countdownShort', { h, m, s });
 });
 const drama = computed(() => countdownMs.value !== null && countdownMs.value > 0 && countdownMs.value < 7200_000);
 
 function initials(name: string) { return name.split(' ').map((w) => w[0]).slice(0, 3).join('').toUpperCase(); }
 function signed(n: number) { return n > 0 ? `+${n}` : `${n}`; }
-function difficultySeverity(d: string | null) { return d === 'zor' ? 'danger' : d === 'orta' ? 'warn' : 'success'; }
+function difficultySeverity(d: string | null) { return d === 'hard' ? 'danger' : d === 'medium' ? 'warn' : 'success'; }
 function lineFor(teamId: string) { return score.value?.lines.find((l) => l.teamId === teamId); }
 /** Benched and not boosted: the club played, but none of it counted. */
 function sittingOut(l: ScoreLine) { return l.benched && score.value?.jokerCode !== 'bench_boost'; }
@@ -199,7 +202,7 @@ async function setBench(teamId: string) {
   if (!editable.value || teamId === benchId.value) return;
   const club = squad.value.find((c) => c.teamId === teamId);
   if (club && !canBench(club)) {
-    toast.add({ severity: 'warn', summary: 'Takasla gelen kulüp yedeğe çekilemez', life: 3000 });
+    toast.add({ severity: 'warn', summary: t('week.swapCannotBench'), life: 3000 });
     return;
   }
   const oldBench = benchId.value;
@@ -227,7 +230,7 @@ async function persist(force = false) {
       benchConflict.value = true;
       await loadWeek();
     } else {
-      toast.add({ severity: 'error', summary: 'Kaydedilemedi', detail: msg(e), life: 4000 });
+      toast.add({ severity: 'error', summary: t('common.saveFailed'), detail: msg(e), life: 4000 });
       await loadWeek();
     }
   } finally {
@@ -269,10 +272,10 @@ async function activateJoker(code: string, payload: Record<string, unknown>) {
   busy.value = true;
   try {
     await api.post(`/api/matchweeks/${selectedMw.value}/jokers`, { code, payload });
-    toast.add({ severity: 'success', summary: `${JOKER_NAMES[code]} aktif`, life: 2500 });
+    toast.add({ severity: 'success', summary: t('week.jokerLive', { joker: jokerName(code) }), life: 2500 });
     await loadWeek();
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Joker oynanamadı', detail: msg(e), life: 4500 });
+    toast.add({ severity: 'error', summary: t('week.jokerFailed'), detail: msg(e), life: 4500 });
   } finally {
     busy.value = false;
   }
@@ -281,9 +284,9 @@ async function cancelJoker(silent = false) {
   busy.value = true;
   try {
     await api.del(`/api/matchweeks/${selectedMw.value}/jokers`);
-    if (!silent) { toast.add({ severity: 'success', summary: 'Joker geri alındı', life: 2500 }); await loadWeek(); }
+    if (!silent) { toast.add({ severity: 'success', summary: t('week.jokerReturned'), life: 2500 }); await loadWeek(); }
   } catch (e) {
-    if (!silent) toast.add({ severity: 'error', summary: 'Geri alınamadı', detail: msg(e), life: 4000 });
+    if (!silent) toast.add({ severity: 'error', summary: t('week.undoFailed'), detail: msg(e), life: 4000 });
   } finally {
     busy.value = false;
   }
@@ -301,7 +304,7 @@ async function loadAll() {
     if (!selectedMw.value) selectedMw.value = status.currentMatchweekId ?? status.matchweeks[0]?.id ?? null;
     await loadWeek();
   } catch (e) {
-    toast.add({ severity: 'error', summary: 'Yüklenemedi', detail: msg(e), life: 4000 });
+    toast.add({ severity: 'error', summary: t('common.loadFailed'), detail: msg(e), life: 4000 });
   } finally {
     loading.value = false;
   }
@@ -357,7 +360,7 @@ async function pickOutcome(m: PredictionMatch, value: Pick) {
     );
   } catch (e) {
     m.pick = previous;
-    toast.add({ severity: 'error', summary: 'Tahmin kaydedilemedi', detail: msg(e), life: 4000 });
+    toast.add({ severity: 'error', summary: t('week.predictionFailed'), detail: msg(e), life: 4000 });
   } finally {
     busy.value = false;
   }
@@ -369,7 +372,7 @@ function pickState(m: PredictionMatch, value: Pick) {
   return m.result === value ? 'hit' : 'miss';
 }
 
-function msg(e: unknown) { return e instanceof ApiRequestError ? e.message : 'Beklenmeyen hata'; }
+function msg(e: unknown) { return e instanceof ApiRequestError ? e.message : t('common.unexpectedError'); }
 
 onMounted(() => { loadAll(); timer = window.setInterval(() => (now.value = Date.now()), 1000); });
 onUnmounted(() => { window.clearInterval(timer); window.clearInterval(livePoller); });
@@ -379,7 +382,7 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
 
 <template>
   <div class="page-stack">
-    <PageHeader title="Bu hafta" subtitle="Kaptanını seç, birini yedeğe çek, joker oyna.">
+    <PageHeader :title="$t('week.title')" :subtitle="$t('week.subtitle')">
       <template #actions>
         <Select
           v-model="selectedMw"
@@ -390,25 +393,31 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
           option-value="value"
           style="min-width: 190px"
         >
-          <template #value="{ value }">{{ matchweekTitle(matchweeks, value) || 'Hafta seç' }}</template>
+          <template #value="{ value }">{{ matchweekTitle(matchweeks, value) || $t('week.pickWeek') }}</template>
         </Select>
       </template>
     </PageHeader>
 
     <BallLoader v-if="loading" />
     <Message v-else-if="!squad.length" severity="warn" :closable="false">
-      Önce kadronu kurmalısın. <RouterLink to="/kadro">Kadroya git →</RouterLink>
+      {{ $t('week.noSquad') }} <RouterLink to="/kadro">{{ $t('week.goToSquad') }}</RouterLink>
     </Message>
 
     <template v-else>
-      <Message v-if="isComplete" severity="success" :closable="false">Hafta bitti, puanlar kesinleşti.</Message>
-      <Message v-else-if="!currentMw?.opened" severity="secondary" :closable="false">Bu hafta henüz açılmadı. Bir önceki hafta başlayınca burası düzenlemeye açılır.</Message>
-      <Message v-else-if="drama" severity="warn" :closable="false">⏰ Kilide son {{ countdown }}!</Message>
-      <Message v-else-if="editable && countdown" severity="info" :closable="false">Kilide {{ countdown }} kaldı.</Message>
-      <Message v-else-if="!editable" severity="warn" :closable="false">Hafta kilitlendi, diziliş artık değişmiyor.</Message>
+      <Message v-if="isComplete" severity="success" :closable="false">{{ $t('week.complete') }}</Message>
+      <Message v-else-if="!currentMw?.opened" severity="secondary" :closable="false">
+        {{ $t('week.notOpen') }}
+      </Message>
+      <Message v-else-if="drama" severity="warn" :closable="false">
+        {{ $t('week.drama', { countdown }) }}
+      </Message>
+      <Message v-else-if="editable && countdown" severity="info" :closable="false">
+        {{ $t('week.untilLock', { countdown }) }}
+      </Message>
+      <Message v-else-if="!editable" severity="warn" :closable="false">{{ $t('week.locked') }}</Message>
 
       <section class="pitch surface-card">
-        <div class="zone-label">Sahada</div>
+        <div class="zone-label">{{ $t('week.onPitch') }}</div>
         <div class="pitch-grid stagger">
           <div
             v-for="club in pitchClubs"
@@ -440,8 +449,8 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
                 class="slot-btn press"
                 :class="{ on: club.teamId === captainId }"
                 :aria-pressed="club.teamId === captainId"
-                :aria-label="`${club.name} kaptan olsun`"
-                title="Kaptan yap"
+                :aria-label="$t('week.makeCaptainAria', { club: club.name })"
+                :title="$t('week.makeCaptain')"
                 @click="setCaptain(club.teamId)"
               >
                 <Crown :size="16" aria-hidden="true" />
@@ -449,8 +458,8 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
               <button
                 v-if="canBench(club)"
                 class="slot-btn press"
-                :aria-label="`${club.name} yedeğe geçsin`"
-                title="Yedeğe al"
+                :aria-label="$t('week.benchAria', { club: club.name })"
+                :title="$t('week.benchAction')"
                 @click="setBench(club.teamId)"
               >
                 <Armchair :size="16" aria-hidden="true" />
@@ -461,8 +470,12 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
                 class="slot-btn joker press"
                 :class="{ on: j.active }"
                 :aria-pressed="j.active"
-                :aria-label="j.active ? `${JOKER_NAMES[j.code]} jokerini geri al` : `${club.name} için ${JOKER_NAMES[j.code]}`"
-                :title="j.active ? 'Geri al' : JOKER_NAMES[j.code]"
+                :aria-label="
+                  j.active
+                    ? $t('week.undoJokerAria', { joker: $t(`joker.${j.code}`) })
+                    : $t('week.playJokerAria', { joker: $t(`joker.${j.code}`), club: club.name })
+                "
+                :title="j.active ? $t('week.undo') : $t(`joker.${j.code}`)"
                 @click="onJokerClick(j.code, club, j.active)"
               >
                 <component :is="JOKER_ICONS[j.code]" :size="16" aria-hidden="true" />
@@ -471,7 +484,7 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
           </div>
         </div>
 
-        <div class="zone-label bench-label">Yedek</div>
+        <div class="zone-label bench-label">{{ $t('week.bench') }}</div>
         <div
           class="bench-slot"
           :class="{ over: dragOverBench, boosted: benchBoost }"
@@ -497,8 +510,8 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
                 class="slot-btn press"
                 :class="{ on: benchClub.teamId === captainId }"
                 :aria-pressed="benchClub.teamId === captainId"
-                :aria-label="`${benchClub.name} kaptan olsun`"
-                title="Kaptan yap"
+                :aria-label="$t('week.makeCaptainAria', { club: benchClub.name })"
+                :title="$t('week.makeCaptain')"
                 @click="setCaptain(benchClub.teamId)"
               >
                 <Crown :size="16" aria-hidden="true" />
@@ -509,50 +522,58 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
                 class="slot-btn joker press"
                 :class="{ on: j.active }"
                 :aria-pressed="j.active"
-                :aria-label="j.active ? `${JOKER_NAMES[j.code]} jokerini geri al` : `${benchClub.name} için ${JOKER_NAMES[j.code]}`"
-                :title="j.active ? 'Geri al' : JOKER_NAMES[j.code]"
+                :aria-label="
+                  j.active
+                    ? $t('week.undoJokerAria', { joker: $t(`joker.${j.code}`) })
+                    : $t('week.playJokerAria', { joker: $t(`joker.${j.code}`), club: benchClub.name })
+                "
+                :title="j.active ? $t('week.undo') : $t(`joker.${j.code}`)"
                 @click="onJokerClick(j.code, benchClub, j.active)"
               >
                 <component :is="JOKER_ICONS[j.code]" :size="16" aria-hidden="true" />
               </button>
             </div>
           </div>
-          <span v-else class="text-muted">Buraya bir kulüp sürükle</span>
+          <span v-else class="text-muted">{{ $t('week.dropHere') }}</span>
         </div>
         <p v-if="editable" class="text-muted drag-hint">
-          <span class="hint-fine">Bir kulübü yedek kutusuna sürüklersen oradakiyle yer değişir.</span>
-          <span class="hint-coarse">Bir kulübe basılı tutup yedek kutusuna sürükle, oradakiyle yer değişir.</span>
+          <span class="hint-fine">{{ $t('week.dragHintFine') }}</span>
+          <span class="hint-coarse">{{ $t('week.dragHintCoarse') }}</span>
         </p>
       </section>
 
       <section v-if="briefing.length" class="surface-card card-pad">
-        <div class="section-title">Kulüplerinin haftası</div>
+        <div class="section-title">{{ $t('week.briefingTitle') }}</div>
         <div class="brief-grid">
           <div v-for="b in briefing" :key="b.teamId" class="brief-card">
             <div class="brief-head">
               <b>{{ b.name }}</b>
-              <Tag v-if="b.difficulty" :severity="difficultySeverity(b.difficulty)" :value="b.difficulty" />
+              <Tag
+                v-if="b.difficulty"
+                :severity="difficultySeverity(b.difficulty)"
+                :value="$t(`difficulty.${b.difficulty}`)"
+              />
             </div>
             <div v-for="(f, i) in b.fixtures" :key="i" class="brief-fixture text-muted">
               <component :is="f.home ? House : Plane" :size="13" :aria-label="f.home ? 'Evinde' : 'Deplasmanda'" />
-              <span>Pot {{ f.opponentTierId }} · {{ f.opponentName }}</span>
+              <span>{{ $t('common.pot', { number: f.opponentTierId }) }} · {{ f.opponentName }}</span>
             </div>
-            <div v-if="!b.fixtures.length" class="text-muted brief-bye">bu hafta maçı yok</div>
+            <div v-if="!b.fixtures.length" class="text-muted brief-bye">{{ $t('week.noFixture') }}</div>
           </div>
         </div>
       </section>
 
       <section v-if="predictions?.matches.length" class="surface-card card-pad">
         <div class="section-title paul-head">
-          <span class="paul-name"><OctopusMark :size="20" /> Ahtapot Paul</span>
+          <span class="paul-name"><OctopusMark :size="20" /> {{ $t('paul.name') }}</span>
           <span v-if="predictions.tally.settled" class="paul-tally">
             {{ predictions.tally.correct }}/{{ predictions.tally.settled }}
             <strong class="text-positive">+{{ predictions.tally.points }}</strong>
             <span
               v-if="predictions.tally.provisional"
               class="live-chip"
-              :title="`${predictions.tally.provisional} maç sürüyor, bu sayı değişebilir`"
-            ><span class="dot" />canlı</span>
+              :title="$t('week.tallyLiveHint', { count: predictions.tally.provisional })"
+            ><span class="dot" />{{ $t('common.live') }}</span>
           </span>
         </div>
 
@@ -587,7 +608,7 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
 
       <section v-if="score" class="surface-card card-pad">
         <div class="section-title" style="display: flex; justify-content: space-between; align-items: center">
-          <span>{{ isComplete ? 'Hafta kapanışı' : 'Anlık puan' }}
+          <span>{{ isComplete ? $t('week.wrapTitle') : $t('week.liveTitle') }}
             <JokerIcon v-if="score.jokerCode" :code="score.jokerCode" :size="17" />
           </span>
           <span class="total-side">
@@ -595,12 +616,16 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
               v-if="isComplete && rankMove"
               class="rank-move"
               :class="moveDir"
-              :title="rankMove.prevRank !== null ? `Geçen hafta ${rankMove.prevRank}. sıradaydın` : 'Sezonun ilk haftası'"
+              :title="
+                rankMove.prevRank !== null
+                  ? $t('week.wasRanked', { rank: ordinal(rankMove.prevRank) })
+                  : $t('week.firstWeek')
+              "
             >
               <ArrowUp v-if="moveDir === 'up'" :size="14" aria-hidden="true" />
               <ArrowDown v-else-if="moveDir === 'down'" :size="14" aria-hidden="true" />
               <Minus v-else-if="moveDir === 'same'" :size="14" aria-hidden="true" />
-              {{ rankMove.rank }}.
+              {{ ordinal(rankMove.rank) }}
             </span>
             <span class="big-total">{{ score.total }}</span>
           </span>
@@ -613,7 +638,7 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
                   <span class="line-club">
                     {{ l.name }}
                     <CaptainBadge v-if="l.captain" :multiplier="l.multiplier" :joker-code="score.jokerCode" :size="20" />
-                    <span v-else-if="l.benched" class="role-chip">Yedek</span>
+                    <span v-else-if="l.benched" class="role-chip">{{ $t('week.bench') }}</span>
                   </span>
                   <div v-if="isComplete && !sittingOut(l) && wrapEventsFor(l.teamId).length" class="wrap-chips">
                     <span
@@ -622,22 +647,24 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
                       class="delta-chip mini"
                       :class="e.points > 0 ? 'up' : e.points < 0 ? 'down' : 'flat'"
                     >
-                      {{ signed(e.points) }} {{ e.label.toLocaleLowerCase('tr') }}
+                      {{ signed(e.points) }} {{ lower(e.label) }}
                     </span>
                   </div>
                 </td>
                 <td class="line-points">
-                  <span v-if="sittingOut(l)" title="Yedekte kaldı, puanı yazılmadı">-</span>
-                  <span v-else-if="byeIds.has(l.teamId) && l.basePoints === 0" class="text-muted">bu hafta maçı yoktu</span>
+                  <span v-if="sittingOut(l)" :title="$t('week.benchedHint')">{{ $t('common.none') }}</span>
+                  <span v-else-if="byeIds.has(l.teamId) && l.basePoints === 0" class="text-muted">
+                    {{ $t('week.hadNoFixture') }}
+                  </span>
                   <span v-else>{{ l.basePoints }} → <strong>{{ l.contributed >= 0 ? '+' : '' }}{{ l.contributed }}</strong></span>
                 </td>
               </tr>
               <tr v-if="score.predictions.correct" class="paul-line">
                 <td>
-                  <span class="line-club"><OctopusMark :size="16" /> Ahtapot Paul</span>
+                  <span class="line-club"><OctopusMark :size="16" /> {{ $t('paul.name') }}</span>
                 </td>
                 <td class="line-points">
-                  {{ score.predictions.correct }} doğru →
+                  {{ $t('paul.correctCount', { correct: score.predictions.correct }) }} →
                   <strong>+{{ score.predictions.points }}</strong>
                 </td>
               </tr>
@@ -648,8 +675,8 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
 
       <section v-if="deltas?.clubs.length && !isComplete" class="surface-card card-pad">
         <div class="section-title delta-head">
-          <span>Puan akışı</span>
-          <span v-if="deltas.live" class="live-chip"><span class="dot" />canlı</span>
+          <span>{{ $t('week.deltaTitle') }}</span>
+          <span v-if="deltas.live" class="live-chip"><span class="dot" />{{ $t('common.live') }}</span>
         </div>
         <div class="delta-list">
           <div v-for="c in deltas.clubs" :key="c.teamId" class="delta-row">
@@ -663,10 +690,10 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
                 :key="i"
                 class="delta-chip"
                 :class="[e.points > 0 ? 'up' : e.points < 0 ? 'down' : 'flat', { prov: e.provisional, cap: e.ruleCode === 'captain' }]"
-                :title="e.provisional ? 'Maç sürüyor, kesinleşmedi' : undefined"
+                :title="e.provisional ? $t('week.stillMoving') : undefined"
               >
                 <span v-if="e.provisional" class="dot" aria-hidden="true" />
-                {{ signed(e.points) }} {{ e.label.toLocaleLowerCase('tr') }}
+                {{ signed(e.points) }} {{ lower(e.label) }}
               </span>
             </span>
           </div>
@@ -674,22 +701,30 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
       </section>
 
       <section v-if="openPicks.available" class="surface-card card-pad">
-        <div class="section-title">Bu hafta kim ne yapmış</div>
+        <div class="section-title">{{ $t('week.openPicksTitle') }}</div>
         <div class="table-scroll">
           <table class="lines picks-table">
             <thead>
-              <tr><th>Oyuncu</th><th>Kaptan</th><th>Joker</th><th>Yedek</th></tr>
+              <tr>
+                <th>{{ $t('leaderboard.player') }}</th>
+                <th>{{ $t('week.captain') }}</th>
+                <th>{{ $t('week.joker') }}</th>
+                <th>{{ $t('week.bench') }}</th>
+              </tr>
             </thead>
             <tbody>
               <tr v-for="p in openPicks.picks" :key="p.userId" :class="{ me: p.userId === auth.user?.id }">
-                <td>{{ p.displayName }}<span v-if="p.userId === auth.user?.id" class="you"> · sen</span></td>
+                <td>
+                  {{ p.displayName }}
+                  <span v-if="p.userId === auth.user?.id" class="you"> · {{ $t('common.you') }}</span>
+                </td>
                 <td>{{ p.captainName }}</td>
                 <td>
                   <span v-if="p.jokerCode" class="pick-joker">
                     <JokerIcon :code="p.jokerCode" :size="16" />
                     <span v-if="p.jokerDetail" class="text-muted">{{ p.jokerDetail }}</span>
                   </span>
-                  <span v-else class="text-muted">-</span>
+                  <span v-else class="text-muted">{{ $t('common.none') }}</span>
                 </td>
                 <td>{{ p.benchName }}</td>
               </tr>
@@ -699,21 +734,26 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
       </section>
     </template>
 
-    <Dialog v-model:visible="swapDialog" modal :header="`${swapFrom?.name} yerine kim gelsin?`" :style="{ width: '420px' }">
-      <p class="text-muted" style="margin: 0 0 0.75rem">Aynı pottan, sadece bu hafta için.</p>
+    <Dialog
+      v-model:visible="swapDialog"
+      modal
+      :header="$t('week.swapTitle', { club: swapFrom?.name })"
+      :style="{ width: '420px' }"
+    >
+      <p class="text-muted" style="margin: 0 0 0.75rem">{{ $t('week.swapSubtitle') }}</p>
       <div class="swap-list">
         <button v-for="t in swapOptions()" :key="t.id" class="swap-option" @click="chooseSwap(t.id)">
           <span class="crest crest-sm">{{ initials(t.name) }}</span>{{ t.name }}
         </button>
-        <p v-if="!swapOptions().length" class="text-muted" style="margin: 0">Bu potta uygun kulüp kalmadı.</p>
+        <p v-if="!swapOptions().length" class="text-muted" style="margin: 0">{{ $t('week.swapEmpty') }}</p>
       </div>
     </Dialog>
 
-    <Dialog v-model:visible="benchConflict" modal header="Joker çakışması" :style="{ width: '380px' }">
-      <p style="margin: 0">Yedeğe aldığın kulüpte kalkan var. Devam edersen joker geri alınır ve hakkın iade edilir.</p>
+    <Dialog v-model:visible="benchConflict" modal :header="$t('squad.conflictTitle')" :style="{ width: '380px' }">
+      <p style="margin: 0">{{ $t('week.benchConflictBody') }}</p>
       <template #footer>
-        <Button label="Vazgeç" text @click="benchConflict = false" />
-        <Button label="Devam et" severity="danger" @click="confirmBenchConflict" />
+        <Button :label="$t('common.cancel')" text @click="benchConflict = false" />
+        <Button :label="$t('common.continue')" severity="danger" @click="confirmBenchConflict" />
       </template>
     </Dialog>
   </div>

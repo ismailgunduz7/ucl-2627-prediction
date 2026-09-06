@@ -1,3 +1,5 @@
+import { activeLocale, translate } from '@/i18n';
+
 /**
  * Thin fetch wrapper.
  *
@@ -50,7 +52,9 @@ interface RequestOptions {
 }
 
 async function rawRequest<T>(path: string, opts: RequestOptions): Promise<T> {
-  const headers: Record<string, string> = {};
+  // The API answers in the language on screen, so its errors and the labels it
+  // derives match everything around them.
+  const headers: Record<string, string> = { 'Accept-Language': activeLocale() };
   if (opts.body !== undefined) headers['Content-Type'] = 'application/json';
   if (accessToken) headers['Authorization'] = `Bearer ${accessToken}`;
 
@@ -69,7 +73,7 @@ async function rawRequest<T>(path: string, opts: RequestOptions): Promise<T> {
     throw new ApiRequestError(
       res.status,
       err.code ?? 'error',
-      err.message ?? `İstek başarısız (${res.status})`,
+      err.message ?? translate('common.requestFailed', { status: res.status }),
       err.details,
     );
   }

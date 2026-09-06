@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { query } from '../db/pool.ts';
 import { ApiError } from '../lib/errors.ts';
+import { matchweekLabel } from '../lib/labels.ts';
 import { requireAdmin, requireAuth, type AuthVariables } from '../middleware/auth.ts';
 import * as authService from '../services/auth-service.ts';
 import { listTeams } from '../services/team-service.ts';
@@ -47,7 +48,7 @@ const CompetitionSchema = z.object({ name: z.string().min(1).max(120) });
 
 adminRoutes.post('/competitions', async (c) => {
   const body = CompetitionSchema.safeParse(await c.req.json().catch(() => null));
-  if (!body.success) throw ApiError.badRequest('Yarışma adı gerekli', 'invalid_body');
+  if (!body.success) throw ApiError.badRequest('competition_name_required');
   const { rows } = await query(
     `INSERT INTO competitions (name) VALUES ($1) RETURNING id, name, created_at`,
     [body.data.name],
@@ -78,7 +79,7 @@ const CreateUserSchema = z.object({
 adminRoutes.post('/users', async (c) => {
   const body = CreateUserSchema.safeParse(await c.req.json().catch(() => null));
   if (!body.success) {
-    throw ApiError.badRequest('Geçersiz kullanıcı bilgisi', 'invalid_body', body.error.flatten());
+    throw ApiError.badRequest('invalid_user_body', undefined, body.error.flatten());
   }
   const user = await authService.createUser(body.data);
   return c.json({ user }, 201);
@@ -88,7 +89,7 @@ const SetPasswordSchema = z.object({ password: z.string().min(1).max(256) });
 
 adminRoutes.put('/users/:id/password', async (c) => {
   const body = SetPasswordSchema.safeParse(await c.req.json().catch(() => null));
-  if (!body.success) throw ApiError.badRequest('Şifre boş olamaz', 'invalid_body');
+  if (!body.success) throw ApiError.badRequest('password_required');
   await authService.setUserPassword(c.req.param('id'), body.data.password);
   return c.json({ ok: true });
 });
@@ -112,10 +113,10 @@ const JokerInventorySchema = z.object({
 
 adminRoutes.put('/users/:id/jokers', async (c) => {
   const body = JokerInventorySchema.safeParse(await c.req.json().catch(() => null));
-  if (!body.success) throw ApiError.badRequest('Geçersiz joker sayıları', 'invalid_body');
+  if (!body.success) throw ApiError.badRequest('invalid_joker_counts');
   const userId = c.req.param('id');
   const user = await query('SELECT 1 FROM users WHERE id = $1', [userId]);
-  if (user.rowCount === 0) throw ApiError.badRequest('Kullanıcı bulunamadı', 'user_not_found');
+  if (user.rowCount === 0) throw ApiError.badRequest('user_not_found');
   for (const [code, remaining] of Object.entries(body.data.counts)) {
     await setInventoryCount(userId, code as JokerCode, remaining);
   }
@@ -147,11 +148,11 @@ const ConfigBodySchema = z.union([
 
 adminRoutes.put('/config', async (c) => {
   const body = ConfigBodySchema.safeParse(await c.req.json().catch(() => null));
-  if (!body.success) throw ApiError.badRequest('Geçersiz ayar gövdesi', 'invalid_body');
+  if (!body.success) throw ApiError.badRequest('invalid_config_body');
   const entries = 'updates' in body.data ? body.data.updates : [body.data];
   for (const entry of entries) {
     if (!(entry.key in DEFAULT_CONFIG)) {
-      throw ApiError.badRequest(`Bilinmeyen ayar: ${entry.key}`, 'unknown_config_key');
+      throw ApiError.badRequest('unknown_config_key', { key: entry.key });
     }
   }
   await setConfigValues(entries.map((e) => ({ key: e.key as ConfigKey, value: e.value })));
@@ -179,7 +180,7 @@ const UpdateRulesSchema = z.object({
 
 adminRoutes.put('/scoring-rules', async (c) => {
   const body = UpdateRulesSchema.safeParse(await c.req.json().catch(() => null));
-  if (!body.success) throw ApiError.badRequest('Geçersiz kural güncellemesi', 'invalid_body');
+  if (!body.success) throw ApiError.badRequest('invalid_rule_update');
   const rules = await updateRules(body.data.updates);
   return c.json({ rules });
 });
@@ -193,7 +194,7 @@ adminRoutes.get('/matches', async (c) => {
     params.push(matchweekId);
     where = 'WHERE m.matchweek_id = $1';
   }
-  const { rows } = await query(
+  const { rows } = await query<{ matchweek_id: string; matchweek_label: string }>(
     `SELECT m.id, m.matchweek_id, mw.label AS matchweek_label, m.kickoff_at, m.status,
             m.home_team_id, ht.name AS home_name, ht.short_name AS home_short,
             m.away_team_id, at.name AS away_name, at.short_name AS away_short,
@@ -207,7 +208,12 @@ adminRoutes.get('/matches', async (c) => {
      LIMIT 500`,
     params,
   );
-  return c.json({ matches: rows });
+  return c.json({
+    matches: rows.map((m) => ({
+      ...m,
+      matchweek_label: matchweekLabel({ id: m.matchweek_id, label: m.matchweek_label }),
+    })),
+  });
 });
 
 const MatchResultSchema = z.object({
@@ -218,7 +224,7 @@ const MatchResultSchema = z.object({
 
 adminRoutes.put('/matches/:id/result', async (c) => {
   const body = MatchResultSchema.safeParse(await c.req.json().catch(() => null));
-  if (!body.success) throw ApiError.badRequest('Geçersiz maç sonucu', 'invalid_body');
+  if (!body.success) throw ApiError.badRequest('invalid_match_result');
   await setMatchResult(
     c.req.param('id'),
     body.data.homeScore,
@@ -248,7 +254,7 @@ const SyncSchema = z.object({
 
 adminRoutes.post('/sync', async (c) => {
   const body = SyncSchema.safeParse((await c.req.json().catch(() => null)) ?? {});
-  if (!body.success) throw ApiError.badRequest('Geçersiz sync isteği', 'invalid_body');
+  if (!body.success) throw ApiError.badRequest('invalid_sync_request');
   const summary = await runSync({
     providerName: body.data.provider,
     simulatedNow: body.data.simulatedNow ? new Date(body.data.simulatedNow) : undefined,

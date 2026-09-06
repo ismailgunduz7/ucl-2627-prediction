@@ -102,8 +102,18 @@ the participant and admin interfaces.
 
 ## Copy
 
-- UI text is **Turkish**; code identifiers, comments and commit messages are
-  **English**.
+- The game speaks **Turkish and English**. Code identifiers, comments and
+  commit messages are **English** whatever the interface says.
+- **No string a person reads is written where it is used.** Interface copy
+  lives in `client/src/i18n/{tr,en}.ts`; anything the API produces in words
+  (error messages, and the labels it derives rather than stores) lives in
+  `server/src/i18n/messages.ts`. Both catalogues carry the same keys, and a
+  change to one is a change to both in the same commit.
+- Turkish is the fallback. A key missing from English falls back to it, which
+  is a bug to fix rather than a feature to lean on.
+- The two languages are written, not translated. Say the same thing the way
+  each language would say it; a sentence that reads like a translation is
+  wrong even when every word is right.
 - Write like a person. No filler that states the obvious ("Değişikliklerin
   anında kaydediliyor"), no robotic explanations, no internal jargon or spec
   section symbols in the interface. If a label already says what a thing is,
@@ -122,9 +132,13 @@ the participant and admin interfaces.
   call it in the code. Sync is "skor çekme", an override is "elle girilen
   skor", the mock provider is "simülasyon". Never print a raw enum value
   (`finished`, `football_data`, `success`) where a person will read it.
-- The player is addressed as **sen** everywhere, error messages included. The
-  rules page is the one exception: it explains the game in the passive voice
-  ("seçilir", "kilitlenir", "iade edilir"), like a rulebook.
+- The player is addressed as **sen** everywhere, error messages included, and
+  as plainly in English. The rules page is the one exception in both: it
+  explains the game the way a rulebook does, in the passive voice ("seçilir",
+  "kilitlenir", "iade edilir") and impersonally in English.
+- The language belongs to the account, not the browser: it is a column on
+  `users`, so a switch on a phone shows up on the desktop. `localStorage` and
+  the browser's own setting only cover a session that has not signed in yet.
 
 ## Testing
 

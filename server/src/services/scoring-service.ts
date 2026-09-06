@@ -1,8 +1,10 @@
 import type { PoolClient } from 'pg';
 import { query, withTransaction } from '../db/pool.ts';
 import { ApiError } from '../lib/errors.ts';
+import { matchweekLabel, ruleLabel, tierLabel } from '../lib/labels.ts';
 import { scoreMatchDraft, type TierRules } from '../domain/scoring.ts';
 import { checkRuleDirection } from '../domain/rules-direction.ts';
+import { translate } from '../lib/i18n.ts';
 import type { RuleDirection } from '../data/scoring-rules.ts';
 import type { MatchStatus } from '../domain/match.ts';
 import { refreshMatchweekLifecycle } from './matchweek-lifecycle-service.ts';
@@ -43,17 +45,19 @@ export async function getRulesMatrix(): Promise<RuleMatrixRow[]> {
     byRule.set(v.rule_code, rec);
   }
 
+  const warningLabel = (key: string | null) => (key === null ? null : translate(key));
+
   return types.rows.map((t) => {
     const points = byRule.get(t.code) ?? {};
     const potValues = [1, 2, 3, 4].map((p) => points[p] ?? 0);
     return {
       code: t.code,
       category: t.category,
-      label: t.label,
+      label: ruleLabel(t.code, t.label),
       direction: t.direction,
       sortOrder: t.sort_order,
       points,
-      warning: checkRuleDirection(t.direction, potValues),
+      warning: warningLabel(checkRuleDirection(t.direction, potValues)),
     };
   });
 }
@@ -68,10 +72,10 @@ export interface RuleUpdate {
 export async function updateRules(updates: RuleUpdate[]): Promise<RuleMatrixRow[]> {
   for (const u of updates) {
     if (!Number.isInteger(u.points)) {
-      throw ApiError.badRequest('Puanlar tam sayı olmalı', 'non_integer_points');
+      throw ApiError.badRequest('non_integer_points');
     }
     if (u.tierId < 1 || u.tierId > 4) {
-      throw ApiError.badRequest('Geçersiz pot', 'invalid_tier');
+      throw ApiError.badRequest('invalid_tier');
     }
   }
   await withTransaction(async (client) => {
@@ -82,7 +86,7 @@ export async function updateRules(updates: RuleUpdate[]): Promise<RuleMatrixRow[
         [u.points, u.tierId, u.ruleCode],
       );
       if (res.rowCount === 0) {
-        throw ApiError.badRequest('Bilinmeyen kural/pot', 'unknown_rule');
+        throw ApiError.badRequest('unknown_rule');
       }
     }
   });
@@ -226,7 +230,7 @@ export async function setMatchResult(
 ): Promise<void> {
   const scored = status === 'finished' || status === 'live';
   if (scored && (homeScore === null || awayScore === null)) {
-    throw ApiError.badRequest('Skor gerekli', 'score_required');
+    throw ApiError.badRequest('score_required');
   }
   // A match put back to unplayed has no score; keep a cancelled match's partial
   // score for the record (it never yields points either way, §4.5).
@@ -240,7 +244,7 @@ export async function setMatchResult(
       away_score: number | null;
       status: string;
     }>('SELECT home_score, away_score, status FROM matches WHERE id = $1 FOR UPDATE', [matchId]);
-    if (before.rowCount === 0) throw ApiError.badRequest('Maç bulunamadı', 'match_not_found');
+    if (before.rowCount === 0) throw ApiError.badRequest('match_not_found');
     const prev = before.rows[0]!;
 
     await client.query(
@@ -285,7 +289,7 @@ export async function clearMatchOverride(matchId: string, adminUserId: string): 
       [matchId],
     );
     if (res.rowCount === 0) {
-      throw ApiError.badRequest('Bu maçta elle girilmiş bir skor yok', 'no_override');
+      throw ApiError.badRequest('no_override');
     }
     await client.query(
       `INSERT INTO match_override_audits (match_id, admin_user_id, action, changed_fields)
@@ -377,7 +381,7 @@ export async function getTeamDetail(teamId: string): Promise<TeamDetail> {
     [teamId],
   );
   const team = teamRes.rows[0];
-  if (!team) throw ApiError.badRequest('Takım bulunamadı', 'team_not_found');
+  if (!team) throw ApiError.badRequest('team_not_found');
 
   const [matchesRes, pointsRes, totalRes, entriesRes] = await Promise.all([
     query<{
@@ -429,7 +433,7 @@ export async function getTeamDetail(teamId: string): Promise<TeamDetail> {
   for (const e of entriesRes.rows) {
     if (!e.match_id) continue;
     const list = entriesByMatch.get(e.match_id) ?? [];
-    list.push({ ruleCode: e.rule_code, ruleLabel: e.rule_label, points: e.points });
+    list.push({ ruleCode: e.rule_code, ruleLabel: ruleLabel(e.rule_code, e.rule_label), points: e.points });
     entriesByMatch.set(e.match_id, list);
   }
 
@@ -439,7 +443,7 @@ export async function getTeamDetail(teamId: string): Promise<TeamDetail> {
       name: team.name,
       shortName: team.short_name,
       tierId: team.tier_id,
-      tierName: team.tier_name,
+      tierName: tierLabel(team.tier_id),
       country: team.country,
       crestUrl: team.crest_url,
       eliminated: team.eliminated_at !== null,
@@ -448,7 +452,7 @@ export async function getTeamDetail(teamId: string): Promise<TeamDetail> {
     matches: matchesRes.rows.map((m) => ({
       matchId: m.match_id,
       matchweekId: m.matchweek_id,
-      matchweekLabel: m.matchweek_label,
+      matchweekLabel: matchweekLabel({ id: m.matchweek_id, label: m.matchweek_label }),
       kickoffAt: new Date(m.kickoff_at).toISOString(),
       status: m.status,
       isHome: m.is_home,

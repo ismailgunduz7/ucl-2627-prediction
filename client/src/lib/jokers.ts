@@ -1,11 +1,7 @@
 import { Zap, Shield, Repeat, Armchair } from '@lucide/vue';
+import { translate } from '@/i18n';
 
-export const JOKER_NAMES: Record<string, string> = {
-  triple_boost: 'Üçlü kaptan',
-  clean_sheet_shield: 'Gol yememe kalkanı',
-  weekly_swap: 'Haftalık değişim',
-  bench_boost: 'Bench boost',
-};
+export const JOKER_CODES = ['triple_boost', 'clean_sheet_shield', 'weekly_swap', 'bench_boost'] as const;
 
 export const JOKER_ICONS: Record<string, unknown> = {
   triple_boost: Zap,
@@ -14,6 +10,13 @@ export const JOKER_ICONS: Record<string, unknown> = {
   bench_boost: Armchair,
 };
 
+/**
+ * What a joker is called on screen. Outside a component, so it reads the
+ * catalogue directly; a code we do not know prints itself rather than nothing.
+ */
 export function jokerName(code: string | null | undefined): string {
-  return code ? (JOKER_NAMES[code] ?? code) : '';
+  if (!code) return '';
+  const key = `joker.${code}`;
+  const name = translate(key);
+  return name === key ? code : name;
 }

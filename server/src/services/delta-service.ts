@@ -1,4 +1,6 @@
 import { query } from '../db/pool.ts';
+import { translate } from '../lib/i18n.ts';
+import { ruleLabel } from '../lib/labels.ts';
 import { scoreMatchDraft } from '../domain/scoring.ts';
 import { resolveLineup } from './lineup-service.ts';
 import { getActiveJoker } from './joker-service.ts';
@@ -83,7 +85,12 @@ export async function getWeekDeltas(userId: string, mwId: string): Promise<WeekD
     eventsByTeam.set(teamId, list);
   };
   for (const r of entries.rows) {
-    push(r.team_id, { ruleCode: r.rule_code, label: r.label, points: r.points, provisional: false });
+    push(r.team_id, {
+      ruleCode: r.rule_code,
+      label: ruleLabel(r.rule_code, r.label),
+      points: r.points,
+      provisional: false,
+    });
   }
 
   // Live drafts, same rules as a finished match (§4.3).
@@ -134,7 +141,7 @@ export async function getWeekDeltas(userId: string, mwId: string): Promise<WeekD
       if (delta !== 0) {
         push(targetId, {
           ruleCode: 'clean_sheet_shield',
-          label: 'Gol yememe kalkanı',
+          label: translate('joker.clean_sheet_shield'),
           points: delta,
           provisional: liveTeams.has(targetId),
         });
@@ -151,7 +158,7 @@ export async function getWeekDeltas(userId: string, mwId: string): Promise<WeekD
     if (extra !== 0) {
       push(lineup.captainTeamId, {
         ruleCode: 'captain',
-        label: `Kaptan ×${multiplier}`,
+        label: translate('delta.captain', { multiplier }),
         points: extra,
         provisional: captainEvents.some((e) => e.provisional),
       });
@@ -177,5 +184,5 @@ async function ruleLabels(): Promise<Map<string, string>> {
   const { rows } = await query<{ code: string; label: string }>(
     'SELECT code, label FROM scoring_rule_types',
   );
-  return new Map(rows.map((r) => [r.code, r.label]));
+  return new Map(rows.map((r) => [r.code, ruleLabel(r.code, r.label)]));
 }
