@@ -126,10 +126,10 @@ it rather than off the wall clock.
 
 ## Deploy
 
-The client is a static site on Netlify; the API is a container, built by the
-`Dockerfile` at the repository root and runnable on anything that takes one.
-`netlify.toml` builds the client workspace out of the repo root and publishes
-`client/dist`.
+The client is a static site on Netlify and the API a Node service on Render,
+both built from this repository. `netlify.toml` builds the client workspace out
+of the repo root and publishes `client/dist`. There is also a `Dockerfile` at
+the root for any host that would rather take a container.
 
 **Something has to drive the season.** Scores arrive because something polls
 the provider, and a host that sleeps between requests will happily serve pages
@@ -137,14 +137,13 @@ while quietly never advancing anything: scores frozen on their last value, a
 published knockout draw never picked up, and nothing erroring anywhere. There
 are two ways to be that something, and you pick one:
 
-- **An in-process timer.** Set `SYNC_SCHEDULER_ENABLED=true` on a host that
-  keeps the process alive. `fly.toml` is set up for this: `auto_stop_machines`
-  is `'off'` with one machine running, which is the only reason to choose that
-  host over a cheaper one that scales to zero.
-- **An external cron.** Set `CRON_SECRET` and point any cron service at
-  `POST /api/cron/tick` once a minute, passing the secret as `X-Cron-Secret`
-  or a bearer token. This is what makes free hosting work, since the host no
-  longer needs to stay awake.
+- **An external cron**, which is what runs today. Set `CRON_SECRET` and point
+  any cron service at `POST /api/cron/tick` once a minute, passing the secret
+  as `X-Cron-Secret` or a bearer token. This is what makes free hosting work,
+  since the host is then free to sleep between pings.
+- **An in-process timer.** Set `SYNC_SCHEDULER_ENABLED=true` instead, on a host
+  that keeps the process alive. `fly.toml` is set up for this, with
+  `auto_stop_machines` off and one machine running.
 
 The ping is deliberately dumber than the work: the cadence rules still decide
 whether the provider is actually called, so a minute-by-minute ping through a
@@ -164,27 +163,29 @@ The same file falls everything else back to `index.html`, which the router needs
 for direct links to `/kadro` or `/yonetim/maclar`. Order matters: the API rules
 sit above the catch-all, and Netlify takes the first match.
 
-The API, from the repository root:
+The API, on a host running the Node runtime:
 
 ```bash
-fly launch --no-deploy   # first time only, and keep the app name in fly.toml
-fly secrets set DATABASE_URL=... JWT_SECRET=... \
-                CLIENT_ORIGIN=https://<site>.netlify.app \
-                FOOTBALL_DATA_API_TOKEN=... ADMIN_PATH=/<obscure>
-fly deploy
-npm run migrate          # schema; the server does not do this on boot
+npm install --include=dev && npm run build --workspace server   # build
+node server/dist/index.js                                       # start
+npm run migrate   # schema, from anywhere with DATABASE_URL; not done on boot
 ```
 
-`fly.toml` already sets `NODE_ENV=production` (this is what makes the cookie
-`Secure`), the port, `SYNC_SCHEDULER_ENABLED=true` so scores arrive without
-anyone pressing a button, and health checks against `/health/ready`. On a host
-that sleeps instead, drop that variable and set `CRON_SECRET`. The secrets
-above are the ones that cannot live in the file. `JWT_SECRET` should be
-freshly generated rather than carried over from development, and `CLIENT_ORIGIN`
-is the Netlify URL with no trailing slash.
+`--include=dev` is not optional. `NODE_ENV=production` is one of the variables
+you set, and npm reads it: a plain `npm install` then skips TypeScript along
+with every other dev dependency, and the build fails looking for it.
 
-If `fly launch` renames the app because the name is taken, two places follow it:
-`app` in `fly.toml` and both proxy targets in `_redirects`.
+Leave the host's root directory at the repository root. The server is a
+workspace and the lockfile that pins it lives there, so an install rooted at
+`server/` cannot resolve the tree.
+
+Set `NODE_ENV=production` (this is what makes the cookie `Secure`), a fresh
+`JWT_SECRET`, `CLIENT_ORIGIN` to the site URL with no trailing slash,
+`FOOTBALL_DATA_API_TOKEN`, `ADMIN_PATH` and `CRON_SECRET`. Point the host's
+health probe at `/health/ready`. Do not set `PORT`; the host provides it.
+
+Move the API to another address and both proxy targets in `_redirects` follow
+it.
 
 The rate limiter and the background jobs live in the process, so run **one**
 instance. Two would each keep their own login counter and each poll the
