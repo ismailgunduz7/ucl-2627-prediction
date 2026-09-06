@@ -188,7 +188,7 @@ onMounted(load);
       </form>
     </section>
 
-    <section class="surface-card" style="overflow: hidden">
+    <section class="surface-card table-scroll">
       <DataTable :value="users" :loading="loading" data-key="id">
         <Column field="display_name" header="Ad" />
         <Column field="username" header="Kullanıcı adı" />

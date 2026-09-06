@@ -17,6 +17,7 @@ import FixtureLine from '@/components/FixtureLine.vue';
 import OctopusMark from '@/components/OctopusMark.vue';
 import { JOKER_ICONS, JOKER_NAMES } from '@/lib/jokers';
 import { groupMatchweeks, matchweekTitle, type MatchweekMenu } from '@/lib/matchweeks';
+import { usePointerDrag } from '@/composables/usePointerDrag';
 
 interface Mw { id: string; label: string; status: string; editable: boolean; opened: boolean; locked: boolean; menu: MatchweekMenu }
 interface SquadClub { teamId: string; tierId: number; name: string; shortName: string; eliminated: boolean }
@@ -74,8 +75,6 @@ let livePoller: number | undefined;
 
 const benchId = ref<string | null>(null);
 const captainId = ref<string | null>(null);
-const dragId = ref<string | null>(null);
-const dragOverBench = ref(false);
 
 const swapDialog = ref(false);
 const swapFrom = ref<SquadClub | null>(null);
@@ -236,12 +235,21 @@ async function persist(force = false) {
   }
 }
 
-function onDragStart(teamId: string) { if (editable.value) dragId.value = teamId; }
-function onDropBench() { dragOverBench.value = false; if (dragId.value) setBench(dragId.value); dragId.value = null; }
-function onDropPitch(targetTeamId: string) {
-  if (dragId.value && dragId.value === benchId.value) setBench(targetTeamId);
-  dragId.value = null;
-}
+/**
+ * Moving a club is a drag with a mouse and a press-and-drag with a finger.
+ * Dropping on the bench box benches that club; dragging the benched club onto
+ * one on the pitch swaps the two.
+ */
+const { dragId, overZone, press: startDrag } = usePointerDrag({
+  enabled: () => editable.value,
+  onDrop: (teamId, zone) => {
+    if (zone === 'bench') { void setBench(teamId); return; }
+    if (teamId === benchId.value) void setBench(zone);
+  },
+});
+const dragOverBench = computed(() => overZone.value === 'bench' && dragId.value !== null);
+/** The pitch club the benched one would change places with if dropped now. */
+const dropTarget = computed(() => (dragId.value === benchId.value ? overZone.value : null));
 
 async function confirmBenchConflict() {
   benchConflict.value = false;
@@ -406,13 +414,16 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
             v-for="club in pitchClubs"
             :key="club.teamId"
             class="club-card"
-            :class="{ 'is-captain': club.teamId === captainId, drag: editable }"
-            :draggable="editable"
-            @dragstart="onDragStart(club.teamId)"
-            @dragover.prevent
-            @drop="onDropPitch(club.teamId)"
+            :class="{
+              'is-captain': club.teamId === captainId,
+              drag: editable,
+              lifted: dragId === club.teamId,
+              over: dropTarget === club.teamId,
+            }"
+            :data-drop-zone="club.teamId"
+            @pointerdown="startDrag($event, club.teamId)"
           >
-            <RouterLink :to="`/takim/${club.teamId}`" class="crest-link">
+            <RouterLink :to="`/takim/${club.teamId}`" class="crest-link" draggable="false">
               <span class="crest crest-lg">{{ initials(club.name) }}</span>
             </RouterLink>
             <div class="club-name">{{ club.name }}</div>
@@ -464,18 +475,19 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
         <div
           class="bench-slot"
           :class="{ over: dragOverBench, boosted: benchBoost }"
-          @dragover.prevent="dragOverBench = editable"
-          @dragleave="dragOverBench = false"
-          @drop="onDropBench"
+          data-drop-zone="bench"
         >
           <div
             v-if="benchClub"
             class="club-card bench"
-            :class="{ 'is-captain': benchClub.teamId === captainId }"
-            :draggable="editable"
-            @dragstart="onDragStart(benchClub.teamId)"
+            :class="{
+              'is-captain': benchClub.teamId === captainId,
+              drag: editable,
+              lifted: dragId === benchClub.teamId,
+            }"
+            @pointerdown="startDrag($event, benchClub.teamId)"
           >
-            <RouterLink :to="`/takim/${benchClub.teamId}`" class="crest-link">
+            <RouterLink :to="`/takim/${benchClub.teamId}`" class="crest-link" draggable="false">
               <span class="crest crest-lg" :class="{ dim: !benchBoost }">{{ initials(benchClub.name) }}</span>
             </RouterLink>
             <div class="club-name">{{ benchClub.name }}</div>
@@ -508,7 +520,8 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
           <span v-else class="text-muted">Buraya bir kulüp sürükle</span>
         </div>
         <p v-if="editable" class="text-muted drag-hint">
-          Bir kulübü yedek kutusuna sürüklersen oradakiyle yer değişir.
+          <span class="hint-fine">Bir kulübü yedek kutusuna sürüklersen oradakiyle yer değişir.</span>
+          <span class="hint-coarse">Bir kulübe basılı tutup yedek kutusuna sürükle, oradakiyle yer değişir.</span>
         </p>
       </section>
 
@@ -592,43 +605,45 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
             <span class="big-total">{{ score.total }}</span>
           </span>
         </div>
-        <table class="lines">
-          <tbody>
-            <tr v-for="l in score.lines" :key="l.teamId" :class="{ muted: sittingOut(l) }">
-              <td>
-                <span class="line-club">
-                  {{ l.name }}
-                  <CaptainBadge v-if="l.captain" :multiplier="l.multiplier" :joker-code="score.jokerCode" :size="20" />
-                  <span v-else-if="l.benched" class="role-chip">Yedek</span>
-                </span>
-                <div v-if="isComplete && !sittingOut(l) && wrapEventsFor(l.teamId).length" class="wrap-chips">
-                  <span
-                    v-for="(e, i) in wrapEventsFor(l.teamId)"
-                    :key="i"
-                    class="delta-chip mini"
-                    :class="e.points > 0 ? 'up' : e.points < 0 ? 'down' : 'flat'"
-                  >
-                    {{ signed(e.points) }} {{ e.label.toLocaleLowerCase('tr') }}
+        <div class="table-scroll">
+          <table class="lines">
+            <tbody>
+              <tr v-for="l in score.lines" :key="l.teamId" :class="{ muted: sittingOut(l) }">
+                <td>
+                  <span class="line-club">
+                    {{ l.name }}
+                    <CaptainBadge v-if="l.captain" :multiplier="l.multiplier" :joker-code="score.jokerCode" :size="20" />
+                    <span v-else-if="l.benched" class="role-chip">Yedek</span>
                   </span>
-                </div>
-              </td>
-              <td class="line-points">
-                <span v-if="sittingOut(l)" title="Yedekte kaldı, puanı yazılmadı">-</span>
-                <span v-else-if="byeIds.has(l.teamId) && l.basePoints === 0" class="text-muted">bu hafta maçı yoktu</span>
-                <span v-else>{{ l.basePoints }} → <strong>{{ l.contributed >= 0 ? '+' : '' }}{{ l.contributed }}</strong></span>
-              </td>
-            </tr>
-            <tr v-if="score.predictions.correct" class="paul-line">
-              <td>
-                <span class="line-club"><OctopusMark :size="16" /> Ahtapot Paul</span>
-              </td>
-              <td class="line-points">
-                {{ score.predictions.correct }} doğru →
-                <strong>+{{ score.predictions.points }}</strong>
-              </td>
-            </tr>
-          </tbody>
-        </table>
+                  <div v-if="isComplete && !sittingOut(l) && wrapEventsFor(l.teamId).length" class="wrap-chips">
+                    <span
+                      v-for="(e, i) in wrapEventsFor(l.teamId)"
+                      :key="i"
+                      class="delta-chip mini"
+                      :class="e.points > 0 ? 'up' : e.points < 0 ? 'down' : 'flat'"
+                    >
+                      {{ signed(e.points) }} {{ e.label.toLocaleLowerCase('tr') }}
+                    </span>
+                  </div>
+                </td>
+                <td class="line-points">
+                  <span v-if="sittingOut(l)" title="Yedekte kaldı, puanı yazılmadı">-</span>
+                  <span v-else-if="byeIds.has(l.teamId) && l.basePoints === 0" class="text-muted">bu hafta maçı yoktu</span>
+                  <span v-else>{{ l.basePoints }} → <strong>{{ l.contributed >= 0 ? '+' : '' }}{{ l.contributed }}</strong></span>
+                </td>
+              </tr>
+              <tr v-if="score.predictions.correct" class="paul-line">
+                <td>
+                  <span class="line-club"><OctopusMark :size="16" /> Ahtapot Paul</span>
+                </td>
+                <td class="line-points">
+                  {{ score.predictions.correct }} doğru →
+                  <strong>+{{ score.predictions.points }}</strong>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
 
       <section v-if="deltas?.clubs.length && !isComplete" class="surface-card card-pad">
@@ -660,25 +675,27 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
 
       <section v-if="openPicks.available" class="surface-card card-pad">
         <div class="section-title">Bu hafta kim ne yapmış</div>
-        <table class="lines picks-table">
-          <thead>
-            <tr><th>Oyuncu</th><th>Kaptan</th><th>Joker</th><th>Yedek</th></tr>
-          </thead>
-          <tbody>
-            <tr v-for="p in openPicks.picks" :key="p.userId" :class="{ me: p.userId === auth.user?.id }">
-              <td>{{ p.displayName }}<span v-if="p.userId === auth.user?.id" class="you"> · sen</span></td>
-              <td>{{ p.captainName }}</td>
-              <td>
-                <span v-if="p.jokerCode" class="pick-joker">
-                  <JokerIcon :code="p.jokerCode" :size="16" />
-                  <span v-if="p.jokerDetail" class="text-muted">{{ p.jokerDetail }}</span>
-                </span>
-                <span v-else class="text-muted">-</span>
-              </td>
-              <td>{{ p.benchName }}</td>
-            </tr>
-          </tbody>
-        </table>
+        <div class="table-scroll">
+          <table class="lines picks-table">
+            <thead>
+              <tr><th>Oyuncu</th><th>Kaptan</th><th>Joker</th><th>Yedek</th></tr>
+            </thead>
+            <tbody>
+              <tr v-for="p in openPicks.picks" :key="p.userId" :class="{ me: p.userId === auth.user?.id }">
+                <td>{{ p.displayName }}<span v-if="p.userId === auth.user?.id" class="you"> · sen</span></td>
+                <td>{{ p.captainName }}</td>
+                <td>
+                  <span v-if="p.jokerCode" class="pick-joker">
+                    <JokerIcon :code="p.jokerCode" :size="16" />
+                    <span v-if="p.jokerDetail" class="text-muted">{{ p.jokerDetail }}</span>
+                  </span>
+                  <span v-else class="text-muted">-</span>
+                </td>
+                <td>{{ p.benchName }}</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
       </section>
     </template>
 
@@ -725,9 +742,21 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
   display: flex; flex-direction: column; align-items: center; gap: 0.5rem;
   transition: transform 0.16s ease, border-color 0.16s, box-shadow 0.16s;
 }
-.club-card:hover { transform: translateY(-3px); border-color: var(--color-border-strong); box-shadow: var(--shadow-md); }
-.club-card.drag { cursor: grab; }
+@media (hover: hover) {
+  .club-card:hover { transform: translateY(-3px); border-color: var(--color-border-strong); box-shadow: var(--shadow-md); }
+}
+.club-card.drag {
+  cursor: grab;
+  /* The gesture is ours: no text selection, no iOS callout, no tap delay. */
+  touch-action: manipulation;
+  user-select: none;
+  -webkit-user-select: none;
+  -webkit-touch-callout: none;
+}
 .club-card.drag:active { cursor: grabbing; }
+/* The card the pointer is carrying stays behind as a hole in the pitch. */
+.club-card.lifted { opacity: 0.35; }
+.club-card.over { border-color: var(--color-primary); box-shadow: 0 0 0 2px var(--color-primary), 0 0 22px rgba(99, 102, 241, 0.35); }
 .club-card.is-captain { border-color: var(--color-warning); box-shadow: 0 0 0 1px var(--color-warning), 0 0 22px rgba(251, 191, 36, 0.18); }
 .crest-link { text-decoration: none; }
 .crest.dim { filter: grayscale(0.7); opacity: 0.75; }
@@ -767,6 +796,33 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
 .bench-slot.boosted { border-style: solid; border-color: var(--color-warning); }
 .bench-slot .club-card { min-width: 180px; }
 .drag-hint { margin: 0.7rem 0 0; font-size: 0.8rem; }
+/* A finger has to hold the card first, so it gets told something else. */
+.hint-coarse { display: none; }
+@media (pointer: coarse) {
+  .hint-fine { display: none; }
+  .hint-coarse { display: inline; }
+}
+/* Two clubs to a row on a phone, with a lone third centred under them. */
+@media (max-width: 560px) {
+  .pitch { padding: 1rem 0.85rem; }
+  .pitch-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: var(--space-3); }
+  .pitch-grid > :last-child:nth-child(odd) {
+    grid-column: span 2;
+    justify-self: center;
+    width: calc(50% - var(--space-3) / 2);
+  }
+  .club-card { padding: 0.8rem 0.5rem 0.7rem; }
+  .club-name { font-size: 0.82rem; }
+  .bench-slot { padding: 0.75rem; min-height: 0; }
+  .bench-slot .club-card { min-width: 0; width: 100%; max-width: 220px; }
+  .slot-actions { gap: 0.3rem; }
+  /* The coupon gets its own line, three equal buttons wide. */
+  .paul-row { align-items: flex-start; gap: var(--space-2); }
+  .paul-picks { width: 100%; margin-left: 0; }
+  .pick-btn { flex: 1; min-width: 0; }
+  .picks-table { min-width: 440px; }
+  .delta-club { min-width: 0; }
+}
 .brief-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-3); }
 .brief-head { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
 .brief-bye { font-size: var(--text-xs); }

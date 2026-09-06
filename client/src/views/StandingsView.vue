@@ -45,7 +45,7 @@ onMounted(async () => {
         <span><i class="dot out" />Eleniyor</span>
       </div>
 
-      <div class="surface-card" style="overflow-x: auto">
+      <div class="surface-card table-scroll">
         <table class="standings">
           <thead>
             <tr>
@@ -102,4 +102,11 @@ onMounted(async () => {
 .standings tbody tr.out td.rank::before { background: var(--color-danger); }
 .team-link { color: var(--color-text); font-weight: 600; }
 .team-link:hover { color: var(--color-primary); }
+
+/* The table is wider than a phone, so it scrolls. Tighter cells shorten the
+   trip without shrinking the text out of legibility. */
+@media (max-width: 600px) {
+  .standings { min-width: 540px; }
+  .standings th, .standings td { padding: 0.5rem 0.4rem; font-size: 0.82rem; }
+}
 </style>

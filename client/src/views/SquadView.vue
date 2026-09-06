@@ -237,4 +237,16 @@ onUnmounted(() => window.clearInterval(timer));
   gap: 1rem;
   padding: 0.85rem 1.25rem;
 }
+
+/* The bar follows the thumb up the page, clear of the home indicator. */
+@media (max-width: 600px) {
+  .save-bar {
+    bottom: max(0.75rem, env(safe-area-inset-bottom));
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.6rem;
+    padding: 0.8rem;
+  }
+  .save-bar :deep(.p-button) { width: 100%; justify-content: center; }
+}
 </style>

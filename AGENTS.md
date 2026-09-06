@@ -90,7 +90,15 @@ the participant and admin interfaces.
   (drag a club to the bench) over forms and buttons.
 - Interactions save on their own. Do not add a separate "save" button for a
   choice the user already made.
-- Responsive down to phone widths; the hamburger menu is mobile-only.
+- Responsive down to phone widths; the hamburger menu is mobile-only. A table
+  wider than the screen sits in a `.table-scroll` box, so the page itself never
+  moves sideways.
+- **Direct manipulation has to work with a finger.** The `draggable` attribute
+  and its drag events never fire on touch, so drags go through
+  `client/src/composables/usePointerDrag.ts`: a mouse picks the card up after a
+  few pixels, a finger after a short hold, and drop targets mark themselves with
+  `data-drop-zone`. A drag is never the only way to reach a move either. Every
+  one of them also has a button on the card that does the same thing.
 
 ## Copy
 

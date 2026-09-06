@@ -56,7 +56,7 @@ onMounted(load);
       </form>
     </section>
 
-    <section class="surface-card" style="overflow: hidden">
+    <section class="surface-card table-scroll">
       <DataTable :value="competitions" :loading="loading" data-key="id">
         <Column field="name" header="Ad" />
         <Column field="participant_count" header="Katılımcı" />

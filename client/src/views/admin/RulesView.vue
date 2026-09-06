@@ -99,7 +99,7 @@ onMounted(load);
       <span class="text-muted">puan</span>
     </section>
 
-    <section v-if="!loading" class="surface-card" style="overflow-x: auto">
+    <section v-if="!loading" class="surface-card table-scroll">
       <table class="rules">
         <thead>
           <tr>

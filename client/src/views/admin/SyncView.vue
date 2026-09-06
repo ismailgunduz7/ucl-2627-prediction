@@ -147,7 +147,7 @@ onBeforeUnmount(() => { if (statusTimer) clearInterval(statusTimer); });
 
     <section class="surface-card" style="overflow: hidden">
       <div class="card-pad section-title" style="margin: 0; border-bottom: 1px solid var(--color-border)">Son çekilenler</div>
-      <div style="overflow-x: auto">
+      <div class="table-scroll">
         <table class="runs">
           <thead>
             <tr><th>Zaman</th><th>Sağlayıcı</th><th>Kaynak</th><th>Sonuç</th><th>Görülen</th><th>Güncellenen</th><th>Biten</th></tr>

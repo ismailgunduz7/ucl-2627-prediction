@@ -70,7 +70,7 @@ watch(() => route.params.id, (id) => id && load(id as string));
         </div>
       </section>
 
-      <section class="surface-card" style="overflow: hidden">
+      <section class="surface-card table-scroll">
         <table class="matches">
           <thead>
             <tr><th style="text-align: left">Hafta</th><th style="text-align: left">Maç</th><th>Durum</th><th>Puan</th></tr>
@@ -134,4 +134,12 @@ watch(() => route.params.id, (id) => id && load(id as string));
 .entries { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; max-width: 360px; }
 .entries li { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.84rem; }
 .entries li > span:last-child { font-weight: 700; }
+
+@media (max-width: 600px) {
+  .team-head { flex-wrap: wrap; gap: 0.75rem; }
+  .total { margin-left: auto; }
+  .matches { min-width: 460px; }
+  .matches th, .matches td { padding: 0.5rem; font-size: 0.84rem; }
+  .entry-row td { padding: 0.6rem 0.5rem; }
+}
 </style>

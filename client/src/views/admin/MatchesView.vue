@@ -226,4 +226,12 @@ watch(selectedMw, loadMatches);
   font-size: var(--text-2xs); padding: 0.15rem 0.5rem; border-radius: var(--radius-pill);
   background: var(--color-surface); border: 1px solid var(--color-border); color: var(--color-text-secondary);
 }
+
+@media (max-width: 700px) {
+  .match-row { padding: 0.75rem 0.85rem; gap: 0.75rem; }
+  .teams { width: 100%; gap: 0.5rem; }
+  .side { min-width: 0; flex: 1; font-size: 0.86rem; }
+  .controls { width: 100%; justify-content: space-between; }
+  .status-select { min-width: 0; flex: 1; }
+}
 </style>

@@ -222,4 +222,10 @@ onMounted(async () => {
 .lb-pts {
   font-weight: 700;
 }
+
+@media (max-width: 600px) {
+  .dash-grid { gap: 0.9rem; }
+  .crest-mini { width: 62px; }
+  .replay-banner .text-muted { flex: 1 1 100%; }
+}
 </style>

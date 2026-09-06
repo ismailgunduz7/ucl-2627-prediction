@@ -106,6 +106,7 @@ body {
 
 #app {
   min-height: 100vh;
+  min-height: 100dvh;
 }
 
 a {
@@ -205,6 +206,25 @@ table,
   }
 }
 
+/* ---- Dragging ----
+   The carried copy of a card lives on the body, above everything, and never
+   catches the pointer that is dragging it. */
+.drag-ghost {
+  position: fixed;
+  inset-block-start: 0;
+  inset-inline-start: 0;
+  z-index: 9998;
+  margin: 0;
+  pointer-events: none;
+  box-shadow: var(--shadow-lg);
+  opacity: 0.95;
+}
+body.is-dragging {
+  cursor: grabbing;
+  user-select: none;
+  -webkit-user-select: none;
+}
+
 /* ---- Animations ---- */
 @keyframes fade-up {
   from { opacity: 0; transform: translateY(10px); }
@@ -263,6 +283,7 @@ table,
 /* ---- Shell ---- */
 .app-shell {
   min-height: 100vh;
+  min-height: 100dvh;
   display: flex;
   flex-direction: column;
 }
@@ -382,6 +403,10 @@ table,
   right: 0;
   z-index: 102;
   padding: 0.6rem 1rem 1.1rem;
+  /* Landscape leaves little room under the header, so the list scrolls. */
+  max-height: calc(100dvh - var(--header-height));
+  overflow-y: auto;
+  overscroll-behavior: contain;
   background: var(--color-surface);
   border-bottom: 1px solid var(--color-border);
   box-shadow: var(--shadow-md);
@@ -540,7 +565,22 @@ table,
 .crest-lg { width: 58px; height: 58px; font-size: 0.8rem; }
 .crest-xl { width: 64px; height: 64px; font-size: var(--text-sm); }
 
+/* A table wider than the phone scrolls inside its own card. The page itself
+   never moves sideways. */
+.table-scroll {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
 /* ---- PrimeVue overrides ---- */
+/* A dialog sized in pixels still has to fit inside the window. */
+.p-dialog {
+  max-width: calc(100vw - 1.5rem);
+}
+/* PrimeVue leaves its table container static, so a wide one spills out. */
+.p-datatable-table-container {
+  overflow-x: auto;
+}
 .p-card {
   border: 1px solid var(--color-border);
   border-radius: var(--radius-lg);
@@ -644,6 +684,21 @@ table,
   .nav-toggle { display: inline-flex !important; }
   .app-main { padding: 1.1rem 1rem max(2rem, env(safe-area-inset-bottom)); }
   .user-chip { display: none; }
+}
+
+/* Phone. Everything gives up a little padding so the content keeps its width,
+   and anything sitting beside a title drops under it at full width. */
+@media (max-width: 600px) {
+  :root { --header-height: 58px; }
+  .app-main { padding: 0.9rem 0.85rem max(2rem, env(safe-area-inset-bottom)); }
+  .page-stack { gap: var(--space-4); }
+  .card-pad { padding: var(--space-4); }
+  .page-header-row { align-items: stretch; gap: 0.75rem; }
+  .page-header-row > :not(:first-child) { width: 100%; }
+  .page-header p { font-size: var(--text-sm); }
+  .tier-grid { gap: var(--space-3); }
+  .brand { font-size: 0.94rem; }
+  .brand-badge { width: 24px; height: 24px; }
 }
 
 /* The drawer belongs to the hamburger, and the hamburger is mobile-only. Widen

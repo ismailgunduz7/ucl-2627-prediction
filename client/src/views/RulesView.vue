@@ -107,7 +107,7 @@ onMounted(async () => {
           ise daha ağır cezalandırılır. Bir kulüp aynı hafta iki maç oynarsa ikisinin puanı da
           yazılır.
         </p>
-        <div style="overflow-x: auto">
+        <div class="table-scroll">
           <table class="rules">
             <thead>
               <tr>

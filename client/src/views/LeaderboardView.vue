@@ -47,7 +47,7 @@ onMounted(async () => {
     <Message v-else-if="!rows.length" severity="secondary" :closable="false">Bu yarışmada henüz oyuncu yok.</Message>
 
     <template v-else>
-      <div class="surface-card" style="overflow-x: auto">
+      <div class="surface-card table-scroll">
         <table class="lb">
           <thead>
             <tr>
@@ -120,5 +120,10 @@ onMounted(async () => {
   margin-right: 0.3rem;
   vertical-align: middle;
   animation: pulse-soft 1.4s ease-in-out infinite;
+}
+
+@media (max-width: 600px) {
+  .lb { min-width: 520px; }
+  .lb th, .lb td { padding: 0.55rem 0.45rem; font-size: 0.84rem; }
 }
 </style>

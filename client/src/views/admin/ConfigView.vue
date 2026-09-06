@@ -127,7 +127,7 @@ onMounted(load);
           yeniden dağıtılır. Buradaki değişiklik kimsenin elindeki hakları değiştirmez, tek tek
           düzeltmek için Kullanıcılar sayfasına bak.
         </p>
-        <div style="overflow-x: auto">
+        <div class="table-scroll">
           <table class="grants">
             <thead>
               <tr>

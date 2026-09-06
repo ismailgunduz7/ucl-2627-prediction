@@ -281,4 +281,21 @@ watch(liveOnes, schedulePoll);
   .fx-row { grid-template-columns: 3.5rem 1fr auto 1fr; row-gap: 0.4rem; }
   .fx-tail { grid-column: 2 / -1; justify-content: flex-start; }
 }
+
+/* Below this the two clubs stop fitting side by side, so the fixture stacks:
+   kickoff on top, one club per line, the score alongside both. */
+@media (max-width: 560px) {
+  .fx-row {
+    grid-template-columns: 1fr auto;
+    gap: 0.2rem 0.6rem;
+    padding: 0.7rem 0.85rem;
+  }
+  .fx-time { grid-column: 1 / -1; grid-row: 1; }
+  .fx-side { grid-column: 1; }
+  .fx-side.home { grid-row: 2; flex-direction: row-reverse; justify-content: flex-end; text-align: left; }
+  .fx-side.away { grid-row: 3; }
+  .fx-score { grid-column: 2; grid-row: 2 / 4; min-width: 2.6rem; }
+  .fx-tail { grid-column: 1 / -1; grid-row: 4; justify-content: flex-start; }
+  .fx-tail:empty { display: none; }
+}
 </style>
