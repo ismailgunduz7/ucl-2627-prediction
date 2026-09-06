@@ -5,6 +5,7 @@ import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
 import Message from 'primevue/message';
 import Tag from 'primevue/tag';
+import { Check, CircleCheck } from '@lucide/vue';
 import { useToast } from 'primevue/usetoast';
 import { useTournamentStore } from '@/stores/tournament';
 import { ApiRequestError } from '@/lib/api';
@@ -125,7 +126,7 @@ onUnmounted(() => window.clearInterval(timer));
         <section v-for="pot in store.pots" :key="pot.tierId" class="surface-card pot-col">
           <header class="pot-head">
             <span>{{ pot.tierName }}</span>
-            <i v-if="picks[pot.tierId]" class="pi pi-check-circle" style="color: var(--color-success)" />
+            <CircleCheck v-if="picks[pot.tierId]" :size="17" style="color: var(--color-success)" />
           </header>
           <button
             v-for="team in pot.teams"
@@ -150,11 +151,12 @@ onUnmounted(() => window.clearInterval(timer));
         <span class="text-muted">{{ pickedCount }} / {{ store.pots.length }} pot seçildi</span>
         <Button
           :label="locked ? 'Kilitli' : 'Kadroyu kaydet'"
-          icon="pi pi-check"
           :disabled="locked || !allPicked"
           :loading="saving"
           @click="save()"
-        />
+        >
+          <template #icon><Check :size="16" /></template>
+        </Button>
       </div>
     </template>
 

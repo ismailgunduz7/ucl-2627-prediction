@@ -3,6 +3,7 @@ import { ref, onMounted, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import Button from 'primevue/button';
 import Tag from 'primevue/tag';
+import { ArrowLeft } from '@lucide/vue';
 import { api, ApiRequestError } from '@/lib/api';
 import BallLoader from '@/components/BallLoader.vue';
 import FixtureLine from '@/components/FixtureLine.vue';
@@ -48,7 +49,9 @@ watch(() => route.params.id, (id) => id && load(id as string));
 
 <template>
   <div class="page-stack">
-    <Button label="Geri" icon="pi pi-arrow-left" text style="align-self: flex-start" @click="router.back()" />
+    <Button label="Geri" text style="align-self: flex-start" @click="router.back()">
+      <template #icon><ArrowLeft :size="16" /></template>
+    </Button>
 
     <BallLoader v-if="loading" />
     <p v-else-if="error" class="empty-state">{{ error }}</p>

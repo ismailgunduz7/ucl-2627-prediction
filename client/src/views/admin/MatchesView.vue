@@ -4,6 +4,7 @@ import { useToast } from 'primevue/usetoast';
 import Select from 'primevue/select';
 import InputNumber from 'primevue/inputnumber';
 import Button from 'primevue/button';
+import { Undo2, History } from '@lucide/vue';
 import Tag from 'primevue/tag';
 import Dialog from 'primevue/dialog';
 import { api, ApiRequestError } from '@/lib/api';
@@ -158,7 +159,6 @@ watch(selectedMw, loadMatches);
           <span v-if="m.is_manual_override" class="override-mark">
             <Tag severity="warn" value="elle girildi" />
             <Button
-              icon="pi pi-undo"
               size="small"
               severity="secondary"
               text
@@ -166,10 +166,11 @@ watch(selectedMw, loadMatches);
               :aria-label="`${m.home_name} - ${m.away_name}: skoru sağlayıcıya geri bırak`"
               title="Skoru sağlayıcıya geri bırak"
               @click="clearOverride(m)"
-            />
+            >
+              <template #icon><Undo2 :size="16" /></template>
+            </Button>
           </span>
           <Button
-            icon="pi pi-history"
             size="small"
             severity="secondary"
             text
@@ -177,7 +178,9 @@ watch(selectedMw, loadMatches);
             :aria-label="`${m.home_name} - ${m.away_name}: elle yapılan değişiklikler`"
             title="Elle yapılan değişiklikler"
             @click="openAudits(m)"
-          />
+          >
+            <template #icon><History :size="16" /></template>
+          </Button>
           <Button label="Kaydet" size="small" :loading="savingId === m.id" @click="saveResult(m)" />
         </div>
       </div>

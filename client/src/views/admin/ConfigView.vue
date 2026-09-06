@@ -4,6 +4,7 @@ import { useToast } from 'primevue/usetoast';
 import Select from 'primevue/select';
 import InputNumber from 'primevue/inputnumber';
 import Button from 'primevue/button';
+import { Check, FastForward } from '@lucide/vue';
 import Tag from 'primevue/tag';
 import { api, ApiRequestError } from '@/lib/api';
 import { JOKER_NAMES } from '@/lib/jokers';
@@ -95,7 +96,9 @@ onMounted(load);
   <div class="page-stack">
     <PageHeader title="Ayarlar">
       <template #actions>
-        <Button label="Kaydet" icon="pi pi-check" :loading="saving" :disabled="loading" @click="save" />
+        <Button label="Kaydet" :loading="saving" :disabled="loading" @click="save">
+          <template #icon><Check :size="16" /></template>
+        </Button>
       </template>
     </PageHeader>
 
@@ -186,12 +189,13 @@ onMounted(load);
           </p>
           <Button
             label="Sezonu kontrol et"
-            icon="pi pi-forward"
             severity="secondary"
             outlined
             :loading="advancing"
             @click="advanceSeason"
-          />
+          >
+            <template #icon><FastForward :size="16" /></template>
+          </Button>
         </div>
       </section>
     </template>

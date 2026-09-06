@@ -3,6 +3,7 @@ import { ref, computed, onMounted, onBeforeUnmount } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import Select from 'primevue/select';
 import Button from 'primevue/button';
+import { RefreshCw } from '@lucide/vue';
 import Message from 'primevue/message';
 import Tag from 'primevue/tag';
 import { api, ApiRequestError } from '@/lib/api';
@@ -132,7 +133,9 @@ onBeforeUnmount(() => { if (statusTimer) clearInterval(statusTimer); });
           <label>Simülasyon saati</label>
           <input v-model="simulatedNow" type="datetime-local" class="dt" />
         </div>
-        <Button label="Skorları çek" icon="pi pi-sync" :loading="running" @click="runSync" />
+        <Button label="Skorları çek" :loading="running" @click="runSync">
+          <template #icon><RefreshCw :size="16" /></template>
+        </Button>
       </div>
     </section>
 

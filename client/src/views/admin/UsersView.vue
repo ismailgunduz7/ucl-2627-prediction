@@ -11,6 +11,7 @@ import Select from 'primevue/select';
 import Tag from 'primevue/tag';
 import Dialog from 'primevue/dialog';
 import InputNumber from 'primevue/inputnumber';
+import { Zap, KeyRound, Trash2, Check } from '@lucide/vue';
 import { api, ApiRequestError } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { JOKER_NAMES } from '@/lib/jokers';
@@ -205,25 +206,26 @@ onMounted(load);
             <div style="display: flex; gap: 0.25rem">
               <Button
                 v-if="!data.is_admin"
-                icon="pi pi-bolt"
                 severity="secondary"
                 text
                 rounded
                 :aria-label="`${data.display_name} joker haklarını düzenle`"
                 title="Joker hakları"
                 @click="openJokers(data)"
-              />
+              >
+                <template #icon><Zap :size="17" /></template>
+              </Button>
               <Button
-                icon="pi pi-key"
                 severity="secondary"
                 text
                 rounded
                 :aria-label="`${data.display_name} şifresini değiştir`"
                 title="Şifre değiştir"
                 @click="openPassword(data)"
-              />
+              >
+                <template #icon><KeyRound :size="17" /></template>
+              </Button>
               <Button
-                icon="pi pi-trash"
                 severity="danger"
                 text
                 rounded
@@ -231,7 +233,9 @@ onMounted(load);
                 title="Sil"
                 :disabled="data.id === auth.user?.id"
                 @click="openDelete(data)"
-              />
+              >
+                <template #icon><Trash2 :size="17" /></template>
+              </Button>
             </div>
           </template>
         </Column>
@@ -246,7 +250,9 @@ onMounted(load);
       <Password v-model="pwValue" :feedback="false" toggle-mask autocomplete="new-password" placeholder="Yeni şifre" />
       <template #footer>
         <Button label="Vazgeç" text @click="pwDialog = false" />
-        <Button label="Kaydet" icon="pi pi-check" :disabled="pwValue.length < 1" :loading="pwSaving" @click="submitPassword" />
+        <Button label="Kaydet" :disabled="pwValue.length < 1" :loading="pwSaving" @click="submitPassword">
+          <template #icon><Check :size="16" /></template>
+        </Button>
       </template>
     </Dialog>
     <Dialog v-model:visible="jokerDialog" modal header="Joker hakları" :style="{ width: '400px' }">
@@ -272,7 +278,9 @@ onMounted(load);
       </div>
       <template #footer>
         <Button label="Vazgeç" text @click="jokerDialog = false" />
-        <Button label="Kaydet" icon="pi pi-check" :loading="jokerSaving" @click="submitJokers" />
+        <Button label="Kaydet" :loading="jokerSaving" @click="submitJokers">
+          <template #icon><Check :size="16" /></template>
+        </Button>
       </template>
     </Dialog>
     <Dialog v-model:visible="delDialog" modal header="Kullanıcıyı sil" :style="{ width: '380px' }">
@@ -282,7 +290,9 @@ onMounted(load);
       </p>
       <template #footer>
         <Button label="Vazgeç" text @click="delDialog = false" />
-        <Button label="Sil" icon="pi pi-trash" severity="danger" :loading="delSaving" @click="submitDelete" />
+        <Button label="Sil" severity="danger" :loading="delSaving" @click="submitDelete">
+          <template #icon><Trash2 :size="16" /></template>
+        </Button>
       </template>
     </Dialog>
   </div>

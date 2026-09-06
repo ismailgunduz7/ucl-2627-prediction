@@ -8,6 +8,7 @@ import Accordion from 'primevue/accordion';
 import AccordionPanel from 'primevue/accordionpanel';
 import AccordionHeader from 'primevue/accordionheader';
 import AccordionContent from 'primevue/accordioncontent';
+import { ArrowLeft } from '@lucide/vue';
 import { api, ApiRequestError } from '@/lib/api';
 import PageHeader from '@/components/PageHeader.vue';
 import BallLoader from '@/components/BallLoader.vue';
@@ -82,7 +83,9 @@ watch(() => route.params.id, (id) => id && load(id as string));
 
 <template>
   <div class="page-stack">
-    <Button label="Geri" icon="pi pi-arrow-left" text style="align-self: flex-start" @click="router.back()" />
+    <Button label="Geri" text style="align-self: flex-start" @click="router.back()">
+      <template #icon><ArrowLeft :size="16" /></template>
+    </Button>
 
     <BallLoader v-if="loading" />
     <Message v-else-if="error" severity="error" :closable="false">{{ error }}</Message>

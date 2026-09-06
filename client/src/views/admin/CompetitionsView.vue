@@ -5,6 +5,7 @@ import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import InputText from 'primevue/inputtext';
 import Button from 'primevue/button';
+import { Plus } from '@lucide/vue';
 import { api, ApiRequestError } from '@/lib/api';
 import PageHeader from '@/components/PageHeader.vue';
 
@@ -52,7 +53,9 @@ onMounted(load);
     <section class="surface-card card-pad">
       <form style="display: flex; gap: 0.6rem; flex-wrap: wrap" @submit.prevent="create">
         <InputText v-model="newName" placeholder="Yeni yarışma adı" style="flex: 1; min-width: 200px" />
-        <Button type="submit" label="Ekle" icon="pi pi-plus" :loading="saving" />
+        <Button type="submit" label="Ekle" :loading="saving">
+          <template #icon><Plus :size="16" /></template>
+        </Button>
       </form>
     </section>
 

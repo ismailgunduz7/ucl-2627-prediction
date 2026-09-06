@@ -3,6 +3,7 @@ import { ref, onMounted } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import InputNumber from 'primevue/inputnumber';
 import Button from 'primevue/button';
+import { RefreshCw, Check } from '@lucide/vue';
 import { api, ApiRequestError } from '@/lib/api';
 import PageHeader from '@/components/PageHeader.vue';
 import BallLoader from '@/components/BallLoader.vue';
@@ -73,8 +74,12 @@ onMounted(load);
     <PageHeader title="Puanlama kuralları" subtitle="Her kuralın puanını pot pot ayarla. Cezalar eksi yazılır.">
       <template #actions>
         <div style="display: flex; gap: 0.5rem">
-          <Button label="Yeniden hesapla" icon="pi pi-refresh" severity="secondary" outlined :loading="recalculating" @click="recalculate" />
-          <Button label="Kaydet" icon="pi pi-check" :loading="saving" @click="save" />
+          <Button label="Yeniden hesapla" severity="secondary" outlined :loading="recalculating" @click="recalculate">
+            <template #icon><RefreshCw :size="16" /></template>
+          </Button>
+          <Button label="Kaydet" :loading="saving" @click="save">
+            <template #icon><Check :size="16" /></template>
+          </Button>
         </div>
       </template>
     </PageHeader>

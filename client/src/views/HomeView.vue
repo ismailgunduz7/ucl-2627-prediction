@@ -3,6 +3,7 @@ import { ref, computed, onMounted } from 'vue';
 import { RouterLink } from 'vue-router';
 import Button from 'primevue/button';
 import Tag from 'primevue/tag';
+import { Play, Users, Plus, CalendarDays, ChartColumn } from '@lucide/vue';
 import { api } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import PageHeader from '@/components/PageHeader.vue';
@@ -63,7 +64,7 @@ onMounted(async () => {
     <RouterLink v-if="!loading && seasonOver" to="/sezon" class="surface-card card-pad replay-banner">
       <span class="replay-title">🏆 Sezon bitti, filmin hazır</span>
       <span class="text-muted">Sıralaman, en iyi haftan, jokerlerin ve puanının yolculuğu</span>
-      <Button label="İzle" icon="pi pi-play" size="small" />
+      <Button label="İzle" size="small"><template #icon><Play :size="15" /></template></Button>
     </RouterLink>
 
     <div v-if="!loading" class="dash-grid">
@@ -81,12 +82,16 @@ onMounted(async () => {
             </RouterLink>
           </div>
           <RouterLink to="/kadro">
-            <Button :label="squadLocked ? 'Kadroyu gör' : 'Kadroyu düzenle'" icon="pi pi-users" outlined size="small" />
+            <Button :label="squadLocked ? 'Kadroyu gör' : 'Kadroyu düzenle'" outlined size="small">
+              <template #icon><Users :size="15" /></template>
+            </Button>
           </RouterLink>
         </template>
         <template v-else>
           <p class="text-muted" style="margin: 0 0 1rem">Her pottan bir kulüp seçerek başla.</p>
-          <RouterLink to="/kadro"><Button label="Kadroyu kur" icon="pi pi-plus" /></RouterLink>
+          <RouterLink to="/kadro">
+            <Button label="Kadroyu kur"><template #icon><Plus :size="16" /></template></Button>
+          </RouterLink>
         </template>
       </section>
 
@@ -99,7 +104,9 @@ onMounted(async () => {
             <span class="text-muted">{{ weekFinal ? 'kesin puan' : 'anlık puan' }}</span>
           </div>
           <RouterLink to="/hafta">
-            <Button label="Dizilişini ayarla" icon="pi pi-calendar" size="small" />
+            <Button label="Dizilişini ayarla" size="small">
+              <template #icon><CalendarDays :size="15" /></template>
+            </Button>
           </RouterLink>
         </template>
         <p v-else class="text-muted" style="margin: 0">Sezon henüz başlamadı.</p>
@@ -119,7 +126,9 @@ onMounted(async () => {
           </li>
         </ol>
         <p v-else class="text-muted" style="margin: 0">Henüz sıralama yok.</p>
-        <RouterLink to="/puan-durumu"><Button label="Tüm sıralama" icon="pi pi-chart-bar" text size="small" /></RouterLink>
+        <RouterLink to="/puan-durumu">
+          <Button label="Tüm sıralama" text size="small"><template #icon><ChartColumn :size="15" /></template></Button>
+        </RouterLink>
       </section>
     </div>
   </div>
