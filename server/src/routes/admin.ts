@@ -66,7 +66,10 @@ adminRoutes.get('/users', async (c) => {
 
 const CreateUserSchema = z.object({
   username: z.string().min(3).max(64),
-  password: z.string().min(8).max(256),
+  // No length policy: this is a private league and the admin hands the password
+  // to the player. The upper bound is there so a paste accident cannot become a
+  // hashing job. Brute force is answered by the login rate limiter (§12).
+  password: z.string().min(1).max(256),
   displayName: z.string().min(1).max(120),
   isAdmin: z.boolean().optional(),
   competitionId: z.string().uuid().nullable().optional(),
@@ -81,11 +84,11 @@ adminRoutes.post('/users', async (c) => {
   return c.json({ user }, 201);
 });
 
-const SetPasswordSchema = z.object({ password: z.string().min(8).max(256) });
+const SetPasswordSchema = z.object({ password: z.string().min(1).max(256) });
 
 adminRoutes.put('/users/:id/password', async (c) => {
   const body = SetPasswordSchema.safeParse(await c.req.json().catch(() => null));
-  if (!body.success) throw ApiError.badRequest('Şifre en az 8 karakter olmalı', 'invalid_body');
+  if (!body.success) throw ApiError.badRequest('Şifre boş olamaz', 'invalid_body');
   await authService.setUserPassword(c.req.param('id'), body.data.password);
   return c.json({ ok: true });
 });

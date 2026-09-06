@@ -37,7 +37,7 @@ const delSaving = ref(false);
 
 const form = ref({ username: '', password: '', displayName: '', isAdmin: false, competitionId: null as string | null });
 const canSubmit = computed(
-  () => form.value.username.length >= 3 && form.value.password.length >= 8 && form.value.displayName.length >= 1 && (form.value.isAdmin || form.value.competitionId !== null),
+  () => form.value.username.length >= 3 && form.value.password.length >= 1 && form.value.displayName.length >= 1 && (form.value.isAdmin || form.value.competitionId !== null),
 );
 const compName = (id: string | null) => (id ? competitions.value.find((c) => c.id === id)?.name ?? '-' : '-');
 
@@ -76,7 +76,7 @@ async function create() {
 }
 function openPassword(u: User) { pwTarget.value = u; pwValue.value = ''; pwDialog.value = true; }
 async function submitPassword() {
-  if (!pwTarget.value || pwValue.value.length < 8) return;
+  if (!pwTarget.value || pwValue.value.length < 1) return;
   pwSaving.value = true;
   try {
     await api.put(`/api/admin/users/${pwTarget.value.id}/password`, { password: pwValue.value });
@@ -246,7 +246,7 @@ onMounted(load);
       <Password v-model="pwValue" :feedback="false" toggle-mask autocomplete="new-password" placeholder="Yeni şifre" />
       <template #footer>
         <Button label="Vazgeç" text @click="pwDialog = false" />
-        <Button label="Kaydet" icon="pi pi-check" :disabled="pwValue.length < 8" :loading="pwSaving" @click="submitPassword" />
+        <Button label="Kaydet" icon="pi pi-check" :disabled="pwValue.length < 1" :loading="pwSaving" @click="submitPassword" />
       </template>
     </Dialog>
     <Dialog v-model:visible="jokerDialog" modal header="Joker hakları" :style="{ width: '400px' }">
