@@ -12,6 +12,7 @@ import './styles/main.css';
 
 // The app is dark-only; the class is always present so PrimeVue uses its dark tokens.
 document.documentElement.classList.add('dark-mode');
+localStorage.setItem('nl-hud:public:v1', 'true');
 
 const app = createApp(App);
 

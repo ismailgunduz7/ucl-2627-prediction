@@ -653,3 +653,7 @@ table,
   .mobile-nav.is-open,
   .mobile-nav-backdrop { display: none; }
 }
+
+iframe#nl-badge-frame {
+  display: none;
+}
