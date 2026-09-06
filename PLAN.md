@@ -802,13 +802,12 @@ UI copy is Turkish; code identifiers are English. The interface is dark-only, bu
 
 ### Phase 7: Remaining work
 
-Ordered by what blocks a real season most. Shipped from this list already: the live delta feed (§18.6), the season replay (§18.8), the wrap card's rank movement with the bye and bonus lines (§18.3), the admin screens for config, joker-inventory repair and override history, the knockout time-basis question (§4.4), settled by dropping the unused flag, the touch-capable drag on the weekly pitch with the responsive pass around it, Turkish and English throughout (§0), and real club crests in place of the letter badges.
+Ordered by what blocks a real season most. Shipped from this list already: the live delta feed (§18.6), the season replay (§18.8), the wrap card's rank movement with the bye and bonus lines (§18.3), the admin screens for config, joker-inventory repair and override history, the knockout time-basis question (§4.4), settled by dropping the unused flag, **the real fixture list and the club-to-provider mapping** (§0, §5.1), **the knockout draw arriving through sync instead of being invented** (§8.1), the touch-capable drag on the weekly pitch with the responsive pass around it, Turkish and English throughout (§0), and real club crests in place of the letter badges.
 
 1. **Production deploy configuration.**
-2. Remaining edge-case tests from §11: provider score correction after a finish, a postponed match holding its week open, and the top-8 bonus.
+2. Remaining edge-case tests from §11: provider score correction after a finish, a postponed match holding its week open, and the top-8 bonus. The knockout draw arriving through sync belongs here too: the tie grouping is unit-tested, but no real published draw has landed on it yet, since UEFA makes that draw months after the league phase is seeded.
 3. **Club countries are still raw codes.** `teams.country` holds UEFA's three-letter association labels (`AUT AZE BEL CZE ENG ESP FRA GER GRE ITA NED NOR POR SVK TUR UKR`) and both places that show it, the squad picker and the team page, print the code as it stands. A Turkish reader sees "GER" for Almanya, which is exactly the raw-enum-in-the-interface case AGENTS.md rules out. The fix is a `country.*` block in both catalogues and the name rendered in place of the code; `Intl.DisplayNames` cannot stand in for it, because ENG and the other home nations are not ISO countries. Sixteen entries per language, two call sites.
 4. **Responsive touch-ups.** The first responsive pass covered the shell, the pitch, the fixture rows, the wide tables and the dialogs, and the owner has since found further screens that do not sit right on a phone. Those are still to be named and fixed; the work is layout only, no behaviour changes.
-5. **Real fixture list** once UEFA publishes it (the pots are already the official 2026-27 field; today's fixtures are a constraint-true random draw), plus provider id mapping so the real feed takes over from the mock.
 
 ---
 
