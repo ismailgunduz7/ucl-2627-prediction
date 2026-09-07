@@ -699,6 +699,9 @@ body.is-dragging {
   .nav-toggle { display: inline-flex !important; }
   .app-main { padding: 1.1rem 1rem max(2rem, env(safe-area-inset-bottom)); }
   .user-chip { display: none; }
+  /* Once the drawer is the menu it carries the language switch, and a second
+     copy in the header is the same control twice on one screen. */
+  .header-lang { display: none; }
 }
 
 /* Phone. Everything gives up a little padding so the content keeps its width,

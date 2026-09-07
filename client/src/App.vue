@@ -142,11 +142,6 @@ async function logout() {
   font-size: var(--text-sm);
   font-weight: 600;
 }
-/* The header is tight on a phone; the drawer carries the picker there. */
-@media (max-width: 600px) {
-  .header-lang { display: none; }
-}
-
 .page-enter-active {
   transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
 }
