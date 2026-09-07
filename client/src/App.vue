@@ -3,7 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import Button from 'primevue/button';
 import Toast from 'primevue/toast';
-import { Home, Users, CalendarDays, BookOpen, LayoutGrid, Network, Calculator, Flag, RefreshCw, Menu, X, LogOut, Table, ListOrdered, Settings } from '@lucide/vue';
+import { Home, Users, CalendarDays, BookOpen, LayoutGrid, Network, Calculator, Flag, RefreshCw, Menu, X, LogOut, Table, ListOrdered, Settings, UserRound } from '@lucide/vue';
 import { useAuthStore } from '@/stores/auth';
 import AppCursor from '@/components/AppCursor.vue';
 import StarBall from '@/components/StarBall.vue';
@@ -102,7 +102,9 @@ async function logout() {
         </nav>
 
         <div class="header-end">
-          <span class="user-chip"><span class="role-dot" />{{ auth.user?.displayName }}</span>
+          <RouterLink to="/hesap" class="user-chip" :title="$t('account.title')">
+            <span class="role-dot" />{{ auth.user?.displayName }}
+          </RouterLink>
           <LanguagePicker class="header-lang" />
           <Button severity="secondary" text rounded :aria-label="$t('common.signOut')" @click="logout">
             <LogOut :size="18" />
@@ -131,6 +133,10 @@ async function logout() {
       <RouterLink v-for="item in navItems" :key="`m-${item.to}`" :to="item.to" class="mobile-nav-link" @click="mobileNavOpen = false">
         <component :is="item.icon" :size="18" aria-hidden="true" />
         <span>{{ $t(item.key) }}</span>
+      </RouterLink>
+      <RouterLink to="/hesap" class="mobile-nav-link" @click="mobileNavOpen = false">
+        <UserRound :size="18" aria-hidden="true" />
+        <span>{{ auth.user?.displayName }}</span>
       </RouterLink>
       <div class="mobile-nav-lang">
         <span class="text-muted">{{ $t('common.language') }}</span>

@@ -391,6 +391,16 @@ body.is-dragging {
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+/* The chip is the way to your own account, so it has to answer the pointer. */
+.user-chip:hover {
+  border-color: var(--color-border-strong);
+  color: var(--color-text);
+  text-decoration: none;
+}
+.user-chip.router-link-active {
+  border-color: var(--color-primary);
+  color: var(--color-text);
+}
 .user-chip .role-dot {
   width: 7px;
   height: 7px;

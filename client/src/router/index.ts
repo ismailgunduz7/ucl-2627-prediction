@@ -24,6 +24,10 @@ const routes: RouteRecordRaw[] = [
   { path: '/takim/:id', name: 'takim', component: () => import('@/views/TeamView.vue'), meta: { requiresAuth: true, participant: true } },
   { path: '/sezon', name: 'sezon', component: () => import('@/views/SeasonReplayView.vue'), meta: { requiresAuth: true, participant: true } },
 
+  // Everyone with an account has one, admins included, so it is not marked
+  // `participant`: the guard below would bounce an admin off their own page.
+  { path: '/hesap', name: 'hesap', component: () => import('@/views/AccountView.vue'), meta: { requiresAuth: true } },
+
   // Admin area (flat, rendered in the shell with admin nav)
   { path: ADMIN_BASE, name: 'admin-dashboard', component: () => import('@/views/admin/DashboardView.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
   { path: `${ADMIN_BASE}/kullanicilar`, name: 'admin-users', component: () => import('@/views/admin/UsersView.vue'), meta: { requiresAuth: true, requiresAdmin: true } },

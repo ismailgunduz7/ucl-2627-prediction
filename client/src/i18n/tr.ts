@@ -65,6 +65,17 @@ export default {
     signIn: 'Giriş yap',
     loginFailed: 'Giriş yapılamadı, tekrar dene',
   },
+  account: {
+    title: 'Hesabım',
+    passwordTitle: 'Şifreni değiştir',
+    current: 'Mevcut şifren',
+    next: 'Yeni şifren',
+    again: 'Yeni şifren, bir kez daha',
+    mismatch: 'İki şifre aynı değil',
+    signsOthersOut: 'Diğer cihazlardaki oturumların kapanır.',
+    changed: 'Şifren değişti',
+    changeFailed: 'Şifre değiştirilemedi',
+  },
   home: {
     greeting: 'Selam {name} 👋',
     replayTitle: '🏆 Sezon bitti, filmin hazır',

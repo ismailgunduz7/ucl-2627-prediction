@@ -219,6 +219,9 @@ in `client/src/i18n/index.ts` and `server/src/i18n/messages.ts`, plus the
 ## Auth model
 
 - **No public registration.** Admins create all accounts.
+- Everyone can change **their own password** from their account page, reached by
+  clicking their name in the header. It asks for the current password and signs
+  the account out everywhere else.
 - Short-lived **access JWT** (in-memory on the client) + **httpOnly refresh
   cookie** with server-side **rotation** (each refresh revokes the old token).
 - Login is **rate-limited** per `(IP + username)` with a `429` + `Retry-After`;

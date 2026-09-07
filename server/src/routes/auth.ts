@@ -72,6 +72,31 @@ authRoutes.get('/me', requireAuth, async (c) => {
   return c.json({ user });
 });
 
+const ChangePasswordSchema = z.object({
+  currentPassword: z.string().min(1).max(256),
+  newPassword: z.string().min(1).max(256),
+});
+
+/**
+ * A player changes their own password. Nobody needs an admin for this.
+ *
+ * Every session of that account is revoked, so the reply carries a fresh pair
+ * and this browser stays signed in while any other is turned out.
+ */
+authRoutes.put('/me/password', requireAuth, async (c) => {
+  const body = ChangePasswordSchema.safeParse(await c.req.json().catch(() => null));
+  if (!body.success) throw ApiError.badRequest('password_required');
+  const auth = c.get('auth');
+  const session = await authService.changeOwnPassword(
+    auth.sub,
+    body.data.currentPassword,
+    body.data.newPassword,
+    { ip: clientIp(c), userAgent: c.req.header('user-agent') },
+  );
+  setRefreshCookie(c, session.refreshToken);
+  return c.json({ user: session.user, accessToken: session.accessToken });
+});
+
 const LanguageSchema = z.object({ language: z.enum(LOCALES) });
 
 /**

@@ -268,6 +268,48 @@ export async function deleteUser(userId: string, actingAdminId: string): Promise
   });
 }
 
+/**
+ * A player changes their own password.
+ *
+ * The current one has to be right, so a walked-away session cannot take the
+ * account over. Every refresh token is revoked, this device included, and the
+ * caller is handed a fresh pair: the browser doing the change stays signed in,
+ * anything else signed in as that account does not.
+ */
+export async function changeOwnPassword(
+  userId: string,
+  currentPassword: string,
+  newPassword: string,
+  meta: RequestMeta = {},
+): Promise<SessionResult> {
+  const { rows } = await query<UserRow>(
+    `SELECT id, username, password_hash, display_name, is_admin, competition_id, language
+     FROM users WHERE id = $1`,
+    [userId],
+  );
+  const user = rows[0];
+  if (!user) throw ApiError.unauthorized();
+  if (!(await verifyPassword(currentPassword, user.password_hash))) {
+    throw ApiError.badRequest('current_password_wrong');
+  }
+
+  const passwordHash = await hashPassword(newPassword);
+  await withTransaction(async (client) => {
+    await client.query('UPDATE users SET password_hash = $1, updated_at = now() WHERE id = $2', [
+      passwordHash,
+      userId,
+    ]);
+    await client.query(
+      `UPDATE refresh_tokens SET revoked_at = now()
+       WHERE user_id = $1 AND revoked_at IS NULL`,
+      [userId],
+    );
+  });
+
+  const refreshToken = await issueRefreshToken(userId, meta);
+  return { user: toPublicUser(user), accessToken: signAccessToken(claimsFor(user)), refreshToken };
+}
+
 /** Remembers the language this account reads the game in, on every device. */
 export async function setLanguage(userId: string, language: Locale): Promise<PublicUser> {
   const { rows } = await query<UserRow>(

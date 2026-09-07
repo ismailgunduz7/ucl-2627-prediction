@@ -64,6 +64,17 @@ export default {
     signIn: 'Sign in',
     loginFailed: 'Could not sign you in, try again',
   },
+  account: {
+    title: 'My account',
+    passwordTitle: 'Change your password',
+    current: 'Current password',
+    next: 'New password',
+    again: 'New password again',
+    mismatch: 'The two do not match',
+    signsOthersOut: 'Signs you out on your other devices.',
+    changed: 'Password changed',
+    changeFailed: 'Could not change your password',
+  },
   home: {
     greeting: 'Hey {name} 👋',
     replayTitle: '🏆 The season is over, your reel is ready',

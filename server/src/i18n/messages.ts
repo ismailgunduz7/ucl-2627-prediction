@@ -31,6 +31,7 @@ const tr: Catalog = {
   'errors.refresh_token_expired': 'Oturum süresi doldu',
   'errors.too_many_requests': 'Çok fazla deneme yaptın, {minutes} dakika sonra tekrar dene',
   'errors.credentials_required': 'Kullanıcı adı ve şifre gerekli',
+  'errors.current_password_wrong': 'Mevcut şifren yanlış',
   'errors.invalid_language': 'Desteklenmeyen dil',
 
   'errors.cron_disabled': 'CRON_SECRET tanımlı değil',
@@ -161,6 +162,7 @@ const en: Catalog = {
   'errors.refresh_token_expired': 'Your session has expired',
   'errors.too_many_requests': 'Too many attempts, try again in {minutes} minutes',
   'errors.credentials_required': 'Username and password are required',
+  'errors.current_password_wrong': 'That is not your current password',
   'errors.invalid_language': 'That language is not supported',
 
   'errors.cron_disabled': 'CRON_SECRET is not set',

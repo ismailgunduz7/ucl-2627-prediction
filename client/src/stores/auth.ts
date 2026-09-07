@@ -37,6 +37,18 @@ export const useAuthStore = defineStore('auth', () => {
     applySession(session);
   }
 
+  /**
+   * Change your own password. The server revokes every session of the account,
+   * so it answers with a fresh pair and this browser carries on signed in.
+   */
+  async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+    const session = await api.put<SessionResponse>('/api/auth/me/password', {
+      currentPassword,
+      newPassword,
+    });
+    applySession(session);
+  }
+
   async function logout(): Promise<void> {
     try {
       await api.post('/api/auth/logout');
@@ -75,5 +87,5 @@ export const useAuthStore = defineStore('auth', () => {
     await run;
   }
 
-  return { user, ready, isAuthenticated, isAdmin, login, logout, bootstrap };
+  return { user, ready, isAuthenticated, isAdmin, login, changePassword, logout, bootstrap };
 });

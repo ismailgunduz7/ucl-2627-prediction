@@ -111,7 +111,7 @@ After the league phase:
 
 ### 3.1 Players (users)
 
-- Accounts are **created by an admin** (username + password). There is **no public self-registration** API.
+- Accounts are **created by an admin** (username + password). There is **no public self-registration** API. A player can change **their own password** from their account page without going through an admin; the admin reset in §9.3 stays for the case where they cannot get in at all.
 - Optional grouping into **competitions**. A competition is **only** a way to isolate a set of participants from each other (e.g. work, school, friends, family) so each user sees **only their own competition's** participants, leaderboard, and open picks. **All game rules, config, scoring, jokers, matchweeks, acts, and tournament data are global/shared** across competitions; competitions never change the rules, only *who is grouped with whom*. First season may use a **single** competition; the schema and admin UI must support multiple.
 - Roles: **participant** and **admin**. Admins manage the system and do not play on the same account (excluded from participant leaderboards).
 - New participants may be added only **before permanent squad lock**. After lock, no new players join that season.
@@ -625,7 +625,7 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 ### 9.1 Auth
 
 - `POST /api/auth/login`, `POST /api/auth/logout`, `POST /api/auth/refresh`
-- `GET /api/auth/me`, `PUT /api/auth/me/language` (the account's reading language, `tr` or `en`)
+- `GET /api/auth/me`, `PUT /api/auth/me/language` (the account's reading language, `tr` or `en`), `PUT /api/auth/me/password` (a player changes their own password: the current one has to be right, every session of the account is revoked and the caller is handed a fresh pair so the browser doing the change stays signed in)
 - **No** public `register`
 - Access JWT short-lived; refresh httpOnly cookie with rotation
 - Middleware: `auth`, `admin`, `participant`
