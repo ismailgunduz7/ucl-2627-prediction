@@ -22,9 +22,11 @@ real match results. See [PLAN.md](PLAN.md) for the authoritative product spec.
 > fixture list rather than a stand-in draw. The game is also **bilingual**:
 > every screen reads in Turkish or English, and the choice lives on the account
 > rather than the browser, so switching on a phone switches the desktop too.
-> Phase 7 in [PLAN.md](PLAN.md) §13 tracks what is left, which is production
-> deploy configuration and deeper edge-case tests. The mock provider stays in
-> the tree for local work against a simulated clock.
+> It is **deployed**: the client on Netlify, the API on Fly with its background
+> timers alive, both behind one origin. Phase 7 in [PLAN.md](PLAN.md) §13 tracks
+> what is left, which is deeper edge-case tests, club country names in place of
+> the three-letter association codes, and further responsive touch-ups. The mock
+> provider stays in the tree for local work against a simulated clock.
 
 ## Stack
 
