@@ -867,7 +867,7 @@ Knockout `round_advance` / medal values: tune after league-phase feel is good.
 
 ## 17. Agent working instructions
 
-1. This file is authoritative for *what* to build; [AGENTS.md](AGENTS.md) governs *how* to work (commits, git, design language, testing split).
+1. This file is authoritative for *what* to build; [AGENTS.md](AGENTS.md) governs *how* to work (commits, git, design language, testing split). [CLAUDE.md](CLAUDE.md) exists only so a tool that loads project instructions on its own picks the agreement up without being asked, and `.githooks/pre-commit` refuses a commit that changes behaviour while leaving every document untouched.
 2. Ship vertical slices: squad → finished scoring → sync → lineup/locks → jokers/live provisional → acts/knockout.
 3. Automate tests for §11.
 4. Do not add betting, qualifying rounds, player fantasy, half-points, random mode, or self-registration.

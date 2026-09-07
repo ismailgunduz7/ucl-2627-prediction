@@ -1,0 +1,37 @@
+#!/bin/sh
+#
+# Refuse a commit that changes behaviour without touching the documentation
+# that describes it. AGENTS.md has said to do this from the beginning; saying
+# it was not enough, so the check runs here where it cannot be skimmed past.
+#
+# Genuinely invisible work (an internal refactor, a typo in a test) has an
+# escape hatch: git commit --no-verify.
+
+staged=$(git diff --cached --name-only --diff-filter=ACMR)
+[ -z "$staged" ] && exit 0
+
+behaviour=$(printf '%s\n' "$staged" | grep -E '^(client/src/|server/src/|supabase/migrations/)' | grep -vE '\.test\.ts$')
+[ -z "$behaviour" ] && exit 0
+
+docs=$(printf '%s\n' "$staged" | grep -E '^(PLAN\.md|README\.md|AGENTS\.md|CLAUDE\.md|\.env\.example)$')
+[ -n "$docs" ] && exit 0
+
+cat >&2 <<'MSG'
+
+This commit changes behaviour but does not touch a single document.
+
+PLAN.md is the product spec and it is authoritative: §0 for what is built or
+deliberately deviating, §13 Phase 7 for what remains, the relevant spec section
+when the rules themselves change, §14 when a change adds an acceptance
+criterion. README.md covers the status paragraph, setup, scripts, environment
+variables and the repository layout. AGENTS.md covers working conventions, and
+.env.example every variable the code reads.
+
+Stage the doc edit alongside the code and commit again.
+
+If the change really is invisible to all of them, say so and skip the check:
+
+    git commit --no-verify
+
+MSG
+exit 1

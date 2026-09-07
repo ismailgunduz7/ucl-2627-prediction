@@ -7,6 +7,21 @@ before making changes.
 PLAN.md disagree, PLAN.md wins. The only other way out is to change the plan on
 purpose, in the open. It never just drifts.
 
+## How this file reaches you
+
+A tool that loads project instructions on its own looks for `CLAUDE.md`, not
+this file, so for a long time this agreement sat in the repository being read
+by nobody and the plan drifted anyway. [CLAUDE.md](CLAUDE.md) now exists at the
+root and does nothing but import this file, so the agreement is in context from
+the first message of every session.
+
+Instructions that only persuade are not enough on their own. The doc rule below
+is also enforced by `.githooks/pre-commit`, which `npm install` wires up
+through the root `prepare` script. A commit that touches `client/src`,
+`server/src` or `supabase/migrations` without touching a document is refused.
+`git commit --no-verify` is the way out for work that really is invisible to
+every document, and reaching for it routinely means the rule is being dodged.
+
 ## Documentation is part of the work
 
 **Every change updates the documentation it affects, in the same commit as the
@@ -26,6 +41,22 @@ What to touch:
 
 A change that is genuinely invisible to all four (an internal refactor with no
 behaviour change) needs no doc edit, and inventing one is worse than none.
+
+### Definition of done
+
+A piece of work is finished when all of these are true, and not before:
+
+1. The behaviour works, and `npm run typecheck` plus `npm run test` on the
+   server and `vue-tsc --noEmit` plus a build on the client all pass.
+2. **PLAN.md tells the truth about it.** Something that shipped is described as
+   shipped, in the section that covers it, and struck off §13 Phase 7 if it was
+   listed there. Something the plan promised and this change deliberately does
+   differently is written down in §0 as a deviation.
+3. README.md, this file and `.env.example` match reality for anything the
+   change touched.
+4. The interface copy exists in both `tr` and `en`, and the API copy in both,
+   with the same keys.
+5. It is one commit, in the format below, covering that one piece of work.
 
 ## Commits
 

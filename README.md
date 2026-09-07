@@ -233,6 +233,8 @@ in `client/src/i18n/index.ts` and `server/src/i18n/messages.ts`, plus the
   PLAN.md                 # authoritative product spec
   package.json            # npm workspaces root
   AGENTS.md               # working agreement for contributors
+  CLAUDE.md               # loads AGENTS.md for tools that read instructions on their own
+  .githooks/pre-commit    # refuses a behaviour change that updates no document
   Dockerfile              # API image, built from the repo root
   fly.toml                # API host: one machine, never stopped
   netlify.toml            # client build for Netlify
@@ -240,3 +242,7 @@ in `client/src/i18n/index.ts` and `server/src/i18n/messages.ts`, plus the
   server/                 # HTTP API, auth, scoring, provider sync, migrations
   supabase/migrations/    # forward-only SQL migrations
 ```
+
+`npm install` points `core.hooksPath` at `.githooks`, so the doc check is live
+from the first install. `git commit --no-verify` skips it for a change that
+really is invisible to every document.

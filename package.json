@@ -14,7 +14,8 @@
     "build": "npm run build --workspace server && npm run build --workspace client",
     "migrate": "npm run migrate --workspace server",
     "seed": "npm run seed --workspace server",
-    "test": "npm run test --workspace server"
+    "test": "npm run test --workspace server",
+    "prepare": "git rev-parse --git-dir >/dev/null 2>&1 && git config core.hooksPath .githooks || true"
   },
   "engines": {
     "node": ">=20"
