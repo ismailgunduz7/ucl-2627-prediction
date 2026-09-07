@@ -217,6 +217,43 @@ export async function createUser(input: CreateUserInput): Promise<PublicUser> {
   }
 }
 
+export interface UpdateUserInput {
+  displayName?: string;
+  competitionId?: string | null;
+}
+
+/**
+ * Admin edits the parts of an account that are not credentials: the name
+ * everyone sees and the competition the player is grouped into.
+ *
+ * A competition only decides who is listed beside whom, so moving somebody is
+ * a grouping change and nothing more; the rules, scoring and jokers are global
+ * (§3.1). A participant always belongs to one, an admin never does.
+ */
+export async function updateUser(userId: string, input: UpdateUserInput): Promise<PublicUser> {
+  const { rows } = await query<{ is_admin: boolean }>('SELECT is_admin FROM users WHERE id = $1', [
+    userId,
+  ]);
+  const target = rows[0];
+  if (!target) throw ApiError.badRequest('user_not_found');
+
+  const competitionId = target.is_admin ? null : input.competitionId;
+  if (!target.is_admin && competitionId === null) {
+    throw ApiError.badRequest('competition_required');
+  }
+
+  const updated = await query<UserRow>(
+    `UPDATE users
+        SET display_name = COALESCE($2, display_name),
+            competition_id = COALESCE($3, competition_id),
+            updated_at = now()
+      WHERE id = $1
+      RETURNING id, username, password_hash, display_name, is_admin, competition_id, language`,
+    [userId, input.displayName ?? null, competitionId ?? null],
+  );
+  return toPublicUser(updated.rows[0]!);
+}
+
 /**
  * Admin resets a user's password. Also revokes all of that user's refresh
  * tokens so existing sessions can no longer silently refresh (forces re-login).

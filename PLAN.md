@@ -650,7 +650,7 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 
 ### 9.3 Admin APIs
 
-- Users CRUD (create participants) + assign competition
+- Users CRUD (create participants) + assign competition. Editing an existing account covers the display name and the competition it sits in; the username is the credential and does not move.
 - Competitions CRUD
 - Scoring rules editor
 - Tournament config

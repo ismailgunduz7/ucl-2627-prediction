@@ -85,6 +85,24 @@ adminRoutes.post('/users', async (c) => {
   return c.json({ user }, 201);
 });
 
+const UpdateUserSchema = z
+  .object({
+    displayName: z.string().min(1).max(120).optional(),
+    competitionId: z.string().uuid().nullable().optional(),
+  })
+  .refine((v) => v.displayName !== undefined || v.competitionId !== undefined, {
+    message: 'nothing to update',
+  });
+
+adminRoutes.put('/users/:id', async (c) => {
+  const body = UpdateUserSchema.safeParse(await c.req.json().catch(() => null));
+  if (!body.success) {
+    throw ApiError.badRequest('invalid_user_body', undefined, body.error.flatten());
+  }
+  const user = await authService.updateUser(c.req.param('id'), body.data);
+  return c.json({ user });
+});
+
 const SetPasswordSchema = z.object({ password: z.string().min(1).max(256) });
 
 adminRoutes.put('/users/:id/password', async (c) => {

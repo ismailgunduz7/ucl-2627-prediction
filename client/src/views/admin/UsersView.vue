@@ -12,7 +12,7 @@ import Select from 'primevue/select';
 import Tag from 'primevue/tag';
 import Dialog from 'primevue/dialog';
 import InputNumber from 'primevue/inputnumber';
-import { Zap, KeyRound, Trash2, Check } from '@lucide/vue';
+import { Zap, KeyRound, Trash2, Check, Pencil } from '@lucide/vue';
 import { api, ApiRequestError } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import { JOKER_CODES } from '@/lib/jokers';
@@ -77,6 +77,41 @@ async function create() {
     saving.value = false;
   }
 }
+// Editing an account covers everything that is not a credential: the name
+// people see and the competition they are grouped into.
+const editDialog = ref(false);
+const editTarget = ref<User | null>(null);
+const editForm = ref({ displayName: '', competitionId: null as string | null });
+const editSaving = ref(false);
+const canSaveEdit = computed(
+  () =>
+    editForm.value.displayName.trim().length > 0 &&
+    (editTarget.value?.is_admin === true || editForm.value.competitionId !== null),
+);
+
+function openEdit(u: User) {
+  editTarget.value = u;
+  editForm.value = { displayName: u.display_name, competitionId: u.competition_id };
+  editDialog.value = true;
+}
+async function submitEdit() {
+  if (!editTarget.value || !canSaveEdit.value) return;
+  editSaving.value = true;
+  try {
+    await api.put(`/api/admin/users/${editTarget.value.id}`, {
+      displayName: editForm.value.displayName.trim(),
+      competitionId: editTarget.value.is_admin ? null : editForm.value.competitionId,
+    });
+    toast.add({ severity: 'success', summary: t('common.saved'), life: 2500 });
+    editDialog.value = false;
+    await load();
+  } catch (e) {
+    toast.add({ severity: 'error', summary: t('common.saveFailed'), detail: msg(e), life: 4000 });
+  } finally {
+    editSaving.value = false;
+  }
+}
+
 function openPassword(u: User) { pwTarget.value = u; pwValue.value = ''; pwDialog.value = true; }
 async function submitPassword() {
   if (!pwTarget.value || pwValue.value.length < 1) return;
@@ -211,6 +246,16 @@ onMounted(load);
           <template #body="{ data }">
             <div style="display: flex; gap: 0.25rem">
               <Button
+                severity="secondary"
+                text
+                rounded
+                :aria-label="$t('admin.users.editAccount', { name: data.display_name })"
+                :title="$t('admin.users.editTitle')"
+                @click="openEdit(data)"
+              >
+                <template #icon><Pencil :size="17" /></template>
+              </Button>
+              <Button
                 v-if="!data.is_admin"
                 severity="secondary"
                 text
@@ -248,6 +293,34 @@ onMounted(load);
       </DataTable>
     </section>
 
+    <Dialog v-model:visible="editDialog" modal :header="$t('admin.users.editTitle')" :style="{ width: '400px' }">
+      <div class="edit-fields">
+        <div class="form-field">
+          <label>{{ $t('admin.users.displayName') }}</label>
+          <InputText v-model="editForm.displayName" />
+        </div>
+        <div class="form-field">
+          <label>{{ $t('auth.username') }}</label>
+          <InputText :model-value="editTarget?.username" disabled />
+        </div>
+        <div v-if="!editTarget?.is_admin" class="form-field">
+          <label>{{ $t('nav.admin.competitions') }}</label>
+          <Select
+            v-model="editForm.competitionId"
+            :options="competitions"
+            option-label="name"
+            option-value="id"
+            :placeholder="$t('admin.users.choose')"
+          />
+        </div>
+      </div>
+      <template #footer>
+        <Button :label="$t('common.cancel')" text @click="editDialog = false" />
+        <Button :label="$t('common.save')" :disabled="!canSaveEdit" :loading="editSaving" @click="submitEdit">
+          <template #icon><Check :size="16" /></template>
+        </Button>
+      </template>
+    </Dialog>
     <Dialog v-model:visible="pwDialog" modal :header="$t('admin.users.passwordTitle')" :style="{ width: '380px' }">
       <i18n-t keypath="admin.users.passwordBody" tag="p" class="text-muted" style="margin: 0 0 0.75rem" scope="global">
         <template #name><strong>{{ pwTarget?.display_name }}</strong></template>
@@ -327,6 +400,7 @@ onMounted(load);
   justify-content: flex-end;
   margin-top: 1rem;
 }
+.edit-fields { display: flex; flex-direction: column; gap: var(--space-4); }
 .joker-rows { display: flex; flex-direction: column; gap: 0.6rem; }
 .joker-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
 .joker-row-name { display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 600; font-size: 0.92rem; }
