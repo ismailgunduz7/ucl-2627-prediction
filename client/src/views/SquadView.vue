@@ -11,6 +11,7 @@ import { useToast } from 'primevue/usetoast';
 import { useTournamentStore } from '@/stores/tournament';
 import { ApiRequestError } from '@/lib/api';
 import { jokerName } from '@/lib/jokers';
+import { countryName } from '@/lib/format';
 import PageHeader from '@/components/PageHeader.vue';
 import BallLoader from '@/components/BallLoader.vue';
 import ActTransferCard from '@/components/ActTransferCard.vue';
@@ -146,7 +147,7 @@ onUnmounted(() => window.clearInterval(timer));
             <TeamCrest :name="team.name" :crest-url="team.crestUrl" size="sm" />
             <span class="team-meta">
               <span class="team-name">{{ team.name }}</span>
-              <span v-if="team.country" class="text-muted" style="font-size: var(--text-2xs)">{{ team.country }}</span>
+              <span v-if="team.country" class="text-muted" style="font-size: var(--text-2xs)">{{ countryName(team.country) }}</span>
             </span>
             <Tag v-if="team.eliminated" severity="danger" :value="$t('common.eliminated')" />
           </button>

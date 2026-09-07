@@ -16,13 +16,13 @@ Phases 0-6 are built and running against a Supabase database. What follows is th
 
 - Level knockout aggregates are settled by a **shootout seeded from the tie id** rather than real penalty data (§2.4), so recalculation always reaches the same winner.
 
-**Bilingual:** every screen reads in Turkish or English. The interface owns its own copy (`client/src/i18n`), the API owns the words it produces itself (error messages plus the matchweek, round, difficulty and rule labels it derives rather than stores, in `server/src/i18n`), and the client tells the API which language to answer in with `Accept-Language`. The choice is a column on `users`, so it follows a player between devices. The browser's memory and its own language setting only cover a session that has not signed in.
+**Bilingual:** every screen reads in Turkish or English, club countries included: `teams.country` keeps UEFA's three-letter association label because the no-compatriot draw rule compares it, and the interface writes the name out (`country.*` in both catalogues). The interface owns its own copy (`client/src/i18n`), the API owns the words it produces itself (error messages plus the matchweek, round, difficulty and rule labels it derives rather than stores, in `server/src/i18n`), and the client tells the API which language to answer in with `Accept-Language`. The choice is a column on `users`, so it follows a player between devices. The browser's memory and its own language setting only cover a session that has not signed in.
 
 **Running on real data:** all 36 clubs carry their football-data.org id and crest, and the league phase holds UEFA's published fixture list (`db/seed-provider.ts`). The mock provider stays in the tree for local work against a simulated clock; it reports only on `mock:` fixtures, so it goes quiet once a season has been seeded from the provider.
 
 **Deployed:** the client is a static site on Netlify, the API runs on Fly with its background timers alive, and the two are served through one origin. §13 Phase 7 has the shape of it and README.md the operational detail.
 
-**Not built yet:** nothing user-facing is missing from the spec any more. What remains in §13 Phase 7 is deeper edge-case tests, club country names in place of the association codes, and further responsive touch-ups.
+**Not built yet:** nothing user-facing is missing from the spec any more. What remains in §13 Phase 7 is deeper edge-case tests and further responsive touch-ups.
 
 ---
 
@@ -804,13 +804,12 @@ UI copy is Turkish; code identifiers are English. The interface is dark-only, bu
 
 ### Phase 7: Remaining work
 
-Ordered by what blocks a real season most. Shipped from this list already: the live delta feed (§18.6), the season replay (§18.8), the wrap card's rank movement with the bye and bonus lines (§18.3), the admin screens for config, joker-inventory repair and override history, the knockout time-basis question (§4.4), settled by dropping the unused flag, **the real fixture list and the club-to-provider mapping** (§0, §5.1), **the knockout draw arriving through sync instead of being invented** (§8.1), the touch-capable drag on the weekly pitch with the responsive pass around it, Turkish and English throughout (§0), real club crests in place of the letter badges, and **the production deploy**.
+Ordered by what blocks a real season most. Shipped from this list already: the live delta feed (§18.6), the season replay (§18.8), the wrap card's rank movement with the bye and bonus lines (§18.3), the admin screens for config, joker-inventory repair and override history, the knockout time-basis question (§4.4), settled by dropping the unused flag, **the real fixture list and the club-to-provider mapping** (§0, §5.1), **the knockout draw arriving through sync instead of being invented** (§8.1), the touch-capable drag on the weekly pitch with the responsive pass around it, Turkish and English throughout (§0), real club crests in place of the letter badges, **the production deploy**, and the club countries, which now read as country names rather than UEFA's association codes.
 
 The deploy is live and is what the rest of this list is now measured against: the client is a static Netlify site, the API a Node service on Fly with `auto_stop_machines` off so its timers keep running, `client/public/_redirects` proxies `/api/*` through the Netlify domain so the browser only ever meets one origin and the `SameSite=Lax` refresh cookie survives a reload, `POST /api/cron/tick` behind `CRON_SECRET` is there for a host that sleeps instead, and there is a root `Dockerfile` for anywhere that would rather take a container. README.md carries the operational detail.
 
 1. Remaining edge-case tests from §11: provider score correction after a finish, a postponed match holding its week open, and the top-8 bonus. The knockout draw arriving through sync belongs here too: the tie grouping is unit-tested, but no real published draw has landed on it yet, since UEFA makes that draw months after the league phase is seeded.
-2. **Club countries are still raw codes.** `teams.country` holds UEFA's three-letter association labels (`AUT AZE BEL CZE ENG ESP FRA GER GRE ITA NED NOR POR SVK TUR UKR`) and both places that show it, the squad picker and the team page, print the code as it stands. A Turkish reader sees "GER" for Almanya, which is exactly the raw-enum-in-the-interface case AGENTS.md rules out. The fix is a `country.*` block in both catalogues and the name rendered in place of the code; `Intl.DisplayNames` cannot stand in for it, because ENG and the other home nations are not ISO countries. Sixteen entries per language, two call sites.
-3. **Responsive touch-ups.** The first responsive pass covered the shell, the pitch, the fixture rows, the wide tables and the dialogs, and the owner has since found further screens that do not sit right on a phone. Those are still to be named and fixed; the work is layout only, no behaviour changes.
+2. **Responsive touch-ups.** The first responsive pass covered the shell, the pitch, the fixture rows, the wide tables and the dialogs, and the owner has since found further screens that do not sit right on a phone. Those are still to be named and fixed; the work is layout only, no behaviour changes.
 
 ---
 

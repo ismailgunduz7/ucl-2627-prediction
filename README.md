@@ -24,9 +24,9 @@ real match results. See [PLAN.md](PLAN.md) for the authoritative product spec.
 > rather than the browser, so switching on a phone switches the desktop too.
 > It is **deployed**: the client on Netlify, the API on Fly with its background
 > timers alive, both behind one origin. Phase 7 in [PLAN.md](PLAN.md) §13 tracks
-> what is left, which is deeper edge-case tests, club country names in place of
-> the three-letter association codes, and further responsive touch-ups. The mock
-> provider stays in the tree for local work against a simulated clock.
+> what is left, which is deeper edge-case tests and further responsive
+> touch-ups. The mock provider stays in the tree for local work against a
+> simulated clock.
 
 ## Stack
 

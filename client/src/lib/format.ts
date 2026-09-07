@@ -1,4 +1,4 @@
-import { activeLocale } from '@/i18n';
+import { activeLocale, i18n } from '@/i18n';
 
 /**
  * Dates and times in the language on screen.
@@ -56,4 +56,19 @@ export function ordinal(n: number): string {
   if (locale === 'tr') return `${n}.`;
   const rule = new Intl.PluralRules(locale, { type: 'ordinal' }).select(n);
   return `${n}${EN_ORDINAL_SUFFIX[rule] ?? 'th'}`;
+}
+
+/**
+ * A club's association, written out.
+ *
+ * `teams.country` holds UEFA's three-letter labels because the no-compatriot
+ * draw rule compares them, but "GER" is not a word in either language.
+ * `Intl.DisplayNames` cannot do this: ENG, and the other home nations, are
+ * associations rather than ISO countries. A code nobody has named yet falls
+ * back to itself, which is wrong on screen but never blank.
+ */
+export function countryName(code: string | null | undefined): string {
+  if (!code) return EMPTY;
+  const key = `country.${code}`;
+  return i18n.global.te(key) ? i18n.global.t(key) : code;
 }

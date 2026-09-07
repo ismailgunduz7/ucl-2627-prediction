@@ -6,6 +6,7 @@ import Button from 'primevue/button';
 import Tag from 'primevue/tag';
 import { ArrowLeft } from '@lucide/vue';
 import { api, ApiRequestError } from '@/lib/api';
+import { countryName } from '@/lib/format';
 import BallLoader from '@/components/BallLoader.vue';
 import FixtureLine from '@/components/FixtureLine.vue';
 import TeamCrest from '@/components/TeamCrest.vue';
@@ -63,7 +64,7 @@ watch(() => route.params.id, (id) => id && load(id as string));
           <h1 style="margin: 0; font-size: var(--text-xl)">{{ detail.team.name }}</h1>
           <div class="tag-row" style="margin-top: 0.4rem">
             <Tag :value="detail.team.tierName" />
-            <span v-if="detail.team.country" class="text-muted">{{ detail.team.country }}</span>
+            <span v-if="detail.team.country" class="text-muted">{{ countryName(detail.team.country) }}</span>
             <Tag v-if="detail.team.eliminated" severity="danger" :value="$t('common.eliminated')" />
           </div>
         </div>
