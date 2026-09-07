@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute, useRouter } from 'vue-router';
 import Button from 'primevue/button';
 import Toast from 'primevue/toast';
@@ -40,11 +40,33 @@ const adminNav = [
 const navItems = computed(() => (auth.isAdmin ? adminNav : participantNav));
 const homeHref = computed(() => (auth.isAdmin ? '/yonetim' : '/'));
 
-onMounted(() => {
-  if (!auth.ready) void auth.bootstrap();
+watch(() => route.fullPath, () => (mobileNavOpen.value = false));
+
+/**
+ * The drawer belongs to the hamburger, so it cannot outlive it. Widen the
+ * window past the breakpoint with the menu open and the panel is gone from the
+ * screen while the flag says it is open, which is how a menu nobody asked for
+ * turns up again on the way back down.
+ */
+const wideEnoughForLinks = window.matchMedia('(min-width: 901px)');
+function closeOnWiden(e: MediaQueryListEvent) {
+  if (e.matches) mobileNavOpen.value = false;
+}
+
+// Hold the page still behind the open drawer. The document is the scroller, so
+// it is the one that stops; the reserved scrollbar gutter keeps it from shifting.
+watch(mobileNavOpen, (open) => {
+  document.documentElement.classList.toggle('nav-open', open);
 });
 
-watch(() => route.fullPath, () => (mobileNavOpen.value = false));
+onMounted(() => {
+  if (!auth.ready) void auth.bootstrap();
+  wideEnoughForLinks.addEventListener('change', closeOnWiden);
+});
+onUnmounted(() => {
+  wideEnoughForLinks.removeEventListener('change', closeOnWiden);
+  document.documentElement.classList.remove('nav-open');
+});
 
 // A plain fragment link would go through the router; move focus ourselves.
 function skipToContent() {

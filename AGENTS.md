@@ -123,8 +123,11 @@ the participant and admin interfaces.
   choice the user already made.
 - Responsive down to phone widths; the hamburger menu is mobile-only, and
   anything that moves into the drawer leaves the header rather than appearing
-  in both. A table wider than the screen sits in a `.table-scroll` box, so the
-  page itself never moves sideways.
+  in both. The open drawer holds the page still behind it and closes itself if
+  the window widens past the breakpoint, so a menu is never left open on a
+  layout that has no hamburger. A table wider than the screen sits in a
+  `.table-scroll` box, and `.app-shell` clips the horizontal axis besides, so
+  the page itself never moves sideways whatever slips through.
 - **Direct manipulation has to work with a finger.** The `draggable` attribute
   and its drag events never fire on touch, so drags go through
   `client/src/composables/usePointerDrag.ts`: a mouse picks the card up after a
