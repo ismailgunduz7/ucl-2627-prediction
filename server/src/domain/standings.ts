@@ -101,3 +101,18 @@ export function outcomeForRank(rank: number): LeagueOutcome {
   if (rank <= 24) return 'playoff';
   return 'eliminated';
 }
+
+/**
+ * Clubs that receive the one-time `league_top8_bonus` (§4.2, §11.22).
+ *
+ * Read off the same finishing position that decides elimination, rather than
+ * by taking the first eight rows: the two answers have to agree, and a table
+ * that arrived short or out of order would quietly make them disagree. A club
+ * that goes no further receives nothing, and the award itself is idempotent
+ * through its `source_key`, so a re-run of the transition cannot pay twice.
+ */
+export function top8BonusRecipients<T extends { rank: number; teamId: string }>(
+  standings: readonly T[],
+): string[] {
+  return standings.filter((row) => outcomeForRank(row.rank) === 'top8').map((row) => row.teamId);
+}

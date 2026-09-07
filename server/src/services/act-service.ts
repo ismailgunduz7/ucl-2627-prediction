@@ -1,7 +1,7 @@
 import type { PoolClient } from 'pg';
 import { query, withTransaction } from '../db/pool.ts';
 import { ApiError } from '../lib/errors.ts';
-import { outcomeForRank } from '../domain/standings.ts';
+import { outcomeForRank, top8BonusRecipients } from '../domain/standings.ts';
 import { getLeagueStandings, isLeaguePhaseComplete } from './standings-service.ts';
 import { getConfigValue, setConfigValue } from './tournament-config-service.ts';
 import {
@@ -49,7 +49,7 @@ export async function completeLeaguePhaseIfDue(): Promise<{ ran: boolean }> {
 
     // 3. One-time top-8 bonus, per pot, on the first play-off matchweek.
     if (koMatchweekId) {
-      await awardLeagueTop8Bonus(client, standings.slice(0, 8).map((r) => r.teamId), koMatchweekId);
+      await awardLeagueTop8Bonus(client, top8BonusRecipients(standings), koMatchweekId);
     }
 
     // 4. Jokers reset to the Act II grant.
