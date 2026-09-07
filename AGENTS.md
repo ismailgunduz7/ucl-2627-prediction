@@ -121,6 +121,9 @@ the participant and admin interfaces.
   (drag a club to the bench) over forms and buttons.
 - Interactions save on their own. Do not add a separate "save" button for a
   choice the user already made.
+- A person is listed the same way everywhere, in forms and in tables alike:
+  **display name first, then username.** The name others know them by leads;
+  the one they sign in with follows.
 - Responsive down to phone widths; the hamburger menu is mobile-only, and
   anything that moves into the drawer leaves the header rather than appearing
   in both. The open drawer holds the page still behind it and closes itself if

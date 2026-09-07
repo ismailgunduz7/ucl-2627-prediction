@@ -152,13 +152,15 @@ onMounted(load);
       <div class="section-title">{{ $t('admin.users.newUser') }}</div>
       <form @submit.prevent="create">
         <div class="form-grid">
-          <div class="form-field">
-            <label>{{ $t('auth.username') }}</label>
-            <InputText v-model="form.username" autocomplete="off" />
-          </div>
+          <!-- Same order as the table below: the name people know, then the
+               one they type in. -->
           <div class="form-field">
             <label>{{ $t('admin.users.displayName') }}</label>
             <InputText v-model="form.displayName" />
+          </div>
+          <div class="form-field">
+            <label>{{ $t('auth.username') }}</label>
+            <InputText v-model="form.username" autocomplete="off" />
           </div>
           <div class="form-field">
             <label>{{ $t('auth.password') }}</label>
