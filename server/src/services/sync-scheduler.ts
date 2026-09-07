@@ -75,7 +75,7 @@ export async function readSyncWindow(): Promise<SyncWindowState> {
   };
 }
 
-async function poll(): Promise<void> {
+async function poll(dueMs: number): Promise<void> {
   polling = true;
   try {
     provider = (await resolveProvider()).name;
@@ -85,9 +85,11 @@ async function poll(): Promise<void> {
       return;
     }
     pausedReason = null;
-    // Shared with the cron endpoint, so pointing an external cron at a server
-    // that also runs this timer does not double the provider's load.
-    if (!(await claimJob('provider_sync', MIN_SYNC_INTERVAL_MS))) return;
+    // The claim is taken on the season's own cadence, not on a floor. It is
+    // shared with the cron endpoint, so an external cron pointed at a server
+    // that also runs this timer cannot double the provider's load, and a host
+    // that restarts the process ten times an hour cannot either.
+    if (!(await claimJob('provider_sync', Math.max(MIN_SYNC_INTERVAL_MS, dueMs)))) return;
     lastRunAt = new Date();
     const summary = await runSync({ trigger: 'scheduled' });
     lastStatus = 'success';
@@ -124,18 +126,19 @@ async function scheduleNext(first = false): Promise<void> {
 
   // Parked on the mock provider: re-check config every so often instead of
   // following the fixture list.
-  let delay = pausedReason
+  const due = pausedReason
     ? SYNC_CADENCE_MS.quiet
     : nextSyncDelayMs({ now: new Date(), window, consecutiveFailures, throttled });
 
-  // After a restart, catch up soon rather than sitting out a whole quiet
-  // cadence. Not instantly though, so a crash loop still cannot hammer the
-  // provider.
-  if (first) delay = Math.min(delay, SYNC_CADENCE_MS.imminent);
+  // After a restart, look sooner rather than sitting out a whole cadence. Only
+  // the timer is shortened: the claim above still holds the real cadence, so
+  // an early look through a quiet week finds the last poll too recent and
+  // leaves the provider alone.
+  const delay = first ? Math.min(due, SYNC_CADENCE_MS.imminent) : due;
   nextRunAt = new Date(Date.now() + delay);
 
   timer = setTimeout(() => {
-    void poll().then(() => scheduleNext());
+    void poll(due).then(() => scheduleNext());
   }, delay);
   timer.unref?.(); // never hold the process open on its own
 }

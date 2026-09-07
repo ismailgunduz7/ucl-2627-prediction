@@ -13,6 +13,8 @@ export const IN_PLAY_WINDOW_MS = 3 * 60 * 60 * 1000;
 /** Kickoff proximity bands used to pick a cadence. */
 export const IMMINENT_WINDOW_MS = 15 * 60 * 1000;
 export const MATCHDAY_WINDOW_MS = 3 * 60 * 60 * 1000;
+/** Beyond this the next kickoff is not today's problem. */
+export const APPROACHING_WINDOW_MS = 12 * 60 * 60 * 1000;
 
 export const SYNC_CADENCE_MS = {
   /** A match is in play: poll for score changes. */
@@ -21,10 +23,16 @@ export const SYNC_CADENCE_MS = {
   imminent: 2 * 60_000,
   /** Matches later today. */
   matchday: 10 * 60_000,
-  /** Fixtures exist but none soon. */
+  /** Kickoff is coming but hours off yet. */
   quiet: 30 * 60_000,
+  /**
+   * Nothing is being played today. Twice a day is enough: there are no scores
+   * to move, and the only thing a poll can find is a fixture that has been
+   * rescheduled or a draw that has been published.
+   */
+  dormant: 12 * 60 * 60_000,
   /** Nothing scheduled at all (between acts, or season over). */
-  idle: 6 * 60 * 60_000,
+  idle: 12 * 60 * 60_000,
 } as const;
 
 /** Never poll faster than this, whatever the state says. */
@@ -51,7 +59,10 @@ export function cadenceForWindow(now: Date, window: SyncWindowState): number {
   const untilKickoff = window.nextKickoffAt.getTime() - now.getTime();
   if (untilKickoff <= IMMINENT_WINDOW_MS) return SYNC_CADENCE_MS.imminent;
   if (untilKickoff <= MATCHDAY_WINDOW_MS) return SYNC_CADENCE_MS.matchday;
-  return SYNC_CADENCE_MS.quiet;
+  if (untilKickoff <= APPROACHING_WINDOW_MS) return SYNC_CADENCE_MS.quiet;
+  // A long sleep, but never one that runs past the moment the fixture list
+  // says the next band starts, so the run-up to a matchday is never missed.
+  return Math.min(SYNC_CADENCE_MS.dormant, untilKickoff - APPROACHING_WINDOW_MS);
 }
 
 /** Exponential backoff after consecutive failures; zero while healthy. */

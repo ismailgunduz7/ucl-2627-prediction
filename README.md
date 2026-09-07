@@ -150,9 +150,12 @@ are two ways to be that something, and you pick one:
 
 The ping is deliberately dumber than the work: the cadence rules still decide
 whether the provider is actually called, so a minute-by-minute ping through a
-quiet week costs one cheap query and nothing more. Both paths take the same
-row lock before polling, so a server running the timer *and* answering a cron
-cannot double the provider's load.
+quiet week costs one cheap query and nothing more. On a day with nothing to
+play that comes to two provider calls, rising to one a minute while matches are
+in play. Both paths take the same row lock before polling, and they take it on
+that cadence rather than on a floor, so a server running the timer *and*
+answering a cron cannot double the provider's load, and neither can a host that
+keeps restarting the process.
 
 **Put the API behind the same origin.** The refresh cookie is `SameSite=Lax`, so
 a browser will not send it to an API on a different site and every page reload

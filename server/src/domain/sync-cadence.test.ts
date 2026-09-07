@@ -1,6 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import {
+  APPROACHING_WINDOW_MS,
   MAX_BACKOFF_MS,
   MIN_SYNC_INTERVAL_MS,
   SYNC_CADENCE_MS,
@@ -23,7 +24,23 @@ test('cadence tightens as kickoff approaches', () => {
   const window = (minutes: number) => ({ inPlayCount: 0, nextKickoffAt: inMinutes(minutes) });
   assert.equal(cadenceForWindow(NOW, window(10)), SYNC_CADENCE_MS.imminent);
   assert.equal(cadenceForWindow(NOW, window(90)), SYNC_CADENCE_MS.matchday);
-  assert.equal(cadenceForWindow(NOW, window(60 * 24)), SYNC_CADENCE_MS.quiet);
+  assert.equal(cadenceForWindow(NOW, window(60 * 8)), SYNC_CADENCE_MS.quiet);
+});
+
+test('a day with nothing to play polls twice', () => {
+  const window = (minutes: number) => ({ inPlayCount: 0, nextKickoffAt: inMinutes(minutes) });
+  assert.equal(cadenceForWindow(NOW, window(60 * 48)), SYNC_CADENCE_MS.dormant);
+  // Two days out, twice a day is four polls before kickoff comes into range.
+  assert.ok(SYNC_CADENCE_MS.dormant >= 12 * 60 * 60_000);
+});
+
+test('a long sleep still wakes in time for the run-up', () => {
+  // Kickoff 13 hours out: the quiet band starts in one hour, so that is when
+  // the next poll happens rather than half a day later.
+  const delay = cadenceForWindow(NOW, { inPlayCount: 0, nextKickoffAt: inMinutes(60 * 13) });
+  assert.equal(delay, 60 * 60_000);
+  assert.ok(delay < SYNC_CADENCE_MS.dormant);
+  assert.equal(APPROACHING_WINDOW_MS, 12 * 60 * 60_000);
 });
 
 test('no fixtures left falls back to the idle cadence', () => {
