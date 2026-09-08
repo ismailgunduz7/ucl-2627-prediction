@@ -30,3 +30,7 @@ coverage/
 
 # TypeScript incremental build info
 *.tsbuildinfo
+
+# Local database snapshots taken before a risky migration. They are real player
+# data and they are not history; keep them off the repository.
+backups/

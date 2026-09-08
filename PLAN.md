@@ -187,6 +187,8 @@ Each participant receives inventory counts (admin-configurable). Illustrative de
 
 **Initial grant (Act I).** A participant's inventory is seeded with the **Act I (league phase)** `joker_inventory_defaults` at account creation, and in every case **strictly before the MW1 selection lock** (`T0(MW1) - 5m`); so a participant can already activate a joker for matchweek 1. This is the counterpart of the Act II **refresh** in §3.7 step 3: Act I = first grant at onboarding, Act II = full reset at league completion. A participant added mid-Act I still receives the full Act I grant.
 
+The grant is read from config **as the account is created**, and editing `joker_inventory_defaults` later deliberately does not reach back into accounts that already exist: an allowance somebody may have started spending is not something a settings change should rewrite underneath them. The cost is that raising a default mid-season leaves the accounts opened before it short, which is exactly what happened in 2026-27 (the first fourteen accounts were created while `triple_boost` and `bench_boost` were 1) and what `0013_repair_act1_joker_grants.sql` put right. A repair like that belongs in a migration rather than the admin screens: it reads the target out of config, tops up only the rows whose grant came out below it, and counts the jokers already played so nobody is handed one twice.
+
 | Code | Suggested name (TR copy TBD) | Count | Effect |
 |------|------------------------------|-------|--------|
 | `weekly_swap` | Haftalık değişim | 2 | Same-pot one-week club replacement |
