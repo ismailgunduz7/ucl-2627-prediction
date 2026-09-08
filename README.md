@@ -25,11 +25,10 @@ real match results. See [PLAN.md](PLAN.md) for the authoritative product spec.
 > fixture list rather than a stand-in draw. The game is also **bilingual**:
 > every screen reads in Turkish or English, and the choice lives on the account
 > rather than the browser, so switching on a phone switches the desktop too.
-> It is **deployed**: the client on Netlify, the API on Fly with its background
-> timers alive, both behind one origin. Phase 7 in [PLAN.md](PLAN.md) §13 tracks
-> what is left, which is deeper edge-case tests and further responsive
-> touch-ups. The mock provider stays in the tree for local work against a
-> simulated clock.
+> It is **deployed**: the client on Netlify, the API on Render, both behind one
+> origin. Phase 7 in [PLAN.md](PLAN.md) §13 tracks what is left, which is
+> deeper edge-case tests and further responsive touch-ups. The mock provider
+> stays in the tree for local work against a simulated clock.
 
 ## Stack
 
@@ -150,8 +149,10 @@ are two ways to be that something, and you pick one:
   as `X-Cron-Secret` or a bearer token. This is what makes free hosting work,
   since the host is then free to sleep between pings.
 - **An in-process timer.** Set `SYNC_SCHEDULER_ENABLED=true` instead, on a host
-  that keeps the process alive. `fly.toml` is set up for this, with
-  `auto_stop_machines` off and one machine running.
+  that keeps the process alive rather than sleeping between requests. Pick this
+  one or the cron, never both by accident: they take the same row lock before
+  polling, so a double setup costs nothing extra, but only one of them is the
+  answer to "why did the season stop".
 
 The ping is deliberately dumber than the work: the cadence rules still decide
 whether the provider is actually called, so a minute-by-minute ping through a
@@ -247,7 +248,6 @@ in `client/src/i18n/index.ts` and `server/src/i18n/messages.ts`, plus the
   CLAUDE.md               # loads AGENTS.md for tools that read instructions on their own
   .githooks/pre-commit    # refuses a behaviour change that updates no document
   Dockerfile              # API image, built from the repo root
-  fly.toml                # API host: one machine, never stopped
   netlify.toml            # client build for Netlify
   client/                 # participant + admin SPA (Vue 3)
   server/                 # HTTP API, auth, scoring, provider sync, migrations
