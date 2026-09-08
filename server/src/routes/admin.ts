@@ -44,7 +44,7 @@ adminRoutes.get('/competitions', async (c) => {
   return c.json({ competitions: rows });
 });
 
-const CompetitionSchema = z.object({ name: z.string().min(1).max(120) });
+const CompetitionSchema = z.object({ name: z.string().trim().min(1).max(120) });
 
 adminRoutes.post('/competitions', async (c) => {
   const body = CompetitionSchema.safeParse(await c.req.json().catch(() => null));
@@ -54,6 +54,37 @@ adminRoutes.post('/competitions', async (c) => {
     [body.data.name],
   );
   return c.json({ competition: rows[0] }, 201);
+});
+
+/** Rename only: a competition is a name and the people in it, and moving people is the users API (§9.3). */
+adminRoutes.put('/competitions/:id', async (c) => {
+  const body = CompetitionSchema.safeParse(await c.req.json().catch(() => null));
+  if (!body.success) throw ApiError.badRequest('competition_name_required');
+  const { rows } = await query(
+    `UPDATE competitions SET name = $1 WHERE id = $2 RETURNING id, name, created_at`,
+    [body.data.name, c.req.param('id')],
+  );
+  if (rows.length === 0) throw ApiError.badRequest('competition_not_found');
+  return c.json({ competition: rows[0] });
+});
+
+adminRoutes.delete('/competitions/:id', async (c) => {
+  const id = c.req.param('id');
+
+  // users.competition_id is ON DELETE SET NULL, so deleting a competition that
+  // still has people in it would quietly unscope them: a participant with no
+  // competition sees no leaderboard and appears on nobody else's. Refuse, and
+  // say how many accounts have to be moved first.
+  const members = await query<{ n: string }>(
+    'SELECT count(*)::text AS n FROM users WHERE competition_id = $1',
+    [id],
+  );
+  const count = Number(members.rows[0]!.n);
+  if (count > 0) throw ApiError.badRequest('competition_in_use', { count });
+
+  const deleted = await query('DELETE FROM competitions WHERE id = $1', [id]);
+  if (deleted.rowCount === 0) throw ApiError.badRequest('competition_not_found');
+  return c.json({ ok: true });
 });
 
 // --- Users ----------------------------------------------------------------

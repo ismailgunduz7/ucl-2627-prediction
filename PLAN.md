@@ -656,7 +656,7 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 ### 9.3 Admin APIs
 
 - Users CRUD (create participants) + assign competition. Editing an existing account covers the display name and the competition it sits in; the username is the credential and does not move.
-- Competitions CRUD
+- Competitions: create, rename, delete. Renaming touches nothing else, because a competition is only a grouping (§3.1). Deleting one is **refused while any account still belongs to it**: the users foreign key clears the column instead of blocking, so the delete would quietly leave those players in no competition at all, with no leaderboard and on nobody else's. Move the accounts first; the refusal says how many there are.
 - Scoring rules editor
 - Tournament config
 - Trigger act transition helpers if auto-detect needs manual fallback (league complete should normally be automatic)
@@ -753,6 +753,7 @@ UI copy is Turkish; code identifiers are English. The interface is dark-only, bu
 26. Initial Act I joker inventory is available **before** MW1 selection lock, so a joker can be activated for MW1.
 27. Scoring seed direction: no reward rule gives a stronger pot more than a weaker pot; no penalty gives a weaker pot a harsher value (§16). Second live joker for the same week rejected by the DB partial unique index (§8.1).
 28. A player with no squad after the selection lock can still build one; their season starts at the first unlocked matchweek and the weeks before it write no score for them, in the weekly total or in the leaderboard. A player who already has a squad is still refused after the lock.
+29. Deleting a competition that still has accounts in it → rejected, with the number of accounts in the message. Deleting an empty one succeeds. Renaming one changes only its name.
 
 ---
 

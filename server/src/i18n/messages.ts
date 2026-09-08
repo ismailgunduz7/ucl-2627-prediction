@@ -38,6 +38,8 @@ const tr: Catalog = {
   'errors.invalid_cron_secret': 'Geçersiz cron anahtarı',
 
   'errors.competition_name_required': 'Yarışma adı gerekli',
+  'errors.competition_not_found': 'Yarışma bulunamadı',
+  'errors.competition_in_use': 'Bu yarışmada {count} hesap var. Önce onları başka bir yarışmaya taşı',
   'errors.invalid_user_body': 'Geçersiz kullanıcı bilgisi',
   'errors.password_required': 'Şifre boş olamaz',
   'errors.invalid_joker_counts': 'Geçersiz joker sayıları',
@@ -170,6 +172,8 @@ const en: Catalog = {
   'errors.invalid_cron_secret': 'Wrong cron key',
 
   'errors.competition_name_required': 'The competition needs a name',
+  'errors.competition_not_found': 'No such competition',
+  'errors.competition_in_use': 'This competition still holds {count} accounts. Move them somewhere else first',
   'errors.invalid_user_body': 'Those account details are not valid',
   'errors.password_required': 'The password cannot be empty',
   'errors.invalid_joker_counts': 'Those joker counts are not valid',

@@ -6,7 +6,8 @@ import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import InputText from 'primevue/inputtext';
 import Button from 'primevue/button';
-import { Plus } from '@lucide/vue';
+import Dialog from 'primevue/dialog';
+import { Plus, Pencil, Trash2, Check } from '@lucide/vue';
 import { api, ApiRequestError } from '@/lib/api';
 import PageHeader from '@/components/PageHeader.vue';
 import { formatDateOnly } from '@/lib/format';
@@ -19,6 +20,15 @@ const competitions = ref<Competition[]>([]);
 const loading = ref(false);
 const newName = ref('');
 const saving = ref(false);
+
+const editDialog = ref(false);
+const editTarget = ref<Competition | null>(null);
+const editName = ref('');
+const editSaving = ref(false);
+
+const delDialog = ref(false);
+const delTarget = ref<Competition | null>(null);
+const delSaving = ref(false);
 
 async function load() {
   loading.value = true;
@@ -45,6 +55,49 @@ async function create() {
     saving.value = false;
   }
 }
+
+function openEdit(c: Competition) {
+  editTarget.value = c;
+  editName.value = c.name;
+  editDialog.value = true;
+}
+async function submitEdit() {
+  const target = editTarget.value;
+  if (!target || !editName.value.trim()) return;
+  editSaving.value = true;
+  try {
+    await api.put(`/api/admin/competitions/${target.id}`, { name: editName.value.trim() });
+    editDialog.value = false;
+    toast.add({ severity: 'success', summary: t('admin.competitions.renamed'), life: 2500 });
+    await load();
+  } catch (e) {
+    toast.add({ severity: 'error', summary: t('admin.competitions.renameFailed'), detail: msg(e), life: 4000 });
+  } finally {
+    editSaving.value = false;
+  }
+}
+
+function openDelete(c: Competition) {
+  delTarget.value = c;
+  delDialog.value = true;
+}
+async function submitDelete() {
+  const target = delTarget.value;
+  if (!target) return;
+  delSaving.value = true;
+  try {
+    await api.del(`/api/admin/competitions/${target.id}`);
+    delDialog.value = false;
+    toast.add({ severity: 'success', summary: t('admin.competitions.deleted'), life: 2500 });
+    await load();
+  } catch (e) {
+    // The API refuses while anybody is still in it, and says how many.
+    toast.add({ severity: 'error', summary: t('admin.competitions.deleteFailed'), detail: msg(e), life: 5000 });
+  } finally {
+    delSaving.value = false;
+  }
+}
+
 function msg(e: unknown) { return e instanceof ApiRequestError ? e.message : t('common.unexpectedError'); }
 onMounted(load);
 </script>
@@ -73,7 +126,66 @@ onMounted(load);
         <Column :header="$t('admin.competitions.createdAt')">
           <template #body="{ data }">{{ formatDateOnly(data.created_at) }}</template>
         </Column>
+        <Column :header="$t('admin.competitions.actions')">
+          <template #body="{ data }">
+            <div style="display: flex; gap: 0.25rem">
+              <Button
+                severity="secondary"
+                text
+                rounded
+                :aria-label="$t('admin.competitions.editName', { name: data.name })"
+                :title="$t('admin.competitions.editTitle')"
+                @click="openEdit(data)"
+              >
+                <template #icon><Pencil :size="17" /></template>
+              </Button>
+              <Button
+                severity="danger"
+                text
+                rounded
+                :aria-label="$t('admin.competitions.deleteCompetition', { name: data.name })"
+                :title="Number(data.participant_count) > 0
+                  ? $t('admin.competitions.inUse')
+                  : $t('common.delete')"
+                :disabled="Number(data.participant_count) > 0"
+                @click="openDelete(data)"
+              >
+                <template #icon><Trash2 :size="17" /></template>
+              </Button>
+            </div>
+          </template>
+        </Column>
       </DataTable>
     </section>
+
+    <Dialog v-model:visible="editDialog" modal :header="$t('admin.competitions.editTitle')" :style="{ width: '380px' }">
+      <div class="form-field">
+        <label>{{ $t('admin.competitions.name') }}</label>
+        <InputText v-model="editName" autofocus @keyup.enter="submitEdit" />
+      </div>
+      <template #footer>
+        <Button :label="$t('common.cancel')" text @click="editDialog = false" />
+        <Button
+          :label="$t('common.save')"
+          :loading="editSaving"
+          :disabled="!editName.trim()"
+          @click="submitEdit"
+        >
+          <template #icon><Check :size="16" /></template>
+        </Button>
+      </template>
+    </Dialog>
+
+    <Dialog v-model:visible="delDialog" modal :header="$t('admin.competitions.deleteTitle')" :style="{ width: '380px' }">
+      <i18n-t keypath="admin.competitions.deleteBody" tag="p" style="margin: 0" scope="global">
+        <template #name><strong>{{ delTarget?.name }}</strong></template>
+      </i18n-t>
+      <template #footer>
+        <Button :label="$t('common.cancel')" text @click="delDialog = false" />
+        <Button :label="$t('common.delete')" severity="danger" :loading="delSaving" @click="submitDelete">
+          <template #icon><Trash2 :size="16" /></template>
+        </Button>
+      </template>
+    </Dialog>
   </div>
 </template>
