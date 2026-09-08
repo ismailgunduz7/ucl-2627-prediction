@@ -32,6 +32,7 @@ const routes: RouteRecordRaw[] = [
   { path: ADMIN_BASE, name: 'admin-dashboard', component: () => import('@/views/admin/DashboardView.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
   { path: `${ADMIN_BASE}/kullanicilar`, name: 'admin-users', component: () => import('@/views/admin/UsersView.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
   { path: `${ADMIN_BASE}/yarismalar`, name: 'admin-competitions', component: () => import('@/views/admin/CompetitionsView.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
+  { path: `${ADMIN_BASE}/kadrolar`, name: 'admin-squads', component: () => import('@/views/admin/SquadsView.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
   { path: `${ADMIN_BASE}/kurallar`, name: 'admin-rules', component: () => import('@/views/admin/RulesView.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
   { path: `${ADMIN_BASE}/maclar`, name: 'admin-matches', component: () => import('@/views/admin/MatchesView.vue'), meta: { requiresAuth: true, requiresAdmin: true } },
   { path: `${ADMIN_BASE}/sync`, name: 'admin-sync', component: () => import('@/views/admin/SyncView.vue'), meta: { requiresAuth: true, requiresAdmin: true } },

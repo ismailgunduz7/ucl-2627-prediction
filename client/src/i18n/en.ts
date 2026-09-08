@@ -50,6 +50,7 @@ export default {
       dashboard: 'Dashboard',
       users: 'Accounts',
       competitions: 'Competitions',
+      squads: 'Squads',
       rules: 'Rules',
       matches: 'Matches',
       sync: 'Score pulls',
@@ -397,6 +398,18 @@ export default {
       deleted: 'Competition deleted',
       deleteFailed: 'Could not delete the competition',
     },
+    squads: {
+      subtitle: 'Everybody\'s four clubs, pot by pot. The people who never picked are here too.',
+      player: 'Player',
+      startsAt: 'Starts at',
+      fromTheStart: 'First week',
+      noSquad: 'No squad',
+      allCompetitions: 'All competitions',
+      empty: 'No players to show',
+      missingNote:
+        'One player still has no squad. If they build one now, their points start from that week. | {count} players still have no squad. If they build one now, their points start from that week.',
+      loadFailed: 'Could not load the squads',
+    },
     users: {
       newUser: 'New account',
       displayName: 'Display name',
@@ -435,6 +448,7 @@ export default {
       desc: {
         users: 'Open an account, change a password, fix joker allowances',
         competitions: 'Who appears in whose standings',
+        squads: 'Who picked which clubs',
         rules: 'Which result is worth what to which pot',
         matches: 'Enter a score, hand one back to the provider',
         sync: 'Pull scores from the provider',

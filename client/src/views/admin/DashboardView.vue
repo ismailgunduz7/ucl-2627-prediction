@@ -1,7 +1,7 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { RouterLink } from 'vue-router';
-import { Users, Network, Calculator, Flag, RefreshCw, Settings, ChevronRight } from '@lucide/vue';
+import { Users, Network, Calculator, Flag, RefreshCw, Settings, Shirt, ChevronRight } from '@lucide/vue';
 import { api } from '@/lib/api';
 import PageHeader from '@/components/PageHeader.vue';
 
@@ -22,6 +22,7 @@ onMounted(async () => {
 const links = [
   { to: '/yonetim/kullanicilar', key: 'users', icon: Users },
   { to: '/yonetim/yarismalar', key: 'competitions', icon: Network },
+  { to: '/yonetim/kadrolar', key: 'squads', icon: Shirt },
   { to: '/yonetim/kurallar', key: 'rules', icon: Calculator },
   { to: '/yonetim/maclar', key: 'matches', icon: Flag },
   { to: '/yonetim/sync', key: 'sync', icon: RefreshCw },

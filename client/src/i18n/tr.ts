@@ -51,6 +51,7 @@ export default {
       dashboard: 'Panel',
       users: 'Kullanıcılar',
       competitions: 'Yarışmalar',
+      squads: 'Kadrolar',
       rules: 'Kurallar',
       matches: 'Maçlar',
       sync: 'Skor Çekme',
@@ -398,6 +399,18 @@ export default {
       deleted: 'Yarışma silindi',
       deleteFailed: 'Yarışma silinemedi',
     },
+    squads: {
+      subtitle: 'Herkesin dört kulübü, pot pot. Kadrosunu hiç kurmayanlar da burada.',
+      player: 'Oyuncu',
+      startsAt: 'Başlangıç',
+      fromTheStart: 'İlk haftadan',
+      noSquad: 'Kadro yok',
+      allCompetitions: 'Bütün yarışmalar',
+      empty: 'Gösterilecek oyuncu yok',
+      missingNote:
+        'Bir oyuncu kadrosunu hâlâ kurmamış. Şimdi kurarsa puanları o haftadan başlar. | {count} oyuncu kadrosunu hâlâ kurmamış. Şimdi kurarlarsa puanları o haftadan başlar.',
+      loadFailed: 'Kadrolar yüklenemedi',
+    },
     users: {
       newUser: 'Yeni kullanıcı',
       displayName: 'Görünen ad',
@@ -436,6 +449,7 @@ export default {
       desc: {
         users: 'Hesap aç, şifre değiştir, joker haklarını düzelt',
         competitions: 'Kim kimin sıralamasında görünüyor',
+        squads: 'Kim hangi kulüpleri seçmiş',
         rules: 'Hangi sonuç hangi pota kaç puan yazıyor',
         matches: 'Skor gir, elle girdiğin sonucu geri al',
         sync: 'Sağlayıcıdan skorları getir',

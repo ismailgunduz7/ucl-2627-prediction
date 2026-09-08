@@ -666,6 +666,7 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 
 ### 9.3 Admin APIs
 
+- Read every participant's permanent squad in one call, for the admin squads table (§10.2)
 - Users CRUD (create participants) + assign competition. Editing an existing account covers the display name and the competition it sits in; the username is the credential and does not move.
 - Competitions: create, rename, delete. Renaming touches nothing else, because a competition is only a grouping (§3.1). Deleting one is **refused while any account still belongs to it**: the users foreign key clears the column instead of blocking, so the delete would quietly leave those players in no competition at all, with no leaderboard and on nobody else's. Move the accounts first; the refusal says how many there are.
 - Scoring rules editor
@@ -731,7 +732,8 @@ The grouping (the round a week belongs to, its place in the menu, what its leg i
 
 ### 10.2 Admin
 
-- Users (create accounts, password resets, joker-inventory repair), competitions, rules, matches with overrides and their audit history, sync, recalculate, and the settings page (provider, joker grants, deadline banner window, manual season progression); all built.
+- Users (create accounts, password resets, joker-inventory repair), competitions, squads, rules, matches with overrides and their audit history, sync, recalculate, and the settings page (provider, joker grants, deadline banner window, manual season progression); all built.
+- **Squads** (`/yonetim/kadrolar`) is a read-only table of who picked what: a row per participant, a column per pot, filterable by competition. A participant with no squad is listed all the same and marked, because finding those is half the reason to look, and a late entrant's row says which week their season starts at (§3.2). An eliminated club stays in its pot and is dimmed rather than removed, since it is still on the squad and still scoring nothing.
 
 UI copy is Turkish; code identifiers are English. The interface is dark-only, built on the design tokens and PrimeVue preset described in [AGENTS.md](AGENTS.md).
 

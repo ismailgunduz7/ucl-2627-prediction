@@ -3,7 +3,7 @@ import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useRoute } from 'vue-router';
 import Button from 'primevue/button';
 import Toast from 'primevue/toast';
-import { Home, Users, CalendarDays, BookOpen, LayoutGrid, Network, Calculator, Flag, RefreshCw, Menu, X, Table, ListOrdered, Settings } from '@lucide/vue';
+import { Home, Users, CalendarDays, BookOpen, LayoutGrid, Network, Calculator, Flag, RefreshCw, Menu, X, Table, ListOrdered, Settings, Shirt } from '@lucide/vue';
 import { useAuthStore } from '@/stores/auth';
 import AppCursor from '@/components/AppCursor.vue';
 import StarBall from '@/components/StarBall.vue';
@@ -30,6 +30,7 @@ const adminNav = [
   { to: '/yonetim', key: 'nav.admin.dashboard', icon: LayoutGrid },
   { to: '/yonetim/kullanicilar', key: 'nav.admin.users', icon: Users },
   { to: '/yonetim/yarismalar', key: 'nav.admin.competitions', icon: Network },
+  { to: '/yonetim/kadrolar', key: 'nav.admin.squads', icon: Shirt },
   { to: '/yonetim/kurallar', key: 'nav.admin.rules', icon: Calculator },
   { to: '/yonetim/maclar', key: 'nav.admin.matches', icon: Flag },
   { to: '/yonetim/sync', key: 'nav.admin.sync', icon: RefreshCw },

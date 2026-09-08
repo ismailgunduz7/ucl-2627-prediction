@@ -29,6 +29,7 @@ import { progressSeason } from '../services/act-service.ts';
 import { getLeagueStandings } from '../services/standings-service.ts';
 import { getInventory, setInventoryCount } from '../services/joker-service.ts';
 import type { JokerCode } from '../domain/joker.ts';
+import { SQUAD_SIZE } from '../domain/constants.ts';
 
 // All admin routes require a valid access token AND the admin role.
 export const adminRoutes = new Hono<{ Variables: AuthVariables }>();
@@ -147,6 +148,92 @@ adminRoutes.delete('/users/:id', async (c) => {
   const auth = c.get('auth');
   await authService.deleteUser(c.req.param('id'), auth.sub);
   return c.json({ ok: true });
+});
+
+// --- Who picked what (§9.3) -----------------------------------------------
+
+interface SquadClubRow {
+  user_id: string;
+  display_name: string;
+  username: string;
+  competition_name: string | null;
+  entry_matchweek_id: string | null;
+  entry_matchweek_label: string | null;
+  tier_id: number | null;
+  team_id: string | null;
+  team_name: string | null;
+  short_name: string | null;
+  crest_url: string | null;
+  eliminated_at: Date | null;
+}
+
+/**
+ * Every participant's permanent squad, in one table.
+ *
+ * A participant with no rows is listed all the same, because the whole point of
+ * looking is to find the ones who never picked (§3.2). The four clubs come back
+ * in pot order, so a column stays a pot.
+ */
+adminRoutes.get('/squads', async (c) => {
+  const { rows } = await query<SquadClubRow>(
+    `SELECT u.id AS user_id, u.display_name, u.username, comp.name AS competition_name,
+            u.entry_matchweek_id, mw.label AS entry_matchweek_label,
+            ts.tier_id, t.id AS team_id, t.name AS team_name, t.short_name,
+            t.crest_url, t.eliminated_at
+       FROM users u
+       LEFT JOIN competitions comp ON comp.id = u.competition_id
+       LEFT JOIN matchweeks mw ON mw.id = u.entry_matchweek_id
+       LEFT JOIN team_selections ts ON ts.user_id = u.id
+       LEFT JOIN teams t ON t.id = ts.team_id
+      WHERE NOT u.is_admin
+      ORDER BY comp.name NULLS LAST, u.display_name, ts.tier_id`,
+  );
+
+  const byUser = new Map<string, {
+    userId: string;
+    displayName: string;
+    username: string;
+    competitionName: string | null;
+    entryMatchweek: string | null;
+    clubs: {
+      tierId: number;
+      teamId: string;
+      name: string;
+      shortName: string;
+      crestUrl: string | null;
+      eliminated: boolean;
+    }[];
+  }>();
+
+  for (const r of rows) {
+    let entry = byUser.get(r.user_id);
+    if (!entry) {
+      entry = {
+        userId: r.user_id,
+        displayName: r.display_name,
+        username: r.username,
+        competitionName: r.competition_name,
+        // A late entrant's season starts here; null means from the first week.
+        entryMatchweek: r.entry_matchweek_id
+          ? matchweekLabel({ id: r.entry_matchweek_id, label: r.entry_matchweek_label ?? '' })
+          : null,
+        clubs: [],
+      };
+      byUser.set(r.user_id, entry);
+    }
+    if (r.team_id && r.tier_id !== null) {
+      entry.clubs.push({
+        tierId: r.tier_id,
+        teamId: r.team_id,
+        name: r.team_name ?? '',
+        shortName: r.short_name ?? '',
+        crestUrl: r.crest_url,
+        eliminated: r.eliminated_at !== null,
+      });
+    }
+  }
+
+  return c.json({ squads: [...byUser.values()], squadSize: SQUAD_SIZE });
 });
 
 // --- Joker inventory repair (§9.3) ----------------------------------------
