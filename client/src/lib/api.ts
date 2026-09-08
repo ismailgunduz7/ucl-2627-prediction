@@ -26,6 +26,17 @@ export function getAccessToken(): string | null {
   return accessToken;
 }
 
+/**
+ * Which account the in-memory token belongs to.
+ *
+ * A browser can be signed into several accounts at once, each with its own
+ * refresh cookie, so a silent refresh has to say which session it means.
+ */
+let activeUserId: string | null = null;
+export function setActiveUserId(id: string | null): void {
+  activeUserId = id;
+}
+
 export interface ApiErrorShape {
   code: string;
   message: string;
@@ -88,6 +99,7 @@ async function tryRefresh(): Promise<boolean> {
       try {
         const data = await rawRequest<{ accessToken: string }>('/api/auth/refresh', {
           method: 'POST',
+          body: { userId: activeUserId ?? undefined },
           retryOnUnauthorized: false,
         });
         setAccessToken(data.accessToken);

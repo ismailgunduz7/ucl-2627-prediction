@@ -51,11 +51,6 @@ export function clearRefreshCookie(c: Context, userId: string): void {
   deleteCookie(c, refreshCookieName(userId), { path: PATH });
 }
 
-/** The refresh token this browser holds for one account, if it holds one. */
-export function readRefreshCookie(c: Context, userId: string): string | undefined {
-  return getCookie(c, refreshCookieName(userId));
-}
-
 export function readLegacyRefreshCookie(c: Context): string | undefined {
   return getCookie(c, LEGACY_COOKIE);
 }

@@ -7,7 +7,6 @@ import {
   clearAllRefreshCookies,
   clearLegacyRefreshCookie,
   clearRefreshCookie,
-  readRefreshCookie,
   readRefreshCookies,
   setRefreshCookie,
 } from '../lib/cookies.ts';
@@ -75,6 +74,9 @@ authRoutes.post('/sessions', async (c) => {
   const meta = { ip: clientIp(c), userAgent: c.req.header('user-agent') };
 
   const accounts: authService.PublicUser[] = [];
+  // Tokens are read off the request; a cookie written during this response is
+  // not readable back from it, so the raw token travels in this map instead.
+  const tokens = new Map<string, string>();
   for (const cookie of readRefreshCookies(c)) {
     const owner = await authService.sessionOwner(cookie.raw);
     if (!owner) {
@@ -90,11 +92,12 @@ authRoutes.post('/sessions', async (c) => {
       clearLegacyRefreshCookie(c);
     }
     if (!accounts.some((a) => a.id === owner.id)) accounts.push(owner);
+    tokens.set(owner.id, cookie.raw);
   }
 
   const wanted = body.success ? body.data.activeUserId : undefined;
   const activeId = accounts.some((a) => a.id === wanted) ? wanted : accounts[0]?.id;
-  const raw = activeId ? readRefreshCookie(c, activeId) : undefined;
+  const raw = activeId ? tokens.get(activeId) : undefined;
 
   let active: { user: authService.PublicUser; accessToken: string } | null = null;
   if (activeId && raw) {
@@ -103,11 +106,11 @@ authRoutes.post('/sessions', async (c) => {
       setRefreshCookie(c, session.user.id, session.refreshToken);
       active = { user: session.user, accessToken: session.accessToken };
     } catch {
-      // Lost the race with another tab, or the token was pulled underneath us.
-      // Drop that account rather than failing the whole page load.
-      clearRefreshCookie(c, activeId);
-      const index = accounts.findIndex((a) => a.id === activeId);
-      if (index >= 0) accounts.splice(index, 1);
+      // Another tab got there first and spent this token. The cookie it wrote
+      // in its own answer is the good one, so leave the cookie alone and say
+      // there is no live session: a reload picks the new token up. Clearing it
+      // here would sign the account out of both tabs over a race.
+      active = null;
     }
   }
 
@@ -125,11 +128,11 @@ authRoutes.post('/refresh', async (c) => {
   const wanted = body.success ? body.data.userId : undefined;
 
   const cookies = readRefreshCookies(c);
-  const cookie = wanted
-    ? cookies.find((entry) => entry.userId === wanted)
-    : cookies.length === 1
-      ? cookies[0]
-      : undefined;
+  // A browser holding one session does not have to name it, and a session from
+  // before the cookie carried a name cannot name itself either.
+  const cookie =
+    (wanted ? cookies.find((entry) => entry.userId === wanted) : undefined) ??
+    (cookies.length === 1 ? cookies[0] : undefined);
   if (!cookie) throw ApiError.unauthorized('no_refresh_cookie');
 
   const session = await authService.refresh(cookie.raw, {

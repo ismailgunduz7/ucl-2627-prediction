@@ -640,7 +640,7 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 
 - Each signed-in account has its own httpOnly refresh cookie, named for the account: `ucl_refresh_<user id>`. Rotation, revocation and theft detection stay exactly as they were, per account. The set of cookies is the list of accounts signed in on that browser.
 - `POST /api/auth/login` **adds** an account instead of replacing the current one, up to **5** in one browser. Signing in as an account already present just replaces its cookie.
-- `POST /api/auth/sessions` reads that list back after a reload: it answers with every account whose cookie is still good, plus a live access token for the one named in `activeUserId` (the first, when the request names nobody). Identifying the others does **not** rotate their tokens; only the active one rotates. Cookies whose token is expired, revoked or already spent are cleared and left out.
+- `POST /api/auth/sessions` reads that list back after a reload: it answers with every account whose cookie is still good, plus a live access token for the one named in `activeUserId` (the first, when the request names nobody). Identifying the others does **not** rotate their tokens; only the active one rotates. Cookies whose token is expired, revoked or already spent are cleared and left out. When that one rotation loses a race to another tab the cookie is left exactly as it is, because the winning tab has already written the good token into the browser and a reload picks it up; clearing it would turn a race into a sign-out.
 - `POST /api/auth/refresh` names the account in its body, since the cookie alone no longer says which session is meant.
 - `POST /api/auth/logout` signs out **every** account in the browser and revokes all of their tokens. There is no per-account sign-out: the interface warns that leaving leaves everything.
 - Only the active account holds an access token in memory, so the API can never be called as an account the person is not looking at.
@@ -712,6 +712,9 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 | `/takim/:id` | Club matches and points, expandable to rule lines | built |
 | `/fikstur` | Multi-live + fixtures | built |
 | `/sezon` | Season replay | built |
+| `/hesap` | Account settings: the password and the language this account reads the game in | built |
+
+**The account chip is a menu.** Clicking the name in the header opens the other accounts signed in on this browser, each labelled with its competition, then **Hesap ekle**, **Hesap ayarları** and **Çıkış yap**. Picking another account puts it on screen without anybody signing out; adding one opens a sign-in dialog that leaves the current session alone (§9.1). Signing out warns that it takes every account with it, and only then goes. On a phone the chip is not in the header at all, so the same options sit in the drawer under the name of the account on screen.
 
 Open picks were folded into `/hafta` rather than the standings page, since that is where the picks themselves are made.
 

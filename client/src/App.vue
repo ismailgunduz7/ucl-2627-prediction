@@ -1,18 +1,18 @@
 <script setup lang="ts">
 import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
-import { useRoute, useRouter } from 'vue-router';
+import { useRoute } from 'vue-router';
 import Button from 'primevue/button';
 import Toast from 'primevue/toast';
-import { Home, Users, CalendarDays, BookOpen, LayoutGrid, Network, Calculator, Flag, RefreshCw, Menu, X, LogOut, Table, ListOrdered, Settings, UserRound } from '@lucide/vue';
+import { Home, Users, CalendarDays, BookOpen, LayoutGrid, Network, Calculator, Flag, RefreshCw, Menu, X, Table, ListOrdered, Settings } from '@lucide/vue';
 import { useAuthStore } from '@/stores/auth';
 import AppCursor from '@/components/AppCursor.vue';
 import StarBall from '@/components/StarBall.vue';
 import LanguagePicker from '@/components/LanguagePicker.vue';
+import AccountSwitcher from '@/components/AccountSwitcher.vue';
 import TrophyMark from '@/components/TrophyMark.vue';
 
 const auth = useAuthStore();
 const route = useRoute();
-const router = useRouter();
 
 const mobileNavOpen = ref(false);
 const isLoginRoute = computed(() => route.name === 'login');
@@ -74,11 +74,6 @@ function skipToContent() {
   main?.focus();
   main?.scrollIntoView({ block: 'start' });
 }
-
-async function logout() {
-  await auth.logout();
-  await router.replace('/login');
-}
 </script>
 
 <template>
@@ -102,13 +97,8 @@ async function logout() {
         </nav>
 
         <div class="header-end">
-          <RouterLink to="/hesap" class="user-chip" :title="$t('account.title')">
-            <span class="role-dot" />{{ auth.user?.displayName }}
-          </RouterLink>
+          <AccountSwitcher />
           <LanguagePicker class="header-lang" />
-          <Button severity="secondary" text rounded :aria-label="$t('common.signOut')" @click="logout">
-            <LogOut :size="18" />
-          </Button>
           <Button
             class="nav-toggle"
             severity="secondary"
@@ -134,10 +124,13 @@ async function logout() {
         <component :is="item.icon" :size="18" aria-hidden="true" />
         <span>{{ $t(item.key) }}</span>
       </RouterLink>
-      <RouterLink to="/hesap" class="mobile-nav-link" @click="mobileNavOpen = false">
-        <UserRound :size="18" aria-hidden="true" />
-        <span>{{ auth.user?.displayName }}</span>
-      </RouterLink>
+      <div class="mobile-nav-account">
+        <span class="mobile-nav-who">{{ auth.user?.displayName }}</span>
+        <span class="text-muted" style="font-size: var(--text-2xs)">{{
+          auth.user?.competitionName ?? $t('account.adminRole')
+        }}</span>
+      </div>
+      <AccountSwitcher variant="list" @navigate="mobileNavOpen = false" />
       <div class="mobile-nav-lang">
         <span class="text-muted">{{ $t('common.language') }}</span>
         <LanguagePicker />
@@ -159,6 +152,18 @@ async function logout() {
 </template>
 
 <style>
+.mobile-nav-account {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  margin-top: 0.4rem;
+  padding: 0.7rem 1rem 0.5rem;
+  border-top: 1px solid var(--color-border);
+}
+.mobile-nav-who {
+  font-size: var(--text-sm);
+  font-weight: 700;
+}
 .mobile-nav-lang {
   display: flex;
   align-items: center;

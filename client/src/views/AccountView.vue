@@ -8,6 +8,7 @@ import { Check } from '@lucide/vue';
 import { ApiRequestError } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import PageHeader from '@/components/PageHeader.vue';
+import LanguagePicker from '@/components/LanguagePicker.vue';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -53,6 +54,17 @@ async function submit() {
       <div class="identity">
         <span class="identity-name">{{ auth.user?.displayName }}</span>
         <span class="identity-username">{{ auth.user?.username }}</span>
+        <span v-if="auth.user?.competitionName" class="identity-competition">
+          {{ auth.user.competitionName }}
+        </span>
+      </div>
+    </section>
+
+    <section class="surface-card card-pad">
+      <div class="section-title">{{ $t('account.languageTitle') }}</div>
+      <div class="lang-row">
+        <p class="text-muted lang-note">{{ $t('account.languageBody') }}</p>
+        <LanguagePicker />
       </div>
     </section>
 
@@ -117,6 +129,23 @@ async function submit() {
   color: var(--color-text-muted);
   font-size: var(--text-sm);
   font-weight: 600;
+}
+.identity-competition {
+  margin-top: 0.35rem;
+  color: var(--color-text-secondary);
+  font-size: var(--text-sm);
+  font-weight: 600;
+}
+.lang-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 1rem;
+  flex-wrap: wrap;
+}
+.lang-note {
+  margin: 0;
+  font-size: var(--text-sm);
 }
 /* One column, capped: a password field the width of a desktop is a target
    nobody aims at and a line nobody reads. */
