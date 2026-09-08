@@ -7,7 +7,6 @@ import { Home, Users, CalendarDays, BookOpen, LayoutGrid, Network, Calculator, F
 import { useAuthStore } from '@/stores/auth';
 import AppCursor from '@/components/AppCursor.vue';
 import StarBall from '@/components/StarBall.vue';
-import LanguagePicker from '@/components/LanguagePicker.vue';
 import AccountSwitcher from '@/components/AccountSwitcher.vue';
 import TrophyMark from '@/components/TrophyMark.vue';
 
@@ -98,7 +97,6 @@ function skipToContent() {
 
         <div class="header-end">
           <AccountSwitcher />
-          <LanguagePicker class="header-lang" />
           <Button
             class="nav-toggle"
             severity="secondary"
@@ -131,10 +129,6 @@ function skipToContent() {
         }}</span>
       </div>
       <AccountSwitcher variant="list" @navigate="mobileNavOpen = false" />
-      <div class="mobile-nav-lang">
-        <span class="text-muted">{{ $t('common.language') }}</span>
-        <LanguagePicker />
-      </div>
     </nav>
 
     <main id="main-content" class="app-main" tabindex="-1">
@@ -163,17 +157,6 @@ function skipToContent() {
 .mobile-nav-who {
   font-size: var(--text-sm);
   font-weight: 700;
-}
-.mobile-nav-lang {
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 1rem;
-  margin-top: 0.4rem;
-  padding: 0.6rem 1rem 0;
-  border-top: 1px solid var(--color-border);
-  font-size: var(--text-sm);
-  font-weight: 600;
 }
 .page-enter-active {
   transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
