@@ -17,7 +17,7 @@ import CaptainBadge from '@/components/CaptainBadge.vue';
 import FixtureLine from '@/components/FixtureLine.vue';
 import OctopusMark from '@/components/OctopusMark.vue';
 import TeamCrest from '@/components/TeamCrest.vue';
-import { JOKER_ICONS, jokerName } from '@/lib/jokers';
+import { JOKER_CODES, JOKER_ICONS, jokerName } from '@/lib/jokers';
 import { groupMatchweeks, matchweekTitle, type MatchweekMenu } from '@/lib/matchweeks';
 import { usePointerDrag } from '@/composables/usePointerDrag';
 import { lower, ordinal } from '@/lib/format';
@@ -572,6 +572,25 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
         </p>
       </section>
 
+      <section class="surface-card card-pad">
+        <div class="section-title">{{ $t('week.walletTitle') }}</div>
+        <div class="wallet">
+          <div
+            v-for="code in JOKER_CODES"
+            :key="code"
+            class="wallet-card"
+            :class="{ live: activeJoker?.code === code, spent: remaining(code) === 0 && activeJoker?.code !== code }"
+          >
+            <span class="wallet-mark"><component :is="JOKER_ICONS[code]" :size="18" aria-hidden="true" /></span>
+            <span class="wallet-text">
+              <span class="wallet-name">{{ $t(`joker.${code}`) }}</span>
+              <span class="wallet-left">{{ $t('week.walletLeft', { count: remaining(code) }, remaining(code)) }}</span>
+            </span>
+            <Tag v-if="activeJoker?.code === code" severity="info" :value="$t('week.walletLive')" />
+          </div>
+        </div>
+      </section>
+
       <section v-if="briefing.length" class="surface-card card-pad">
         <div class="section-title">{{ $t('week.briefingTitle') }}</div>
         <div class="brief-grid">
@@ -994,6 +1013,54 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
 }
 .swap-option:hover { border-color: var(--color-primary); background: var(--color-primary-soft); }
 
+/* The joker wallet: what is left of each one, and which one is out this week. */
+.wallet {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 0.6rem;
+}
+.wallet-card {
+  display: flex;
+  align-items: center;
+  gap: 0.7rem;
+  padding: 0.6rem 0.75rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-md);
+  background: var(--color-bg-subtle);
+}
+.wallet-card.live {
+  border-color: var(--color-primary);
+  box-shadow: inset 0 0 0 1px var(--color-primary);
+}
+/* Nothing left to play. Still listed, because a missing row reads as a bug. */
+.wallet-card.spent {
+  opacity: 0.5;
+}
+.wallet-mark {
+  display: grid;
+  place-items: center;
+  width: 2.1rem;
+  height: 2.1rem;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--color-primary-soft);
+  color: var(--color-primary);
+}
+.wallet-text {
+  display: flex;
+  flex-direction: column;
+  line-height: 1.25;
+  min-width: 0;
+}
+.wallet-name {
+  font-weight: 700;
+  font-size: var(--text-sm);
+}
+.wallet-left {
+  color: var(--color-text-muted);
+  font-size: var(--text-2xs);
+  font-weight: 600;
+}
 .section-title-row {
   display: flex;
   justify-content: space-between;
