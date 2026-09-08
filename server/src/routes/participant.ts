@@ -35,7 +35,7 @@ import {
   getActiveJoker,
   getInventory,
 } from '../services/joker-service.ts';
-import { getBriefing, getOpenPicks } from '../services/briefing-service.ts';
+import { getBriefing, getClubWeeks, getOpenPicks } from '../services/briefing-service.ts';
 import { getWeekPredictions, savePrediction } from '../services/prediction-service.ts';
 import { getRoundFixtures } from '../services/fixture-service.ts';
 import { getWeekDeltas } from '../services/delta-service.ts';
@@ -285,8 +285,12 @@ participantRoutes.delete('/matchweeks/:id/jokers', async (c) => {
 // --- Briefing + open picks (§18.1, §18.4) ---------------------------------
 participantRoutes.get('/matchweeks/:id/briefing', async (c) => {
   const auth = c.get('auth');
-  const briefing = await getBriefing(auth.sub, c.req.param('id'));
-  return c.json({ briefing });
+  const mwId = c.req.param('id');
+  const [briefing, weeks] = await Promise.all([getBriefing(auth.sub, mwId), getClubWeeks(mwId)]);
+  // Every club's week travels with the briefing, because the weekly-swap picker
+  // offers clubs the viewer does not own and has to show what they are up
+  // against (§3.6). A club with no fixture is simply not in the list.
+  return c.json({ briefing, clubs: [...weeks.values()] });
 });
 
 participantRoutes.get('/matchweeks/:id/open-picks', async (c) => {

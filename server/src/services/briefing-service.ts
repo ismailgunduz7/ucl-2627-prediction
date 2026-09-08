@@ -7,15 +7,84 @@ import { difficultyFor, harderBand, type DifficultyBand } from '../domain/diffic
 
 export type { DifficultyBand };
 
-export interface BriefingClub {
+export interface ClubFixture {
+  opponentName: string;
+  opponentTierId: number;
+  home: boolean;
+  kickoffAt: string;
+}
+
+export interface ClubWeek {
   teamId: string;
+  fixtures: ClubFixture[];
+  difficulty: DifficultyBand | null; // null = no fixture this week (bye)
+}
+
+export interface BriefingClub extends ClubWeek {
   name: string;
   shortName: string;
   tierId: number;
   benched: boolean;
   captain: boolean;
-  fixtures: { opponentName: string; opponentTierId: number; home: boolean; kickoffAt: string }[];
-  difficulty: DifficultyBand | null; // null = no fixture this week (bye)
+}
+
+/**
+ * What every club in the competition is doing this matchweek, and how hard it
+ * looks (§18.1). One query for the whole week rather than one per club: the
+ * briefing wants four of them and the weekly-swap picker wants the rest of a
+ * pot, which is nobody's squad.
+ *
+ * A club with no fixture is absent from the map. That is the bye, and the
+ * caller says so in its own words.
+ */
+export async function getClubWeeks(mwId: string): Promise<Map<string, ClubWeek>> {
+  const { rows } = await query<{
+    home_team_id: string;
+    away_team_id: string;
+    home_name: string;
+    away_name: string;
+    home_tier: number;
+    away_tier: number;
+    kickoff_at: Date;
+  }>(
+    `SELECT m.home_team_id, m.away_team_id, ht.name AS home_name, at.name AS away_name,
+            ht.tier_id AS home_tier, at.tier_id AS away_tier, m.kickoff_at
+       FROM matches m
+       JOIN teams ht ON ht.id = m.home_team_id
+       JOIN teams at ON at.id = m.away_team_id
+      WHERE m.matchweek_id = $1
+      ORDER BY m.kickoff_at`,
+    [mwId],
+  );
+
+  const weeks = new Map<string, ClubWeek>();
+  const add = (teamId: string, tierId: number, fixture: ClubFixture) => {
+    const week = weeks.get(teamId) ?? { teamId, fixtures: [], difficulty: null };
+    week.fixtures.push(fixture);
+    // A club playing twice is judged on its hardest fixture.
+    week.difficulty = harderBand(
+      week.difficulty,
+      difficultyFor(tierId, fixture.opponentTierId, !fixture.home),
+    );
+    weeks.set(teamId, week);
+  };
+
+  for (const r of rows) {
+    const kickoffAt = new Date(r.kickoff_at).toISOString();
+    add(r.home_team_id, r.home_tier, {
+      opponentName: r.away_name,
+      opponentTierId: r.away_tier,
+      home: true,
+      kickoffAt,
+    });
+    add(r.away_team_id, r.away_tier, {
+      opponentName: r.home_name,
+      opponentTierId: r.home_tier,
+      home: false,
+      kickoffAt,
+    });
+  }
+  return weeks;
 }
 
 /** Pre-lock briefing: each squad club's fixtures + how hard they look (§18.1). */
@@ -23,47 +92,20 @@ export async function getBriefing(userId: string, mwId: string): Promise<Briefin
   const lineup = await resolveLineup(userId, mwId);
   if (!lineup) return [];
 
-  const clubs: BriefingClub[] = [];
-  for (const club of lineup.squad) {
-    const matches = await query<{
-      opponent_name: string;
-      opponent_tier: number;
-      is_home: boolean;
-      kickoff_at: Date;
-    }>(
-      `SELECT CASE WHEN m.home_team_id = $2 THEN at.name ELSE ht.name END AS opponent_name,
-              CASE WHEN m.home_team_id = $2 THEN at.tier_id ELSE ht.tier_id END AS opponent_tier,
-              (m.home_team_id = $2) AS is_home, m.kickoff_at
-       FROM matches m JOIN teams ht ON ht.id = m.home_team_id JOIN teams at ON at.id = m.away_team_id
-       WHERE m.matchweek_id = $1 AND (m.home_team_id = $2 OR m.away_team_id = $2)
-       ORDER BY m.kickoff_at`,
-      [mwId, club.teamId],
-    );
-
-    const fixtures = matches.rows.map((r) => ({
-      opponentName: r.opponent_name,
-      opponentTierId: r.opponent_tier,
-      home: r.is_home,
-      kickoffAt: new Date(r.kickoff_at).toISOString(),
-    }));
-    // A club playing twice is judged on its hardest fixture.
-    let difficulty: DifficultyBand | null = null;
-    for (const r of matches.rows) {
-      difficulty = harderBand(difficulty, difficultyFor(club.tierId, r.opponent_tier, !r.is_home));
-    }
-
-    clubs.push({
+  const weeks = await getClubWeeks(mwId);
+  return lineup.squad.map((club) => {
+    const week = weeks.get(club.teamId);
+    return {
       teamId: club.teamId,
       name: club.name,
       shortName: club.shortName,
       tierId: club.tierId,
       benched: club.teamId === lineup.benchTeamId,
       captain: club.teamId === lineup.captainTeamId,
-      fixtures,
-      difficulty,
-    });
-  }
-  return clubs;
+      fixtures: week?.fixtures ?? [],
+      difficulty: week?.difficulty ?? null,
+    };
+  });
 }
 
 export interface OpenPick {

@@ -33,7 +33,9 @@ interface PredictionTally { settled: number; correct: number; points: number; pr
 interface WeekScore { total: number; final: boolean; lines: ScoreLine[]; jokerCode: string | null; predictions: PredictionTally }
 interface Inventory { code: string; name: string; remaining: number }
 interface ActiveJoker { code: string; payload: Record<string, unknown> }
-interface BriefingClub { teamId: string; name: string; fixtures: { opponentName: string; opponentTierId: number; home: boolean }[]; difficulty: string | null }
+interface ClubFixture { opponentName: string; opponentTierId: number; home: boolean }
+interface ClubWeek { teamId: string; fixtures: ClubFixture[]; difficulty: string | null }
+interface BriefingClub extends ClubWeek { name: string }
 interface OpenPick { userId: string; displayName: string; benchName: string; captainName: string; jokerCode: string | null; jokerDetail: string | null }
 interface Pot {
   tierId: number;
@@ -73,6 +75,8 @@ const score = ref<WeekScore | null>(null);
 const inventory = ref<Inventory[]>([]);
 const activeJoker = ref<ActiveJoker | null>(null);
 const briefing = ref<BriefingClub[]>([]);
+/** Every club's fixtures this week, so the swap picker can show what it is buying. */
+const clubWeeks = ref<Map<string, ClubWeek>>(new Map());
 const openPicks = ref<{ available: boolean; picks: OpenPick[] }>({ available: false, picks: [] });
 const pots = ref<Pot[]>([]);
 const predictions = ref<WeekPredictions | null>(null);
@@ -338,7 +342,7 @@ async function loadWeek() {
     api.get<{ lineup: Lineup | null; squad: SquadClub[] }>(`/api/matchweeks/${id}/lineup`),
     api.get<{ score: WeekScore | null; rankMove: RankMove | null }>(`/api/matchweeks/${id}/score`),
     api.get<{ inventory: Inventory[]; active: ActiveJoker | null }>(`/api/matchweeks/${id}/jokers`),
-    api.get<{ briefing: BriefingClub[] }>(`/api/matchweeks/${id}/briefing`),
+    api.get<{ briefing: BriefingClub[]; clubs: ClubWeek[] }>(`/api/matchweeks/${id}/briefing`),
     api.get<{ available: boolean; picks: OpenPick[] }>(`/api/matchweeks/${id}/open-picks`),
     api.get<WeekPredictions>(`/api/matchweeks/${id}/predictions`),
     api.get<WeekDeltas>(`/api/matchweeks/${id}/deltas`),
@@ -347,7 +351,8 @@ async function loadWeek() {
   lineup.value = lu.lineup; squad.value = lu.squad; score.value = sc.score;
   rankMove.value = sc.rankMove;
   inventory.value = jk.inventory; activeJoker.value = jk.active;
-  briefing.value = br.briefing; openPicks.value = op; predictions.value = pr;
+  briefing.value = br.briefing;
+  clubWeeks.value = new Map(br.clubs.map((c) => [c.teamId, c])); openPicks.value = op; predictions.value = pr;
   deltas.value = dl;
   benchId.value = lu.lineup?.benchTeamId ?? null;
   captainId.value = lu.lineup?.captainTeamId ?? null;
@@ -604,7 +609,11 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
               />
             </div>
             <div v-for="(f, i) in b.fixtures" :key="i" class="brief-fixture text-muted">
-              <component :is="f.home ? House : Plane" :size="13" :aria-label="f.home ? 'Evinde' : 'Deplasmanda'" />
+              <component
+                :is="f.home ? House : Plane"
+                :size="13"
+                :aria-label="f.home ? $t('week.atHome') : $t('week.away')"
+              />
               <span>{{ $t('common.pot', { number: f.opponentTierId }) }} · {{ f.opponentName }}</span>
             </div>
             <div v-if="!b.fixtures.length" class="text-muted brief-bye">{{ $t('week.noFixture') }}</div>
@@ -792,7 +801,26 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
       <p class="text-muted dialog-lead">{{ $t('week.swapSubtitle') }}</p>
       <div class="swap-list">
         <button v-for="t in swapOptions()" :key="t.id" class="swap-option" @click="chooseSwap(t.id)">
-          <TeamCrest :name="t.name" :crest-url="t.crestUrl" size="sm" />{{ t.name }}
+          <TeamCrest :name="t.name" :crest-url="t.crestUrl" size="sm" />
+          <span class="swap-text">
+            <span class="swap-name">{{ t.name }}</span>
+            <span v-for="(f, i) in clubWeeks.get(t.id)?.fixtures ?? []" :key="i" class="swap-fixture text-muted">
+              <component
+                :is="f.home ? House : Plane"
+                :size="13"
+                :aria-label="f.home ? $t('week.atHome') : $t('week.away')"
+              />
+              <span>{{ $t('common.pot', { number: f.opponentTierId }) }} · {{ f.opponentName }}</span>
+            </span>
+            <span v-if="!clubWeeks.get(t.id)?.fixtures.length" class="swap-fixture text-muted">
+              {{ $t('week.noFixture') }}
+            </span>
+          </span>
+          <Tag
+            v-if="clubWeeks.get(t.id)?.difficulty"
+            :severity="difficultySeverity(clubWeeks.get(t.id)!.difficulty)"
+            :value="$t(`difficulty.${clubWeeks.get(t.id)!.difficulty}`)"
+          />
         </button>
         <p v-if="!swapOptions().length" class="text-muted flush">{{ $t('week.swapEmpty') }}</p>
       </div>
@@ -1012,6 +1040,23 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
   font: inherit; font-weight: 600; text-align: left; cursor: pointer;
 }
 .swap-option:hover { border-color: var(--color-primary); background: var(--color-primary-soft); }
+/* The name leads, the fixture explains it, and the difficulty tag closes the
+   row. The text column takes the room so the tag stays put down the list. */
+.swap-text {
+  display: flex;
+  flex-direction: column;
+  gap: 0.1rem;
+  flex: 1;
+  min-width: 0;
+}
+.swap-name { line-height: 1.25; }
+.swap-fixture {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+  font-size: var(--text-2xs);
+  font-weight: 600;
+}
 
 /* The joker wallet: what is left of each one, and which one is out this week. */
 .wallet {

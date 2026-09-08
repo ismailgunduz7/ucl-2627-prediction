@@ -493,6 +493,8 @@ export default {
     dragHintCoarse: 'Bir kulübe basılı tutup yedek kutusuna sürükle, oradakiyle yer değişir.',
     briefingTitle: 'Kulüplerinin haftası',
     noFixture: 'bu hafta maçı yok',
+    atHome: 'Evinde',
+    away: 'Deplasmanda',
     hadNoFixture: 'bu hafta maçı yoktu',
     benchedHint: 'Yedekte kaldı, puanı yazılmadı',
     tallyLiveHint: '{count} maç sürüyor, bu sayı değişebilir',

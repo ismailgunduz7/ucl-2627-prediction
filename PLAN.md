@@ -909,6 +909,8 @@ Knockout `round_advance` / medal values: tune after league-phase feel is good.
 
 Before lock on the hub: list the user's four clubs' fixtures (opponent, home/away, kickoff).
 
+The **weekly-swap picker reads the same lines**. Choosing which club to borrow for a week is the same judgement the briefing supports, and a name on its own does not support it, so every option in that dialog carries its opponent, whether it is home or away and its difficulty band. The clubs on offer are not the viewer's, so the briefing endpoint answers with the whole week beside it: one query for every fixture in the matchweek, grouped per club. A club with no fixture that week says so, since a bye is the one swap nobody wants.
+
 **Difficulty:** per-club band `kolay` / `orta` / `zor`, from the gap between the two clubs plus the venue; not a betting tip. What decides it is `own pot - opponent pot`, with an away trip costing a little more than one seed of that gap; a club playing twice in the week is judged on its harder fixture. The same fixture is therefore easy for the stronger host and hard for the weaker visitor. A club with no fixture shows no band at all. Lives in `server/src/domain/difficulty.ts`.
 
 ### 18.2 Deadline drama

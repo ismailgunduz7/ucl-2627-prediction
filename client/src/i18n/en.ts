@@ -492,6 +492,8 @@ export default {
     dragHintCoarse: 'Hold a club, then drag it onto the bench box to change places with the one there.',
     briefingTitle: 'Your clubs this week',
     noFixture: 'no match this week',
+    atHome: 'At home',
+    away: 'Away',
     hadNoFixture: 'had no match this week',
     benchedHint: 'It stayed on the bench, so it scored nothing',
     tallyLiveHint: '{count} matches are still on, so this can change',
