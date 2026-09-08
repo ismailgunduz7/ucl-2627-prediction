@@ -18,8 +18,18 @@ export interface UserRow {
   display_name: string;
   is_admin: boolean;
   competition_id: string | null;
+  competition_name: string | null;
   language: Locale;
 }
+
+/**
+ * Every read of an account carries the competition's name beside its id: the
+ * account switcher names the competition under each account (§9.1), and an id
+ * would mean the client fetching a list it has no business reading.
+ */
+const USER_SELECT = `SELECT u.id, u.username, u.password_hash, u.display_name, u.is_admin,
+          u.competition_id, u.language, c.name AS competition_name
+     FROM users u LEFT JOIN competitions c ON c.id = u.competition_id`;
 
 export interface PublicUser {
   id: string;
@@ -27,6 +37,8 @@ export interface PublicUser {
   displayName: string;
   isAdmin: boolean;
   competitionId: string | null;
+  /** Named, not just referenced, so the account switcher can label a row. */
+  competitionName: string | null;
   /** The language this account reads the game in, on any device (§3.1). */
   language: Locale;
 }
@@ -50,6 +62,7 @@ function toPublicUser(row: UserRow): PublicUser {
     displayName: row.display_name,
     isAdmin: row.is_admin,
     competitionId: row.competition_id,
+    competitionName: row.competition_name ?? null,
     language: row.language,
   };
 }
@@ -86,11 +99,9 @@ export async function login(
   password: string,
   meta: RequestMeta = {},
 ): Promise<SessionResult> {
-  const { rows } = await query<UserRow>(
-    `SELECT id, username, password_hash, display_name, is_admin, competition_id, language
-     FROM users WHERE lower(username) = lower($1)`,
-    [username],
-  );
+  const { rows } = await query<UserRow>(`${USER_SELECT} WHERE lower(u.username) = lower($1)`, [
+    username,
+  ]);
   const user = rows[0];
   // Always run a hash comparison to blunt username-enumeration timing.
   const ok = user
@@ -115,9 +126,10 @@ export async function refresh(rawToken: string, meta: RequestMeta = {}): Promise
     const { rows } = await client.query(
       `SELECT rt.id, rt.user_id, rt.expires_at, rt.rotated_at, rt.revoked_at,
               u.id AS u_id, u.username, u.password_hash, u.display_name,
-              u.is_admin, u.competition_id, u.language
+              u.is_admin, u.competition_id, u.language, c.name AS competition_name
        FROM refresh_tokens rt
        JOIN users u ON u.id = rt.user_id
+       LEFT JOIN competitions c ON c.id = u.competition_id
        WHERE rt.token_hash = $1
        FOR UPDATE OF rt`,
       [tokenHash],
@@ -140,6 +152,7 @@ export async function refresh(rawToken: string, meta: RequestMeta = {}): Promise
       display_name: row.display_name,
       is_admin: row.is_admin,
       competition_id: row.competition_id,
+      competition_name: row.competition_name,
       language: row.language,
     };
     // Issue the replacement refresh token within the same transaction.
@@ -164,6 +177,30 @@ export async function refresh(rawToken: string, meta: RequestMeta = {}): Promise
   });
 }
 
+/**
+ * Who a refresh token belongs to, without spending it.
+ *
+ * The sessions endpoint (§9.1) reads the accounts a browser is carrying, and
+ * reading that list must not rotate anything: a browser holding four accounts
+ * would otherwise burn four tokens on every page load. Returns null for a token
+ * that is revoked, already rotated, expired or simply unknown.
+ */
+export async function sessionOwner(rawToken: string): Promise<PublicUser | null> {
+  const { rows } = await query<UserRow & { expires_at: Date }>(
+    `SELECT u.id, u.username, u.password_hash, u.display_name, u.is_admin,
+            u.competition_id, u.language, c.name AS competition_name, rt.expires_at
+       FROM refresh_tokens rt
+       JOIN users u ON u.id = rt.user_id
+       LEFT JOIN competitions c ON c.id = u.competition_id
+      WHERE rt.token_hash = $1 AND rt.revoked_at IS NULL AND rt.rotated_at IS NULL`,
+    [hashRefreshToken(rawToken)],
+  );
+  const row = rows[0];
+  if (!row) return null;
+  if (new Date(row.expires_at).getTime() <= Date.now()) return null;
+  return toPublicUser(row);
+}
+
 /** Revoke the presented refresh token (logout). Idempotent. */
 export async function logout(rawToken: string | undefined): Promise<void> {
   if (!rawToken) return;
@@ -176,11 +213,7 @@ export async function logout(rawToken: string | undefined): Promise<void> {
 
 /** Fetch a user by id for the /me endpoint. */
 export async function getUserById(id: string): Promise<PublicUser | null> {
-  const { rows } = await query<UserRow>(
-    `SELECT id, username, password_hash, display_name, is_admin, competition_id, language
-     FROM users WHERE id = $1`,
-    [id],
-  );
+  const { rows } = await query<UserRow>(`${USER_SELECT} WHERE u.id = $1`, [id]);
   return rows[0] ? toPublicUser(rows[0]) : null;
 }
 
@@ -200,15 +233,14 @@ export async function createUser(input: CreateUserInput): Promise<PublicUser> {
   }
   const passwordHash = await hashPassword(input.password);
   try {
-    const { rows } = await query<UserRow>(
+    const { rows } = await query<{ id: string }>(
       `INSERT INTO users (username, password_hash, display_name, is_admin, competition_id)
-       VALUES ($1, $2, $3, $4, $5)
-       RETURNING id, username, password_hash, display_name, is_admin, competition_id, language`,
+       VALUES ($1, $2, $3, $4, $5) RETURNING id`,
       [input.username, passwordHash, input.displayName, isAdmin, input.competitionId ?? null],
     );
     // Participants get their Act I joker inventory before the MW1 lock (§3.6).
     if (!isAdmin) await grantInitialInventory(rows[0]!.id);
-    return toPublicUser(rows[0]!);
+    return (await getUserById(rows[0]!.id))!;
   } catch (err) {
     if (err && typeof err === 'object' && 'code' in err && err.code === '23505') {
       throw ApiError.badRequest('username_taken');
@@ -242,16 +274,15 @@ export async function updateUser(userId: string, input: UpdateUserInput): Promis
     throw ApiError.badRequest('competition_required');
   }
 
-  const updated = await query<UserRow>(
+  await query(
     `UPDATE users
         SET display_name = COALESCE($2, display_name),
             competition_id = COALESCE($3, competition_id),
             updated_at = now()
-      WHERE id = $1
-      RETURNING id, username, password_hash, display_name, is_admin, competition_id, language`,
+      WHERE id = $1`,
     [userId, input.displayName ?? null, competitionId ?? null],
   );
-  return toPublicUser(updated.rows[0]!);
+  return (await getUserById(userId))!;
 }
 
 /**
@@ -319,11 +350,7 @@ export async function changeOwnPassword(
   newPassword: string,
   meta: RequestMeta = {},
 ): Promise<SessionResult> {
-  const { rows } = await query<UserRow>(
-    `SELECT id, username, password_hash, display_name, is_admin, competition_id, language
-     FROM users WHERE id = $1`,
-    [userId],
-  );
+  const { rows } = await query<UserRow>(`${USER_SELECT} WHERE u.id = $1`, [userId]);
   const user = rows[0];
   if (!user) throw ApiError.unauthorized();
   if (!(await verifyPassword(currentPassword, user.password_hash))) {
@@ -349,13 +376,10 @@ export async function changeOwnPassword(
 
 /** Remembers the language this account reads the game in, on every device. */
 export async function setLanguage(userId: string, language: Locale): Promise<PublicUser> {
-  const { rows } = await query<UserRow>(
-    `UPDATE users SET language = $2, updated_at = now()
-     WHERE id = $1
-     RETURNING id, username, password_hash, display_name, is_admin, competition_id, language`,
+  const { rows } = await query<{ id: string }>(
+    `UPDATE users SET language = $2, updated_at = now() WHERE id = $1 RETURNING id`,
     [userId, language],
   );
-  const row = rows[0];
-  if (!row) throw ApiError.badRequest('user_not_found');
-  return toPublicUser(row);
+  if (!rows[0]) throw ApiError.badRequest('user_not_found');
+  return (await getUserById(userId))!;
 }

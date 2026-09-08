@@ -1,9 +1,16 @@
 import { Hono } from 'hono';
-import { getCookie } from 'hono/cookie';
 import { z } from 'zod';
 import { ApiError } from '../lib/errors.ts';
 import { LOCALES } from '../lib/i18n.ts';
-import { clearRefreshCookie, REFRESH_COOKIE, setRefreshCookie } from '../lib/cookies.ts';
+import {
+  MAX_BROWSER_ACCOUNTS,
+  clearAllRefreshCookies,
+  clearLegacyRefreshCookie,
+  clearRefreshCookie,
+  readRefreshCookie,
+  readRefreshCookies,
+  setRefreshCookie,
+} from '../lib/cookies.ts';
 import { checkLoginRate, resetLoginRate } from '../lib/rate-limit.ts';
 import * as authService from '../services/auth-service.ts';
 import { requireAuth, type AuthVariables } from '../middleware/auth.ts';
@@ -41,26 +48,103 @@ authRoutes.post('/login', async (c) => {
     userAgent: c.req.header('user-agent'),
   });
 
+  // Signing in does not sign the other accounts out (§9.1), so the browser
+  // accumulates cookies. Cap it: a browser with dozens of them would start
+  // losing them silently, and nobody plays this league from ten accounts.
+  const others = readRefreshCookies(c).filter((cookie) => cookie.userId !== session.user.id);
+  if (others.length >= MAX_BROWSER_ACCOUNTS) {
+    throw ApiError.badRequest('too_many_accounts', { max: MAX_BROWSER_ACCOUNTS });
+  }
+
   resetLoginRate(ip, username);
-  setRefreshCookie(c, session.refreshToken);
+  setRefreshCookie(c, session.user.id, session.refreshToken);
   return c.json({ user: session.user, accessToken: session.accessToken });
 });
 
+const SessionsSchema = z.object({ activeUserId: z.string().uuid().optional() });
+
+/**
+ * The accounts this browser is signed into, plus a live session for one of them.
+ *
+ * A page load needs both, and asking for them separately would mean two round
+ * trips before anything renders. Only the account being made active rotates its
+ * token; the rest are merely identified (§9.1).
+ */
+authRoutes.post('/sessions', async (c) => {
+  const body = SessionsSchema.safeParse(await c.req.json().catch(() => ({})));
+  const meta = { ip: clientIp(c), userAgent: c.req.header('user-agent') };
+
+  const accounts: authService.PublicUser[] = [];
+  for (const cookie of readRefreshCookies(c)) {
+    const owner = await authService.sessionOwner(cookie.raw);
+    if (!owner) {
+      if (cookie.userId === null) clearLegacyRefreshCookie(c);
+      else clearRefreshCookie(c, cookie.userId);
+      continue;
+    }
+    // A session opened before accounts could be stacked carries an unnamed
+    // cookie. Move the same token under the account's name and drop the old
+    // one, so nobody is signed out by the upgrade.
+    if (cookie.userId === null) {
+      setRefreshCookie(c, owner.id, cookie.raw);
+      clearLegacyRefreshCookie(c);
+    }
+    if (!accounts.some((a) => a.id === owner.id)) accounts.push(owner);
+  }
+
+  const wanted = body.success ? body.data.activeUserId : undefined;
+  const activeId = accounts.some((a) => a.id === wanted) ? wanted : accounts[0]?.id;
+  const raw = activeId ? readRefreshCookie(c, activeId) : undefined;
+
+  let active: { user: authService.PublicUser; accessToken: string } | null = null;
+  if (activeId && raw) {
+    try {
+      const session = await authService.refresh(raw, meta);
+      setRefreshCookie(c, session.user.id, session.refreshToken);
+      active = { user: session.user, accessToken: session.accessToken };
+    } catch {
+      // Lost the race with another tab, or the token was pulled underneath us.
+      // Drop that account rather than failing the whole page load.
+      clearRefreshCookie(c, activeId);
+      const index = accounts.findIndex((a) => a.id === activeId);
+      if (index >= 0) accounts.splice(index, 1);
+    }
+  }
+
+  return c.json({ accounts, active });
+});
+
+const RefreshSchema = z.object({ userId: z.string().uuid().optional() });
+
+/**
+ * Rotate one account's session. Which one is named in the body; with several
+ * accounts signed in here, the cookie alone no longer says.
+ */
 authRoutes.post('/refresh', async (c) => {
-  const raw = getCookie(c, REFRESH_COOKIE);
-  if (!raw) throw ApiError.unauthorized('no_refresh_cookie');
-  const session = await authService.refresh(raw, {
+  const body = RefreshSchema.safeParse(await c.req.json().catch(() => ({})));
+  const wanted = body.success ? body.data.userId : undefined;
+
+  const cookies = readRefreshCookies(c);
+  const cookie = wanted
+    ? cookies.find((entry) => entry.userId === wanted)
+    : cookies.length === 1
+      ? cookies[0]
+      : undefined;
+  if (!cookie) throw ApiError.unauthorized('no_refresh_cookie');
+
+  const session = await authService.refresh(cookie.raw, {
     ip: clientIp(c),
     userAgent: c.req.header('user-agent'),
   });
-  setRefreshCookie(c, session.refreshToken);
+  setRefreshCookie(c, session.user.id, session.refreshToken);
+  if (cookie.userId === null) clearLegacyRefreshCookie(c);
   return c.json({ user: session.user, accessToken: session.accessToken });
 });
 
+/** Signs out every account in this browser at once (§9.1). */
 authRoutes.post('/logout', async (c) => {
-  const raw = getCookie(c, REFRESH_COOKIE);
-  await authService.logout(raw);
-  clearRefreshCookie(c);
+  for (const cookie of readRefreshCookies(c)) await authService.logout(cookie.raw);
+  clearAllRefreshCookies(c);
   return c.json({ ok: true });
 });
 
@@ -93,7 +177,7 @@ authRoutes.put('/me/password', requireAuth, async (c) => {
     body.data.newPassword,
     { ip: clientIp(c), userAgent: c.req.header('user-agent') },
   );
-  setRefreshCookie(c, session.refreshToken);
+  setRefreshCookie(c, session.user.id, session.refreshToken);
   return c.json({ user: session.user, accessToken: session.accessToken });
 });
 

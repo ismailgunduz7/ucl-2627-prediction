@@ -37,6 +37,7 @@ const tr: Catalog = {
   'errors.cron_disabled': 'CRON_SECRET tanımlı değil',
   'errors.invalid_cron_secret': 'Geçersiz cron anahtarı',
 
+  'errors.too_many_accounts': 'Aynı anda en fazla {max} hesapla giriş yapabilirsin',
   'errors.competition_name_required': 'Yarışma adı gerekli',
   'errors.competition_not_found': 'Yarışma bulunamadı',
   'errors.competition_in_use': 'Bu yarışmada {count} hesap var. Önce onları başka bir yarışmaya taşı',
@@ -171,6 +172,7 @@ const en: Catalog = {
   'errors.cron_disabled': 'CRON_SECRET is not set',
   'errors.invalid_cron_secret': 'Wrong cron key',
 
+  'errors.too_many_accounts': 'You can hold at most {max} accounts signed in at once',
   'errors.competition_name_required': 'The competition needs a name',
   'errors.competition_not_found': 'No such competition',
   'errors.competition_in_use': 'This competition still holds {count} accounts. Move them somewhere else first',

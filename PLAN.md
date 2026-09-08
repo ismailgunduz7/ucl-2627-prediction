@@ -114,6 +114,7 @@ After the league phase:
 ### 3.1 Players (users)
 
 - Accounts are **created by an admin** (username + password). There is **no public self-registration** API. A player can change **their own password** from their account page without going through an admin; the admin reset in §9.3 stays for the case where they cannot get in at all.
+- One account belongs to exactly **one competition**, so somebody who plays in two needs two accounts. The browser can hold both signed in at once and switch between them (§9.1).
 - Optional grouping into **competitions**. A competition is **only** a way to isolate a set of participants from each other (e.g. work, school, friends, family) so each user sees **only their own competition's** participants, leaderboard, and open picks. **All game rules, config, scoring, jokers, matchweeks, acts, and tournament data are global/shared** across competitions; competitions never change the rules, only *who is grouped with whom*. First season may use a **single** competition; the schema and admin UI must support multiple.
 - Roles: **participant** and **admin**. Admins manage the system and do not play on the same account (excluded from participant leaderboards).
 - New participants may be added only **before permanent squad lock**. After lock, no new accounts join that season. An account that already exists but never picked a squad is a different case: it can still build one and join the season late (§3.2).
@@ -629,11 +630,21 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 
 ### 9.1 Auth
 
-- `POST /api/auth/login`, `POST /api/auth/logout`, `POST /api/auth/refresh`
+- `POST /api/auth/login`, `POST /api/auth/logout`, `POST /api/auth/refresh`, `POST /api/auth/sessions`
 - `GET /api/auth/me`, `PUT /api/auth/me/language` (the account's reading language, `tr` or `en`), `PUT /api/auth/me/password` (a player changes their own password: the current one has to be right, every session of the account is revoked and the caller is handed a fresh pair so the browser doing the change stays signed in)
 - **No** public `register`
 - Access JWT short-lived; refresh httpOnly cookie with rotation
 - Middleware: `auth`, `admin`, `participant`
+
+**Several accounts in one browser.** A person who plays in two competitions needs two accounts, because an account belongs to exactly one competition (§3.1). Rather than making them sign out and back in, a browser holds **several sessions at once** and switches between them.
+
+- Each signed-in account has its own httpOnly refresh cookie, named for the account: `ucl_refresh_<user id>`. Rotation, revocation and theft detection stay exactly as they were, per account. The set of cookies is the list of accounts signed in on that browser.
+- `POST /api/auth/login` **adds** an account instead of replacing the current one, up to **5** in one browser. Signing in as an account already present just replaces its cookie.
+- `POST /api/auth/sessions` reads that list back after a reload: it answers with every account whose cookie is still good, plus a live access token for the one named in `activeUserId` (the first, when the request names nobody). Identifying the others does **not** rotate their tokens; only the active one rotates. Cookies whose token is expired, revoked or already spent are cleared and left out.
+- `POST /api/auth/refresh` names the account in its body, since the cookie alone no longer says which session is meant.
+- `POST /api/auth/logout` signs out **every** account in the browser and revokes all of their tokens. There is no per-account sign-out: the interface warns that leaving leaves everything.
+- Only the active account holds an access token in memory, so the API can never be called as an account the person is not looking at.
+- Every account payload carries `competitionName` beside `competitionId`, because the account switcher names the competition under each account and the client has no business reading the competition list.
 
 ### 9.2 Participant APIs
 
@@ -762,6 +773,7 @@ UI copy is Turkish; code identifiers are English. The interface is dark-only, bu
 - Passwords hashed (bcrypt/argon2).
 - Refresh token rotation. A presented token that has already been rotated is treated as theft, not as an expired session.
 - Spent refresh tokens are **swept daily**, one week past their own expiry. The delay is deliberate: a rotated row is what a stolen token is matched against, so deleting it early would downgrade a caught reuse into an ordinary invalid session.
+- Several accounts may be signed in on one browser (§9.1), each with its own httpOnly refresh cookie and its own rotation. Only the account on screen holds an access token, and signing out signs out all of them.
 - Admin UI behind obscure path + admin role on API.
 - **Rate-limit login** per `(IP + username)` over a short sliding window (e.g. a handful of attempts per ~15 min). On limit, respond `429` with a `Retry-After` header and a clear "çok fazla deneme, X dakika sonra tekrar deneyin" message; **no permanent account lockout** (avoids trivial denial-of-service against a known username). Successful login resets the counter.
 - Provider rate limits never reach end users: all provider calls are server-side and centralized; participant reads come from DB/cache only (§5.6). A user can never "hit" the football-data limit through normal use.
