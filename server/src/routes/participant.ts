@@ -4,10 +4,16 @@ import { ApiError } from '../lib/errors.ts';
 import { matchweekLabel } from '../lib/labels.ts';
 import { requireAuth, type AuthVariables } from '../middleware/auth.ts';
 import { listTeamsByPot } from '../services/team-service.ts';
-import { getSquad, setSquad } from '../services/selection-service.ts';
+import {
+  getEntryMatchweekId,
+  getLateEntryMatchweekId,
+  getSquad,
+  setSquad,
+} from '../services/selection-service.ts';
 import {
   getCurrentMatchweek,
   getFirstLeagueMatchweek,
+  getMatchweekById,
   getOrderedMatchweeks,
   getSelectionLockState,
   lineupEditability,
@@ -83,7 +89,8 @@ participantRoutes.get('/scoring-rules', async (c) => {
 // --- Tournament status ----------------------------------------------------
 participantRoutes.get('/tournament/status', async (c) => {
   const now = new Date();
-  const [currentAct, mw1, current, selectionLock, mwRows, ordered, seasonComplete] = await Promise.all([
+  const auth = c.get('auth');
+  const [currentAct, mw1, current, selectionLock, mwRows, ordered, seasonComplete, entryMatchweekId] = await Promise.all([
     getConfigValue('current_act'),
     getFirstLeagueMatchweek(),
     getCurrentMatchweek(),
@@ -96,6 +103,7 @@ participantRoutes.get('/tournament/status', async (c) => {
     ),
     getOrderedMatchweeks(),
     isSeasonComplete(),
+    getEntryMatchweekId(auth.sub),
   ]);
 
   return c.json({
@@ -142,6 +150,8 @@ participantRoutes.get('/tournament/status', async (c) => {
     ),
     mw1Id: mw1?.id ?? null,
     currentMatchweekId: current?.id ?? null,
+    /** Where this player's season starts; null when they were there from MW1 (§3.2). */
+    entryMatchweekId,
     /** The final has been played, so the season replay has something to show. */
     seasonComplete,
   });
@@ -338,11 +348,25 @@ participantRoutes.get('/leaderboard', async (c) => {
 // --- Permanent squad ------------------------------------------------------
 participantRoutes.get('/squad', async (c) => {
   const auth = c.get('auth');
-  const [squad, lock] = await Promise.all([getSquad(auth.sub), getSelectionLockState()]);
+  const [squad, lock, entryMatchweekId] = await Promise.all([
+    getSquad(auth.sub),
+    getSelectionLockState(),
+    getEntryMatchweekId(auth.sub),
+  ]);
+
+  // Somebody who never picked one can still build it after the lock, starting
+  // from the first week that has not frozen yet (§3.2).
+  const lateEntryId = lock.locked && squad.length === 0 ? await getLateEntryMatchweekId() : null;
+  const lateEntryMw = lateEntryId ? await getMatchweekById(lateEntryId) : null;
+
   return c.json({
     squad: squad.map((s) => ({ ...s, eliminated: s.eliminatedAt !== null })),
     locked: lock.locked,
     lockAt: lock.lockAt?.toISOString() ?? null,
+    entryMatchweekId,
+    lateEntry: lateEntryMw
+      ? { matchweekId: lateEntryMw.id, label: matchweekLabel(lateEntryMw) }
+      : null,
   });
 });
 
@@ -359,5 +383,14 @@ participantRoutes.put('/squad', async (c) => {
     throw ApiError.badRequest('squad_size_required', { size: SQUAD_SIZE });
   }
   const squad = await setSquad(auth.sub, body.data.teamIds, body.data.cancelJokers);
-  return c.json({ squad: squad.map((s) => ({ ...s, eliminated: s.eliminatedAt !== null })) });
+
+  // A late entry answers with the week it actually landed on. The one the
+  // client was shown could have locked in the meantime (§3.2).
+  const entryMatchweekId = await getEntryMatchweekId(auth.sub);
+  const entryMw = entryMatchweekId ? await getMatchweekById(entryMatchweekId) : null;
+
+  return c.json({
+    squad: squad.map((s) => ({ ...s, eliminated: s.eliminatedAt !== null })),
+    entry: entryMw ? { matchweekId: entryMw.id, label: matchweekLabel(entryMw) } : null,
+  });
 });

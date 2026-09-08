@@ -118,6 +118,19 @@ export function lineupEditability(
   return { lockAt, locked, opened, editable };
 }
 
+/**
+ * The first matchweek in play order whose lock has not passed, i.e. the
+ * earliest week a decision can still be made for. Late squad entry starts
+ * there (§3.2): the weeks behind it are already frozen, so they can never be
+ * played and never score.
+ */
+export function firstUnlockedMatchweek(
+  ordered: OrderedMatchweek[],
+  now: Date = new Date(),
+): OrderedMatchweek | null {
+  return ordered.find((mw) => !lineupEditability(ordered, mw.id, now).locked) ?? null;
+}
+
 /** All matchweeks in play order (league phase before knockout). */
 export async function getOrderedMatchweeks(): Promise<OrderedMatchweek[]> {
   const { rows } = await query<{ id: string; first_kickoff_at: Date | null; status: string }>(

@@ -31,6 +31,14 @@ export interface TournamentStatus {
   squadSize: number;
   selectionLock: { firstKickoffAt: string | null; lockAt: string | null; locked: boolean };
   mw1Id: string | null;
+  /** The week this player's season starts at; null when they were there from the first. */
+  entryMatchweekId: string | null;
+}
+
+/** Where a player who never picked a squad would join from, once selection has closed. */
+export interface LateEntry {
+  matchweekId: string;
+  label: string;
 }
 
 export const useTournamentStore = defineStore('tournament', () => {
@@ -38,6 +46,7 @@ export const useTournamentStore = defineStore('tournament', () => {
   const status = ref<TournamentStatus | null>(null);
   const squad = ref<SquadEntry[]>([]);
   const squadLocked = ref(false);
+  const lateEntry = ref<LateEntry | null>(null);
 
   async function loadTeams() {
     const res = await api.get<{ pots: Pot[] }>('/api/teams');
@@ -47,14 +56,32 @@ export const useTournamentStore = defineStore('tournament', () => {
     status.value = await api.get<TournamentStatus>('/api/tournament/status');
   }
   async function loadSquad() {
-    const res = await api.get<{ squad: SquadEntry[]; locked: boolean }>('/api/squad');
+    const res = await api.get<{ squad: SquadEntry[]; locked: boolean; lateEntry: LateEntry | null }>(
+      '/api/squad',
+    );
     squad.value = res.squad;
     squadLocked.value = res.locked;
+    lateEntry.value = res.lateEntry;
   }
   async function saveSquad(teamIds: string[], cancelJokers = false) {
-    const res = await api.put<{ squad: SquadEntry[] }>('/api/squad', { teamIds, cancelJokers });
+    const res = await api.put<{ squad: SquadEntry[]; entry: LateEntry | null }>('/api/squad', {
+      teamIds,
+      cancelJokers,
+    });
     squad.value = res.squad;
+    lateEntry.value = null;
+    return res.entry;
   }
 
-  return { pots, status, squad, squadLocked, loadTeams, loadStatus, loadSquad, saveSquad };
+  return {
+    pots,
+    status,
+    squad,
+    squadLocked,
+    lateEntry,
+    loadTeams,
+    loadStatus,
+    loadSquad,
+    saveSquad,
+  };
 });

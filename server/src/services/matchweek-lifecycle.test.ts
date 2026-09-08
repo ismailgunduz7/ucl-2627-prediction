@@ -1,6 +1,10 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { lineupEditability, type OrderedMatchweek } from './matchweek-lifecycle-service.ts';
+import {
+  firstUnlockedMatchweek,
+  lineupEditability,
+  type OrderedMatchweek,
+} from './matchweek-lifecycle-service.ts';
 
 // MW1 kicks off 19:00, MW2 kicks off a week later.
 const ordered: OrderedMatchweek[] = [
@@ -48,4 +52,23 @@ test('a started matchweek is frozen even before the wall-clock lock (§3.4)', ()
   const mw2 = lineupEditability(started, 'mw-2', wayEarly);
   assert.equal(mw2.opened, true);
   assert.equal(mw2.editable, true);
+});
+
+test('late entry starts at the first week that is still unlocked (§3.2)', () => {
+  // Before anything kicks off, that is MW1 itself.
+  assert.equal(
+    firstUnlockedMatchweek(ordered, new Date('2026-09-15T12:00:00Z'))?.id,
+    'mw-1',
+  );
+  // Once MW1 has locked, somebody joining late starts at MW2.
+  assert.equal(
+    firstUnlockedMatchweek(ordered, new Date('2026-09-15T18:55:00Z'))?.id,
+    'mw-2',
+  );
+  // MW1 in progress, MW2 already locked too: there is nothing left to join.
+  const allLocked = [
+    { id: 'mw-1', firstKickoffAt: new Date('2026-09-15T19:00:00Z'), status: 'in_progress' },
+    { id: 'mw-2', firstKickoffAt: new Date('2026-09-22T19:00:00Z'), status: 'in_progress' },
+  ];
+  assert.equal(firstUnlockedMatchweek(allLocked, new Date('2026-09-22T20:00:00Z')), null);
 });

@@ -7,6 +7,9 @@ import { getActiveJoker } from './joker-service.ts';
 import { getTierRules } from './rule-loader.ts';
 import { getPredictionTally } from './prediction-service.ts';
 import { normalizeTally, type PredictionTally } from '../domain/prediction.ts';
+import { weekCountsForEntry } from '../domain/entry.ts';
+import { participantScoresIn } from './selection-service.ts';
+import { getOrderedMatchweeks } from './matchweek-lifecycle-service.ts';
 
 /**
  * Club-layer points for a matchweek, per team id: definitive finished lines plus
@@ -133,6 +136,12 @@ export async function computeParticipantMatchweek(
   mwId: string,
   clubPoints?: ReadonlyMap<string, number>,
 ): Promise<ParticipantWeekScore | null> {
+  // A late entrant sat out the weeks before the one they joined at, so those
+  // weeks score nothing for them (§3.2). Every path that reads or writes a
+  // participant's week total comes through here, which is why the check lives
+  // in this one place.
+  if (!(await participantScoresIn(userId, mwId))) return null;
+
   const lineup = await resolveLineup(userId, mwId);
   if (!lineup) return null;
 
@@ -201,22 +210,36 @@ export async function getParticipantWeekScore(
   return computeParticipantMatchweek(userId, mwId);
 }
 
-/** Participant ids (non-admin) that have a full permanent squad. */
-async function participantsWithSquad(): Promise<string[]> {
-  const { rows } = await query<{ user_id: string }>(
-    `SELECT ts.user_id FROM team_selections ts
+interface ScoringParticipant {
+  userId: string;
+  /** The week their season starts at; null for everyone who was there from MW1. */
+  entryMatchweekId: string | null;
+}
+
+/** Participants (non-admin) that have a full permanent squad. */
+async function participantsWithSquad(): Promise<ScoringParticipant[]> {
+  const { rows } = await query<{ user_id: string; entry_matchweek_id: string | null }>(
+    `SELECT ts.user_id, u.entry_matchweek_id FROM team_selections ts
      JOIN users u ON u.id = ts.user_id AND NOT u.is_admin
-     GROUP BY ts.user_id HAVING count(*) = 4`,
+     GROUP BY ts.user_id, u.entry_matchweek_id HAVING count(*) = 4`,
   );
-  return rows.map((r) => r.user_id);
+  return rows.map((r) => ({ userId: r.user_id, entryMatchweekId: r.entry_matchweek_id }));
+}
+
+/** Those of them whose season had started by matchweek `mwId` (§3.2). */
+async function participantsScoringIn(mwId: string): Promise<ScoringParticipant[]> {
+  const participants = await participantsWithSquad();
+  if (participants.every((p) => p.entryMatchweekId === null)) return participants;
+  const order = (await getOrderedMatchweeks()).map((m) => m.id);
+  return participants.filter((p) => weekCountsForEntry(order, p.entryMatchweekId, mwId));
 }
 
 /** Write final player_matchday_scores for every participant for a completed week (§4.6). */
 export async function finalizeMatchweek(mwId: string): Promise<number> {
-  const userIds = await participantsWithSquad();
+  const participants = await participantsScoringIn(mwId);
   const clubPoints = await getTeamPointsForMatchweek(mwId);
   let written = 0;
-  for (const userId of userIds) {
+  for (const { userId } of participants) {
     const score = await computeParticipantMatchweek(userId, mwId, clubPoints);
     if (!score) continue;
     await query(
@@ -250,14 +273,17 @@ export async function finalizeCompletedMatchweeks(): Promise<{ finalizedWeeks: s
   const { rows } = await query<{ id: string }>(
     `SELECT mw.id FROM matchweeks mw WHERE mw.status = 'complete'`,
   );
-  const participantCount = (await participantsWithSquad()).length;
   const finalizedWeeks: string[] = [];
   for (const { id } of rows) {
+    // Counted per week, not once for the whole season: a late entrant is not
+    // missing a final for the weeks before they joined, and comparing against
+    // the whole roster would re-finalize those weeks on every single sync.
+    const expected = (await participantsScoringIn(id)).length;
     const have = await query<{ n: string }>(
       `SELECT count(*)::text AS n FROM player_matchday_scores WHERE matchweek_id = $1`,
       [id],
     );
-    if (Number(have.rows[0]!.n) < participantCount) {
+    if (Number(have.rows[0]!.n) < expected) {
       await finalizeMatchweek(id);
       finalizedWeeks.push(id);
     }

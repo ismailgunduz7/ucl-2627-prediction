@@ -59,6 +59,7 @@ const tr: Catalog = {
   'errors.squad_size_required': 'Tam olarak {size} kulüp gönderilmeli',
 
   'errors.selection_locked': 'Kadro seçim süresi doldu',
+  'errors.no_open_matchweek': 'Kadro kurabileceğin bir hafta kalmadı',
   'errors.wrong_size': 'Kadro tam olarak {size} kulüpten oluşmalı',
   'errors.duplicate_team': 'Aynı kulüp iki kez seçilemez',
   'errors.unknown_team': 'Geçersiz kulüp',
@@ -190,6 +191,7 @@ const en: Catalog = {
   'errors.squad_size_required': 'Send exactly {size} clubs',
 
   'errors.selection_locked': 'Squad selection has closed',
+  'errors.no_open_matchweek': 'There is no week left to build a squad for',
   'errors.wrong_size': 'A squad is exactly {size} clubs',
   'errors.duplicate_team': 'You cannot pick the same club twice',
   'errors.unknown_team': 'No such club',

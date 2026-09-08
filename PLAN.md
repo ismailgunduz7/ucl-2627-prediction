@@ -10,7 +10,7 @@ Working conventions for contributors (commits, git workflow, design language, te
 
 Phases 0-6 are built and running against a Supabase database. What follows is the full specification; this section records where reality currently stands so nobody has to infer it from the code.
 
-**Built and verified:** auth and admin-provisioned accounts · pots, clubs, matchweeks, matches, config · permanent squad with one-club-per-pot enforced in the database · club-layer scoring with the per-pot rules editor · provider sync behind a swappable interface with manual-override protection and an audit log · weekly bench/captain with the `T0 - 5m` lock and the M+1 gate · the four jokers with one-per-week activation and cancel/refund · provisional scoring on read and finals on completion · leaderboard, league table, per-player and per-club points breakdowns · the league→knockout act transition (eliminations, top-8 bonus, joker refresh, act transfer) and the knockout bracket through the final with advancement and medals · the background sync job with adaptive cadence and backoff · Ahtapot Paul, the weekly 1X2 coupon (§18.9) · the fixtures and multi-live page (§18.5) · the live delta feed on the hub (§18.6) · the season replay (§18.8).
+**Built and verified:** auth and admin-provisioned accounts · pots, clubs, matchweeks, matches, config · permanent squad with one-club-per-pot enforced in the database, late entry included · club-layer scoring with the per-pot rules editor · provider sync behind a swappable interface with manual-override protection and an audit log · weekly bench/captain with the `T0 - 5m` lock and the M+1 gate · the four jokers with one-per-week activation and cancel/refund · provisional scoring on read and finals on completion · leaderboard, league table, per-player and per-club points breakdowns · the league→knockout act transition (eliminations, top-8 bonus, joker refresh, act transfer) and the knockout bracket through the final with advancement and medals · the background sync job with adaptive cadence and backoff · Ahtapot Paul, the weekly 1X2 coupon (§18.9) · the fixtures and multi-live page (§18.5) · the live delta feed on the hub (§18.6) · the season replay (§18.8).
 
 **Deliberate deviations from the spec, all temporary:**
 
@@ -116,7 +116,7 @@ After the league phase:
 - Accounts are **created by an admin** (username + password). There is **no public self-registration** API. A player can change **their own password** from their account page without going through an admin; the admin reset in §9.3 stays for the case where they cannot get in at all.
 - Optional grouping into **competitions**. A competition is **only** a way to isolate a set of participants from each other (e.g. work, school, friends, family) so each user sees **only their own competition's** participants, leaderboard, and open picks. **All game rules, config, scoring, jokers, matchweeks, acts, and tournament data are global/shared** across competitions; competitions never change the rules, only *who is grouped with whom*. First season may use a **single** competition; the schema and admin UI must support multiple.
 - Roles: **participant** and **admin**. Admins manage the system and do not play on the same account (excluded from participant leaderboards).
-- New participants may be added only **before permanent squad lock**. After lock, no new players join that season.
+- New participants may be added only **before permanent squad lock**. After lock, no new accounts join that season. An account that already exists but never picked a squad is a different case: it can still build one and join the season late (§3.2).
 - Every account carries the **language it reads the game in** (`tr` or `en`, Turkish by default). It is stored on the account rather than in the browser, so a change on one device shows on the next.
 
 ### 3.2 Squad selection (permanent)
@@ -128,8 +128,11 @@ After the league phase:
 | Duplicates | Forbidden | Same club cannot appear twice |
 | Edit window | Until **selection lock** | **Same instant as matchweek 1 lineup lock:** `T0(MW1) - 5 minutes` (§3.4). Not a separate arbitrary clock. |
 | After lock | Permanent until act transfer (§3.7) | Weekly bench/captain/jokers do not change the permanent 4 |
+| Never picked | Squad can still be built after the lock | The player joins from the first matchweek that is still unlocked, and scores from there on |
 
 Validation must be enforced server-side (RPC or transactional service), not only in the UI.
+
+**Late entry.** A player who forgot to pick before the lock is not out of the season. As long as one matchweek is still unlocked they can build their four, and that week becomes the week their season starts at: it is written to `users.entry_matchweek_id` in the same transaction as the squad and never recomputed afterwards, because lock instants move with the provider's kickoff times and a starting week that moved with them would hand somebody points for a week they sat out. Every matchweek before that one scores **nothing** for them, in the weekly total, in the leaderboard and in the finals table alike; a week they sat out never gets a `player_matchday_scores` row. The joker inventory is granted at account creation and is left alone, so a late entrant plays their full Act I hand over the weeks they have left. This is a one-way door: once the squad exists, the after-lock rule above applies again and the only way to change a club is the act transfer or a weekly swap.
 
 ### 3.3 Matchweeks
 
@@ -398,7 +401,7 @@ Default: do **not** move a postponed match to a different fantasy matchweek.
 A matchweek `M` is **complete** when every match assigned to `M` is either `finished` or `cancelled`. The test is re-evaluated on every sync and every manual result edit, in **both** directions: undoing a result, or a provider moving a match back off `finished`, takes the week out of `complete` again, discards the finals it had written and returns it to `in_progress` so it is scored from scratch once every match is settled. A reopened week stays **locked** (a started matchweek is locked regardless of status, §3.4), so no lineup, joker or coupon can be revisited.
 
 - Detection is by the sync/scoring job; **not** an admin button.
-- On completion: write final `player_matchday_scores` for all participants; unlock weekly wrap cards.
+- On completion: write final `player_matchday_scores` for every participant whose season had started by that week (§3.2); unlock weekly wrap cards.
 - When the **league phase** completes specifically, also award `league_top8_bonus` to the clubs ranked 1-8 (§3.7 step 2) before finalizing the affected participant scores.
 
 ### 4.7 Recalculation
@@ -509,8 +512,8 @@ No separate betting client. No random-mode module.
 ### 8.1 Core tables
 
 **users**  
-`id`, `username`, `password_hash`, `display_name`, `is_admin`, `competition_id`, timestamps.  
-Created only via admin API.
+`id`, `username`, `password_hash`, `display_name`, `is_admin`, `competition_id`, `language`, `entry_matchweek_id` (nullable FK → `matchweeks.id`), timestamps.  
+Created only via admin API. `entry_matchweek_id` is null for everyone who picked a squad before the selection lock and every week counts for them; a late entrant carries the week their season starts at (§3.2).
 
 **refresh_tokens**  
 Rotation-safe refresh sessions. Rows are swept a week after their own `expires_at`, so a rotated token stays matchable for reuse detection through its whole lifetime and the table does not grow for the life of the season.
@@ -636,7 +639,7 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 
 - Tournament status (locks, current act/matchweek, `T0` and lock countdown, act-transfer grant)
 - List teams (pots, crests, eliminated flag)
-- Get permanent squad (put only before selection lock, except act-transfer endpoint)
+- Get permanent squad (put only before selection lock, except the act-transfer endpoint and a first-time late entry, §3.2; the response says which week a late entry would start at)
 - Get/put matchweek lineup before that week's lock
 - Act transfer: get grant / update selection while window open
 - Leaderboard; open picks after `T0(M)` (omit joker field when none)
@@ -749,6 +752,7 @@ UI copy is Turkish; code identifiers are English. The interface is dark-only, bu
 25. Edit squad (permanent selection before lock / `act_transfer` / `weekly_swap`) removing a club that has an active joker on it → confirm dialog → joker cancelled + refunded.
 26. Initial Act I joker inventory is available **before** MW1 selection lock, so a joker can be activated for MW1.
 27. Scoring seed direction: no reward rule gives a stronger pot more than a weaker pot; no penalty gives a weaker pot a harsher value (§16). Second live joker for the same week rejected by the DB partial unique index (§8.1).
+28. A player with no squad after the selection lock can still build one; their season starts at the first unlocked matchweek and the weeks before it write no score for them, in the weekly total or in the leaderboard. A player who already has a squad is still refused after the lock.
 
 ---
 

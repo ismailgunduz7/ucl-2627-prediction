@@ -29,9 +29,12 @@ const now = ref(Date.now());
 let timer: number | undefined;
 
 const lockAt = computed(() => store.status?.selectionLock.lockAt ?? null);
-const locked = computed(
+const selectionClosed = computed(
   () => store.squadLocked || (lockAt.value ? now.value >= new Date(lockAt.value).getTime() : false),
 );
+/** Selection has closed, this player never picked, and a week is still open to join. */
+const lateEntry = computed(() => (selectionClosed.value ? store.lateEntry : null));
+const locked = computed(() => selectionClosed.value && !lateEntry.value);
 const countdown = computed(() => {
   if (!lockAt.value) return null;
   const ms = new Date(lockAt.value).getTime() - now.value;
@@ -78,8 +81,12 @@ async function save(cancelJokers = false) {
   saving.value = true;
   try {
     const teamIds = store.pots.map((p) => picks.value[p.tierId]!).filter(Boolean);
-    await store.saveSquad(teamIds, cancelJokers);
-    toast.add({ severity: 'success', summary: t('squad.saved'), life: 2500 });
+    const entry = await store.saveSquad(teamIds, cancelJokers);
+    toast.add({
+      severity: 'success',
+      summary: entry ? t('squad.savedLate', { week: entry.label }) : t('squad.saved'),
+      life: entry ? 4000 : 2500,
+    });
     await router.push('/');
   } catch (e) {
     if (e instanceof ApiRequestError && e.code === 'joker_squad_conflict') {
@@ -113,14 +120,17 @@ onUnmounted(() => window.clearInterval(timer));
     <PageHeader :title="$t('squad.title')" :subtitle="$t('squad.subtitle')">
       <template #actions>
         <Tag
-          v-if="!loading && !locked && countdown"
+          v-if="!loading && !selectionClosed && countdown"
           severity="info"
           :value="$t('squad.closesIn', { countdown })"
         />
       </template>
     </PageHeader>
 
-    <Message v-if="!loading && locked" severity="warn" :closable="false">
+    <Message v-if="!loading && lateEntry" severity="info" :closable="false">
+      {{ $t('squad.lateEntryNotice', { week: lateEntry.label }) }}
+    </Message>
+    <Message v-else-if="!loading && locked" severity="warn" :closable="false">
       {{ $t('squad.lockedNotice') }}
     </Message>
 

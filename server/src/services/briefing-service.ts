@@ -2,6 +2,7 @@ import { query } from '../db/pool.ts';
 import { getMatchweekById } from './matchweek-lifecycle-service.ts';
 import { getActiveJoker } from './joker-service.ts';
 import { resolveLineup } from './lineup-service.ts';
+import { participantScoresIn } from './selection-service.ts';
 import { difficultyFor, harderBand, type DifficultyBand } from '../domain/difficulty.ts';
 
 export type { DifficultyBand };
@@ -106,6 +107,9 @@ export async function getOpenPicks(
 
   const picks: OpenPick[] = [];
   for (const p of participants.rows) {
+    // A player who joined after this week has no picks to open: the lineup
+    // below would be a default nobody ever made (§3.2).
+    if (!(await participantScoresIn(p.id, mwId))) continue;
     const lineup = await resolveLineup(p.id, mwId);
     if (!lineup) continue;
     const byId = new Map(lineup.squad.map((s) => [s.teamId, s.name]));

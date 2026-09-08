@@ -65,6 +65,7 @@ const toast = useToast();
 const auth = useAuthStore();
 
 const matchweeks = ref<Mw[]>([]);
+const entryMatchweekId = ref<string | null>(null);
 const selectedMw = ref<string | null>(null);
 const squad = ref<SquadClub[]>([]);
 const lineup = ref<Lineup | null>(null);
@@ -112,6 +113,18 @@ const pickableMatchweeks = computed(() => {
 const weekGroups = computed(() => groupMatchweeks(pickableMatchweeks.value));
 const editable = computed(() => lineup.value?.editable ?? false);
 const isComplete = computed(() => currentMw.value?.status === 'complete');
+
+// A player who built their squad late sat this week out, so there is nothing to
+// show for it: no lineup was ever theirs and no points were ever scored.
+const entryIndex = computed(() =>
+  entryMatchweekId.value ? matchweeks.value.findIndex((m) => m.id === entryMatchweekId.value) : -1,
+);
+const beforeEntry = computed(() => {
+  if (entryIndex.value < 0) return false;
+  const here = matchweeks.value.findIndex((m) => m.id === selectedMw.value);
+  return here >= 0 && here < entryIndex.value;
+});
+const entryWeekLabel = computed(() => matchweeks.value[entryIndex.value]?.label ?? '');
 const benchBoost = computed(() => activeJoker.value?.code === 'bench_boost');
 const capMult = computed(() => (activeJoker.value?.code === 'triple_boost' ? 3 : 2));
 const swappedInId = computed(() =>
@@ -302,10 +315,13 @@ async function loadAll() {
   loading.value = true;
   try {
     const [status, teams] = await Promise.all([
-      api.get<{ matchweeks: Mw[]; currentMatchweekId: string | null }>('/api/tournament/status'),
+      api.get<{ matchweeks: Mw[]; currentMatchweekId: string | null; entryMatchweekId: string | null }>(
+        '/api/tournament/status',
+      ),
       api.get<{ pots: Pot[] }>('/api/teams'),
     ]);
     matchweeks.value = status.matchweeks;
+    entryMatchweekId.value = status.entryMatchweekId;
     pots.value = teams.pots;
     if (!selectedMw.value) selectedMw.value = status.currentMatchweekId ?? status.matchweeks[0]?.id ?? null;
     await loadWeek();
@@ -407,6 +423,9 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
     <BallLoader v-if="loading" />
     <Message v-else-if="!squad.length" severity="warn" :closable="false">
       {{ $t('week.noSquad') }} <RouterLink to="/kadro">{{ $t('week.goToSquad') }}</RouterLink>
+    </Message>
+    <Message v-else-if="beforeEntry" severity="secondary" :closable="false">
+      {{ $t('week.beforeEntry', { week: entryWeekLabel }) }}
     </Message>
 
     <template v-else>

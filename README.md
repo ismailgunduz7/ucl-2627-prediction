@@ -14,7 +14,10 @@ real match results. See [PLAN.md](PLAN.md) for the authoritative product spec.
 > fixtures page that shows a whole round at a time and follows several live
 > matches at once, **Ahtapot Paul** (a weekly MS1/MS0/MS2 coupon on every
 > match), a live feed on the weekly hub that itemises each point as it lands,
-> and a season replay that unlocks once the final is played.
+> and a season replay that unlocks once the final is played. A player who
+> missed the squad deadline is no longer stuck outside the season either: they
+> can still pick their four, and they start scoring from the first matchweek
+> that has not locked yet.
 >
 > The season now runs on **real data**: all 36 clubs carry their
 > football-data.org ids and crests, the badges on screen are those crests
