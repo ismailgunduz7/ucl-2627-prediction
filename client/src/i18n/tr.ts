@@ -75,6 +75,8 @@ export default {
     signsOthersOut: 'Diğer cihazlardaki oturumların kapanır.',
     changed: 'Şifren değişti',
     changeFailed: 'Şifre değiştirilemedi',
+    usernameLabel: 'Kullanıcı adı',
+    competitionLabel: 'Yarışma',
     languageTitle: 'Oyunun dili',
     languageBody: 'Bu hesap için seçtiğin dil, girdiğin her cihazda geçerli.',
     menuFor: '{name} hesap menüsü',

@@ -712,7 +712,7 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 | `/takim/:id` | Club matches and points, expandable to rule lines | built |
 | `/fikstur` | Multi-live + fixtures | built |
 | `/sezon` | Season replay | built |
-| `/hesap` | Account settings: the password and the language this account reads the game in. The language switch lives **here alone**; it belongs to the account rather than the screen, and a control in the header invited a change nobody meant to make | built |
+| `/hesap` | Account settings: who the account is (name, username, competition), the password, and the language this account reads the game in. The language switch lives **here alone**; it belongs to the account rather than the screen, and a control in the header invited a change nobody meant to make | built |
 
 **The account chip is a menu.** Clicking the name in the header opens the other accounts signed in on this browser, each labelled with its competition, then **Hesap ekle**, **Hesap ayarları** and **Çıkış yap**. Picking another account puts it on screen without anybody signing out; adding one opens a sign-in dialog that leaves the current session alone (§9.1). Signing out warns that it takes every account with it, and only then goes. On a phone the chip is not in the header at all, so the same options sit in the drawer under the name of the account on screen.
 

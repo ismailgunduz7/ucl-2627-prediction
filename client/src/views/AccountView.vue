@@ -4,7 +4,7 @@ import { useI18n } from 'vue-i18n';
 import { useToast } from 'primevue/usetoast';
 import Password from 'primevue/password';
 import Button from 'primevue/button';
-import { Check } from '@lucide/vue';
+import { AtSign, Check, KeyRound, Languages, Trophy } from '@lucide/vue';
 import { ApiRequestError } from '@/lib/api';
 import { useAuthStore } from '@/stores/auth';
 import PageHeader from '@/components/PageHeader.vue';
@@ -18,6 +18,9 @@ const current = ref('');
 const next = ref('');
 const again = ref('');
 const saving = ref(false);
+
+/** The badge letter: the display name's first character, upper case. */
+const initial = computed(() => (auth.user?.displayName ?? '?').trim().charAt(0).toLocaleUpperCase('tr'));
 
 const mismatch = computed(() => again.value.length > 0 && next.value !== again.value);
 const canSubmit = computed(
@@ -52,16 +55,31 @@ async function submit() {
 
     <section class="surface-card card-pad">
       <div class="identity">
-        <span class="identity-name">{{ auth.user?.displayName }}</span>
-        <span class="identity-username">{{ auth.user?.username }}</span>
-        <span v-if="auth.user?.competitionName" class="identity-competition">
-          {{ auth.user.competitionName }}
-        </span>
+        <span class="identity-badge" aria-hidden="true">{{ initial }}</span>
+        <div class="identity-lines">
+          <span class="identity-name">{{ auth.user?.displayName }}</span>
+          <span class="identity-line" :title="$t('account.usernameLabel')">
+            <AtSign :size="14" aria-hidden="true" />
+            <span class="sr-only">{{ $t('account.usernameLabel') }}</span>
+            {{ auth.user?.username }}
+          </span>
+          <span
+            v-if="auth.user?.competitionName"
+            class="identity-line"
+            :title="$t('account.competitionLabel')"
+          >
+            <Trophy :size="14" aria-hidden="true" />
+            <span class="sr-only">{{ $t('account.competitionLabel') }}</span>
+            {{ auth.user.competitionName }}
+          </span>
+        </div>
       </div>
     </section>
 
     <section class="surface-card card-pad">
-      <div class="section-title">{{ $t('account.languageTitle') }}</div>
+      <div class="section-title">
+        <Languages :size="18" aria-hidden="true" />{{ $t('account.languageTitle') }}
+      </div>
       <div class="lang-row">
         <p class="text-muted lang-note">{{ $t('account.languageBody') }}</p>
         <LanguagePicker />
@@ -69,7 +87,9 @@ async function submit() {
     </section>
 
     <section class="surface-card card-pad">
-      <div class="section-title">{{ $t('account.passwordTitle') }}</div>
+      <div class="section-title">
+        <KeyRound :size="18" aria-hidden="true" />{{ $t('account.passwordTitle') }}
+      </div>
       <form class="pw-form" @submit.prevent="submit">
         <div class="form-field">
           <label for="pw-current">{{ $t('account.current') }}</label>
@@ -115,26 +135,56 @@ async function submit() {
 </template>
 
 <style scoped>
+/* A card heading carries an icon here, so it is a row rather than a line. */
+.section-title {
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+.section-title svg {
+  color: var(--color-text-secondary);
+}
 .identity {
+  display: flex;
+  align-items: center;
+  gap: 1rem;
+}
+/* The initial stands in for a photo nobody uploads in a game like this. */
+.identity-badge {
+  display: grid;
+  place-items: center;
+  width: 52px;
+  height: 52px;
+  flex-shrink: 0;
+  border-radius: 50%;
+  background: var(--color-primary-soft);
+  box-shadow: inset 0 0 0 1px var(--color-border-strong);
+  font-size: var(--text-xl);
+  font-weight: 800;
+  color: #fff;
+}
+.identity-lines {
   display: flex;
   flex-direction: column;
   gap: 0.15rem;
+  min-width: 0;
 }
 .identity-name {
   font-size: var(--text-lg);
   font-weight: 800;
   letter-spacing: -0.01em;
 }
-.identity-username {
+.identity-line {
+  display: flex;
+  align-items: center;
+  gap: 0.4rem;
   color: var(--color-text-muted);
   font-size: var(--text-sm);
   font-weight: 600;
 }
-.identity-competition {
-  margin-top: 0.35rem;
+.identity-line svg {
+  flex-shrink: 0;
   color: var(--color-text-secondary);
-  font-size: var(--text-sm);
-  font-weight: 600;
 }
 .lang-row {
   display: flex;

@@ -74,6 +74,8 @@ export default {
     signsOthersOut: 'Signs you out on your other devices.',
     changed: 'Password changed',
     changeFailed: 'Could not change your password',
+    usernameLabel: 'Username',
+    competitionLabel: 'Competition',
     languageTitle: 'Game language',
     languageBody: 'The language you pick here follows this account onto any device.',
     menuFor: 'Account menu for {name}',

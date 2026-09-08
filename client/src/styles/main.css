@@ -516,6 +516,18 @@ body.is-dragging {
 }
 
 .text-muted { color: var(--color-text-muted); }
+/* Says out loud what an icon says by shape: read aloud, never drawn. */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  border: 0;
+  clip-path: inset(50%);
+}
 /* Compact inline marker; sized so a row carrying one is no taller. */
 .role-chip {
   padding: 0.1rem 0.5rem;
