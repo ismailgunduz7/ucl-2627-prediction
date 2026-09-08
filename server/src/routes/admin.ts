@@ -233,7 +233,54 @@ adminRoutes.get('/squads', async (c) => {
     }
   }
 
-  return c.json({ squads: [...byUser.values()], squadSize: SQUAD_SIZE });
+  // Jokers, read for everybody at once rather than per row: what is left of
+  // each one, and which weeks the played ones went on (a cancelled activation
+  // was refunded and never happened as far as the season is concerned, §3.6).
+  const inventory = await query<{ user_id: string; code: string; remaining: number }>(
+    `SELECT ji.user_id, ji.joker_type_code AS code, ji.remaining_count AS remaining
+       FROM joker_inventory ji
+       JOIN users u ON u.id = ji.user_id AND NOT u.is_admin`,
+  );
+  const played = await query<{ user_id: string; code: string; matchweek_id: string; label: string }>(
+    `SELECT ja.user_id, ja.joker_type_code AS code, ja.matchweek_id, mw.label
+       FROM joker_activations ja
+       JOIN matchweeks mw ON mw.id = ja.matchweek_id
+       JOIN users u ON u.id = ja.user_id AND NOT u.is_admin
+      WHERE ja.cancelled_at IS NULL
+      ORDER BY CASE mw.act WHEN 'league_phase' THEN 0 ELSE 1 END, mw.sort_order`,
+  );
+
+  const types = await query<{ code: string; sort_order: number }>(
+    'SELECT code, sort_order FROM joker_types ORDER BY sort_order',
+  );
+
+  const jokersByUser = new Map<string, Map<string, { remaining: number; played: string[] }>>();
+  function jokersFor(userId: string): Map<string, { remaining: number; played: string[] }> {
+    let held = jokersByUser.get(userId);
+    if (!held) {
+      held = new Map(types.rows.map((t) => [t.code, { remaining: 0, played: [] }]));
+      jokersByUser.set(userId, held);
+    }
+    return held;
+  }
+  for (const r of inventory.rows) {
+    const slot = jokersFor(r.user_id).get(r.code);
+    if (slot) slot.remaining = r.remaining;
+  }
+  for (const r of played.rows) {
+    const slot = jokersFor(r.user_id).get(r.code);
+    if (slot) slot.played.push(matchweekLabel({ id: r.matchweek_id, label: r.label }));
+  }
+
+  const squads = [...byUser.values()].map((squad) => ({
+    ...squad,
+    jokers: types.rows.map((type) => {
+      const held = jokersFor(squad.userId).get(type.code)!;
+      return { code: type.code, remaining: held.remaining, played: held.played };
+    }),
+  }));
+
+  return c.json({ squads, squadSize: SQUAD_SIZE });
 });
 
 // --- Joker inventory repair (§9.3) ----------------------------------------

@@ -401,6 +401,10 @@ export default {
     squads: {
       subtitle: 'Everybody\'s four clubs, pot by pot. The people who never picked are here too.',
       player: 'Player',
+      jokers: 'Jokers',
+      jokerLeft: '{count} left',
+      jokerPlayed: 'played on {weeks}',
+      jokerUnplayed: 'never played',
       startsAt: 'Starts at',
       fromTheStart: 'First week',
       noSquad: 'No squad',

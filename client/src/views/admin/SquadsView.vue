@@ -9,6 +9,7 @@ import Tag from 'primevue/tag';
 import { api, ApiRequestError } from '@/lib/api';
 import PageHeader from '@/components/PageHeader.vue';
 import TeamCrest from '@/components/TeamCrest.vue';
+import { JOKER_ICONS, jokerName } from '@/lib/jokers';
 
 interface SquadClub {
   tierId: number;
@@ -18,6 +19,13 @@ interface SquadClub {
   crestUrl: string | null;
   eliminated: boolean;
 }
+interface PlayerJoker {
+  code: string;
+  /** How many plays of this joker are left. */
+  remaining: number;
+  /** The weeks it was actually played on, in play order. */
+  played: string[];
+}
 interface PlayerSquad {
   userId: string;
   displayName: string;
@@ -26,6 +34,7 @@ interface PlayerSquad {
   /** Set when the player joined late; their season starts at this week. */
   entryMatchweek: string | null;
   clubs: SquadClub[];
+  jokers: PlayerJoker[];
 }
 
 const { t } = useI18n();
@@ -55,6 +64,16 @@ const missing = computed(() => rows.value.filter((s) => s.clubs.length === 0).le
 
 function clubIn(squad: PlayerSquad, tierId: number): SquadClub | undefined {
   return squad.clubs.find((c) => c.tierId === tierId);
+}
+
+/** "Üçlü kaptan: 1 hak, Hafta 2 oynandı" in one line, for the icon's tooltip. */
+function jokerTitle(joker: PlayerJoker): string {
+  const left = t('admin.squads.jokerLeft', { count: joker.remaining });
+  const played =
+    joker.played.length > 0
+      ? t('admin.squads.jokerPlayed', { weeks: joker.played.join(', ') })
+      : t('admin.squads.jokerUnplayed');
+  return `${jokerName(joker.code)} - ${left}, ${played}`;
 }
 
 async function load() {
@@ -117,6 +136,24 @@ onMounted(load);
           </template>
         </Column>
 
+        <Column :header="$t('admin.squads.jokers')">
+          <template #body="{ data }">
+            <div class="jokers">
+              <span
+                v-for="joker in data.jokers"
+                :key="joker.code"
+                class="joker"
+                :class="{ spent: joker.remaining === 0, used: joker.played.length > 0 }"
+                :title="jokerTitle(joker)"
+                :aria-label="jokerTitle(joker)"
+              >
+                <component :is="JOKER_ICONS[joker.code]" :size="15" aria-hidden="true" />
+                <span class="joker-count">{{ joker.remaining }}</span>
+              </span>
+            </div>
+          </template>
+        </Column>
+
         <Column :header="$t('admin.squads.startsAt')">
           <template #body="{ data }">
             <Tag v-if="data.clubs.length === 0" severity="danger" :value="$t('admin.squads.noSquad')" />
@@ -169,6 +206,32 @@ onMounted(load);
   text-overflow: ellipsis;
   white-space: nowrap;
   font-weight: 600;
+}
+.jokers {
+  display: flex;
+  gap: 0.35rem;
+}
+/* Remaining count beside each joker. A played one is marked so a spent
+   allowance and one that was never touched do not look the same. */
+.joker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.2rem;
+  padding: 0.15rem 0.4rem;
+  border: 1px solid var(--color-border);
+  border-radius: var(--radius-pill);
+  background: var(--color-bg-subtle);
+  font-size: var(--text-2xs);
+  font-weight: 700;
+}
+.joker.used {
+  border-color: var(--color-primary);
+}
+.joker.spent {
+  opacity: 0.45;
+}
+.joker-count {
+  font-variant-numeric: tabular-nums;
 }
 .missing-note {
   margin: 0;

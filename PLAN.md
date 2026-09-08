@@ -733,7 +733,7 @@ The grouping (the round a week belongs to, its place in the menu, what its leg i
 ### 10.2 Admin
 
 - Users (create accounts, password resets, joker-inventory repair), competitions, squads, rules, matches with overrides and their audit history, sync, recalculate, and the settings page (provider, joker grants, deadline banner window, manual season progression); all built.
-- **Squads** (`/yonetim/kadrolar`) is a read-only table of who picked what: a row per participant, a column per pot, filterable by competition. A participant with no squad is listed all the same and marked, because finding those is half the reason to look, and a late entrant's row says which week their season starts at (§3.2). An eliminated club stays in its pot and is dimmed rather than removed, since it is still on the squad and still scoring nothing.
+- **Squads** (`/yonetim/kadrolar`) is a read-only table of who picked what: a row per participant, a column per pot, filterable by competition. A participant with no squad is listed all the same and marked, because finding those is half the reason to look, and a late entrant's row says which week their season starts at (§3.2). An eliminated club stays in its pot and is dimmed rather than removed, since it is still on the squad and still scoring nothing. The row also carries the four jokers with what is left of each, marked when one has been played and dimmed when the allowance is gone; the weeks a joker went on are in its tooltip. A cancelled activation was refunded and does not appear, because as far as the season is concerned it never happened (§3.6).
 
 UI copy is Turkish; code identifiers are English. The interface is dark-only, built on the design tokens and PrimeVue preset described in [AGENTS.md](AGENTS.md).
 

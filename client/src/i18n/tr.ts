@@ -402,6 +402,10 @@ export default {
     squads: {
       subtitle: 'Herkesin dört kulübü, pot pot. Kadrosunu hiç kurmayanlar da burada.',
       player: 'Oyuncu',
+      jokers: 'Jokerler',
+      jokerLeft: '{count} hak kaldı',
+      jokerPlayed: 'oynandı: {weeks}',
+      jokerUnplayed: 'hiç oynanmadı',
       startsAt: 'Başlangıç',
       fromTheStart: 'İlk haftadan',
       noSquad: 'Kadro yok',
