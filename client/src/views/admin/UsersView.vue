@@ -402,6 +402,13 @@ onMounted(load);
 }
 .edit-fields { display: flex; flex-direction: column; gap: var(--space-4); }
 .joker-rows { display: flex; flex-direction: column; gap: 0.6rem; }
-.joker-row { display: flex; align-items: center; justify-content: space-between; gap: 1rem; }
+/* A grid, not a spread row: the four names are different lengths, and lining
+   the counters up under each other is the whole point of the column. */
+.joker-row {
+  display: grid;
+  grid-template-columns: 1fr auto;
+  align-items: center;
+  gap: 1rem;
+}
 .joker-row-name { display: inline-flex; align-items: center; gap: 0.5rem; font-weight: 600; font-size: 0.92rem; }
 </style>

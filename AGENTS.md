@@ -137,7 +137,10 @@ the participant and admin interfaces.
   `.text-start`, `.row-actions`, `.grow`, `.self-start`, plus the PrimeVue
   facing `.dialog-sm|md|lg`, `.num-input`, `.select-filter`); anything that
   means something to one component gets a named class in that component's own
-  scoped block. The exception is a value that genuinely comes from data, like a
+  scoped block. A helper that reaches into PrimeVue has to beat the shared rule
+  it is overriding, which is why those selectors name the component class too
+  (`.p-inputnumber.num-input`), and a control in a column shrinks to its
+  contents so the column can line up. The exception is a value that genuinely comes from data, like a
   badge sized by its `size` prop, which stays a bound `:style`.
 - **Direct manipulation has to work with a finger.** The `draggable` attribute
   and its drag events never fire on touch, so drags go through

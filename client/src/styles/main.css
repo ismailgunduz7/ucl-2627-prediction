@@ -686,13 +686,27 @@ body.is-dragging {
 .p-dialog.dialog-lg { max-width: calc(100vw - 2rem); }
 
 /* A number input holding a score or an allowance: as wide as its digits, and
-   centred, because a right-aligned 2 in a 3rem box looks like a mistake. */
-.num-input input {
-  width: 2.8rem;
+   centred, because a right-aligned 2 in a 3rem box looks like a mistake.
+   Both the field and the box around it have to be told. The rule above stretches
+   every input to its container, and with the stepper buttons showing, the box is
+   a flex row that would otherwise hand the field all the room left over. Shrunk
+   to its contents the control comes out the same width every time, which is what
+   lets a column of them line up. */
+.p-inputnumber.num-input,
+.p-inputnumber.num-input-wide {
+  width: auto;
+  flex: none;
+}
+.p-inputnumber.num-input input {
+  width: 3rem;
+  flex: 0 0 3rem;
   text-align: center;
 }
-/* The same input when it holds seconds rather than a single digit. */
-.num-input-wide input { width: 6rem; }
+/* The same control when it holds hours rather than a single digit. */
+.p-inputnumber.num-input-wide input {
+  width: 6rem;
+  flex: 0 0 6rem;
+}
 
 /* A filter or picker sitting beside a page title. */
 .select-filter { min-width: 200px; }
