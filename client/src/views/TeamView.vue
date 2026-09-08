@@ -50,7 +50,7 @@ watch(() => route.params.id, (id) => id && load(id as string));
 
 <template>
   <div class="page-stack">
-    <Button :label="$t('common.back')" text style="align-self: flex-start" @click="router.back()">
+    <Button class="self-start" :label="$t('common.back')" text @click="router.back()">
       <template #icon><ArrowLeft :size="16" /></template>
     </Button>
 
@@ -60,9 +60,9 @@ watch(() => route.params.id, (id) => id && load(id as string));
     <template v-else-if="detail">
       <section class="surface-card card-pad team-head">
         <TeamCrest :name="detail.team.name" :crest-url="detail.team.crestUrl" size="xl" />
-        <div style="flex: 1">
-          <h1 style="margin: 0; font-size: var(--text-xl)">{{ detail.team.name }}</h1>
-          <div class="tag-row" style="margin-top: 0.4rem">
+        <div class="grow">
+          <h1 class="team-name">{{ detail.team.name }}</h1>
+          <div class="tag-row team-tags">
             <Tag :value="detail.team.tierName" />
             <span v-if="detail.team.country" class="text-muted">{{ countryName(detail.team.country) }}</span>
             <Tag v-if="detail.team.eliminated" severity="danger" :value="$t('common.eliminated')" />
@@ -78,8 +78,8 @@ watch(() => route.params.id, (id) => id && load(id as string));
         <table class="matches">
           <thead>
             <tr>
-              <th style="text-align: left">{{ $t('team.weekColumn') }}</th>
-              <th style="text-align: left">{{ $t('team.matchColumn') }}</th>
+              <th class="text-start">{{ $t('team.weekColumn') }}</th>
+              <th class="text-start">{{ $t('team.matchColumn') }}</th>
               <th>{{ $t('team.statusColumn') }}</th>
               <th>{{ $t('team.pointsColumn') }}</th>
             </tr>
@@ -90,8 +90,8 @@ watch(() => route.params.id, (id) => id && load(id as string));
               :class="{ clickable: m.entries.length, open: openMatch === m.matchId }"
               @click="m.entries.length && (openMatch = openMatch === m.matchId ? null : m.matchId)"
             >
-              <td style="text-align: left">{{ m.matchweekLabel }}</td>
-              <td style="text-align: left">
+              <td class="text-start">{{ m.matchweekLabel }}</td>
+              <td class="text-start">
                 <FixtureLine
                   :team-name="detail.team.name"
                   :opponent-name="m.opponentName"
@@ -100,7 +100,7 @@ watch(() => route.params.id, (id) => id && load(id as string));
                   :opponent-score="m.opponentScore"
                 />
               </td>
-              <td class="text-muted" style="font-size: 0.85rem">{{ $t(`matchStatus.${m.status}`) }}</td>
+              <td class="text-muted status-cell">{{ $t(`matchStatus.${m.status}`) }}</td>
               <td>
                 <strong v-if="m.points !== null" :class="m.points >= 0 ? 'text-positive' : 'text-negative'">
                   {{ m.points > 0 ? '+' : '' }}{{ m.points }}
@@ -151,4 +151,11 @@ watch(() => route.params.id, (id) => id && load(id as string));
   .matches th, .matches td { padding: 0.5rem; font-size: 0.84rem; }
   .entry-row td { padding: 0.6rem 0.5rem; }
 }
+
+.team-name {
+  margin: 0;
+  font-size: var(--text-xl);
+}
+.team-tags { margin-top: 0.4rem; }
+.status-cell { font-size: 0.85rem; }
 </style>

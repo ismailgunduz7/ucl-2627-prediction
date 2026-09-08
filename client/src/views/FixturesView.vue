@@ -115,7 +115,7 @@ watch(liveOnes, schedulePoll);
           option-label="label"
           option-value="value"
           :placeholder="$t('fixtures.pickRound')"
-          style="min-width: 200px"
+        class="select-filter"
         />
       </template>
     </PageHeader>

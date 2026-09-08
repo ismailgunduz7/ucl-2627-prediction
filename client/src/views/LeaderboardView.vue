@@ -54,7 +54,7 @@ onMounted(async () => {
           <thead>
             <tr>
               <th>#</th>
-              <th style="text-align: left">{{ $t('leaderboard.player') }}</th>
+              <th class="text-start">{{ $t('leaderboard.player') }}</th>
               <th v-for="pot in POTS" :key="pot" class="pot-col">{{ $t('common.pot', { number: pot }) }}</th>
               <th>{{ $t('leaderboard.points') }}</th>
             </tr>
@@ -62,7 +62,7 @@ onMounted(async () => {
           <tbody>
             <tr v-for="e in rows" :key="e.userId" :class="{ me: e.userId === meId }">
               <td class="rank">{{ e.rank }}</td>
-              <td style="text-align: left">
+              <td class="text-start">
                 <RouterLink :to="`/oyuncu/${e.userId}`" class="player-link">{{ e.displayName }}</RouterLink>
                 <span v-if="e.userId === meId" class="you"> · {{ $t('common.you') }}</span>
               </td>

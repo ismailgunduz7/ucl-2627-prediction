@@ -74,7 +74,7 @@ onMounted(async () => {
       <!-- Squad -->
       <section class="surface-card card-pad">
         <div class="card-top">
-          <h2 class="section-title" style="margin: 0">{{ $t('home.squadTitle') }}</h2>
+          <h2 class="section-title flush">{{ $t('home.squadTitle') }}</h2>
           <Tag
             :severity="squadComplete ? 'success' : 'warn'"
             :value="squadComplete ? $t('home.squadReady') : $t('home.squadIncomplete')"
@@ -100,7 +100,7 @@ onMounted(async () => {
           </RouterLink>
         </template>
         <template v-else>
-          <p class="text-muted" style="margin: 0 0 1rem">{{ $t('home.squadEmpty') }}</p>
+          <p class="text-muted empty-note">{{ $t('home.squadEmpty') }}</p>
           <RouterLink to="/kadro">
             <Button :label="$t('home.squadBuild')"><template #icon><Plus :size="16" /></template></Button>
           </RouterLink>
@@ -109,7 +109,7 @@ onMounted(async () => {
 
       <!-- This week -->
       <section class="surface-card card-pad">
-        <h2 class="section-title" style="margin: 0 0 0.75rem">{{ currentMw?.label ?? $t('home.weekFallback') }}</h2>
+        <h2 class="section-title">{{ currentMw?.label ?? $t('home.weekFallback') }}</h2>
         <template v-if="currentMw">
           <div class="week-score">
             <span class="big-num">{{ weekTotal ?? '-' }}</span>
@@ -121,13 +121,13 @@ onMounted(async () => {
             </Button>
           </RouterLink>
         </template>
-        <p v-else class="text-muted" style="margin: 0">{{ $t('home.seasonNotStarted') }}</p>
+        <p v-else class="text-muted flush">{{ $t('home.seasonNotStarted') }}</p>
       </section>
 
       <!-- Standings -->
       <section class="surface-card card-pad">
         <div class="card-top">
-          <h2 class="section-title" style="margin: 0">{{ $t('home.rankTitle') }}</h2>
+          <h2 class="section-title flush">{{ $t('home.rankTitle') }}</h2>
           <Tag v-if="myRank" :value="`${myRank.rank}.`" severity="info" />
         </div>
         <ol v-if="topThree.length" class="mini-lb">
@@ -137,7 +137,7 @@ onMounted(async () => {
             <span class="lb-pts">{{ e.total }}</span>
           </li>
         </ol>
-        <p v-else class="text-muted" style="margin: 0">{{ $t('home.rankEmpty') }}</p>
+        <p v-else class="text-muted flush">{{ $t('home.rankEmpty') }}</p>
         <RouterLink to="/puan-durumu">
           <Button :label="$t('home.rankAll')" text size="small">
             <template #icon><ChartColumn :size="15" /></template>
@@ -251,4 +251,6 @@ onMounted(async () => {
   .crest-mini { width: 62px; }
   .replay-banner .text-muted { flex: 1 1 100%; }
 }
+
+.empty-note { margin: 0 0 1rem; }
 </style>

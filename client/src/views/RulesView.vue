@@ -78,13 +78,13 @@ onMounted(async () => {
           <table class="rules">
             <thead>
               <tr>
-                <th style="text-align: left">{{ $t('rules.ruleColumn') }}</th>
+                <th class="text-start">{{ $t('rules.ruleColumn') }}</th>
                 <th v-for="p in pots" :key="p.tierId">{{ p.tierName }}</th>
               </tr>
             </thead>
             <tbody>
               <tr v-for="r in rules" :key="r.code">
-                <td style="text-align: left">
+                <td class="text-start">
                   <strong>{{ r.label }}</strong>
                   <span class="rule-cat">{{ $t(`rules.category.${r.category}`) }}</span>
                 </td>

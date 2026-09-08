@@ -125,7 +125,7 @@ function skipToContent() {
       </RouterLink>
       <div class="mobile-nav-account">
         <span class="mobile-nav-who">{{ auth.user?.displayName }}</span>
-        <span class="text-muted" style="font-size: var(--text-2xs)">{{
+        <span class="mobile-nav-comp text-muted">{{
           auth.user?.competitionName ?? $t('account.adminRole')
         }}</span>
       </div>
@@ -159,6 +159,7 @@ function skipToContent() {
   font-size: var(--text-sm);
   font-weight: 700;
 }
+.mobile-nav-comp { font-size: var(--text-2xs); }
 .page-enter-active {
   transition: opacity var(--dur-base) var(--ease-out), transform var(--dur-base) var(--ease-out);
 }

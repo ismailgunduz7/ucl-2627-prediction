@@ -131,6 +131,14 @@ the participant and admin interfaces.
   layout that has no hamburger. A table wider than the screen sits in a
   `.table-scroll` box, and `.app-shell` clips the horizontal axis besides, so
   the page itself never moves sideways whatever slips through.
+- **No `style` attributes in templates.** A declaration written where it is used
+  cannot be reused, cannot be overridden and cannot be found later. Repeated
+  ones earn a helper in `client/src/styles/main.css` (`.flush`, `.dialog-lead`,
+  `.text-start`, `.row-actions`, `.grow`, `.self-start`, plus the PrimeVue
+  facing `.dialog-sm|md|lg`, `.num-input`, `.select-filter`); anything that
+  means something to one component gets a named class in that component's own
+  scoped block. The exception is a value that genuinely comes from data, like a
+  badge sized by its `size` prop, which stays a bound `:style`.
 - **Direct manipulation has to work with a finger.** The `draggable` attribute
   and its drag events never fire on touch, so drags go through
   `client/src/composables/usePointerDrag.ts`: a mouse picks the card up after a

@@ -143,7 +143,7 @@ onUnmounted(() => window.clearInterval(timer));
         <section v-for="pot in store.pots" :key="pot.tierId" class="surface-card pot-col">
           <header class="pot-head">
             <span>{{ pot.tierName }}</span>
-            <CircleCheck v-if="picks[pot.tierId]" :size="17" style="color: var(--color-success)" />
+            <CircleCheck v-if="picks[pot.tierId]" :size="17" class="pot-check" />
           </header>
           <button
             v-for="team in pot.teams"
@@ -157,7 +157,7 @@ onUnmounted(() => window.clearInterval(timer));
             <TeamCrest :name="team.name" :crest-url="team.crestUrl" size="sm" />
             <span class="team-meta">
               <span class="team-name">{{ team.name }}</span>
-              <span v-if="team.country" class="text-muted" style="font-size: var(--text-2xs)">{{ countryName(team.country) }}</span>
+              <span v-if="team.country" class="team-country text-muted">{{ countryName(team.country) }}</span>
             </span>
             <Tag v-if="team.eliminated" severity="danger" :value="$t('common.eliminated')" />
           </button>
@@ -181,10 +181,10 @@ onUnmounted(() => window.clearInterval(timer));
       :visible="jokerConflict !== null"
       modal
       :header="$t('squad.conflictTitle')"
-      :style="{ width: '400px' }"
+      class="dialog-md"
       @update:visible="jokerConflict = null"
     >
-      <i18n-t keypath="squad.conflictBody" tag="p" style="margin: 0" scope="global">
+      <i18n-t class="flush" keypath="squad.conflictBody" tag="p" scope="global">
         <template #club><strong>{{ jokerConflict?.teamName }}</strong></template>
         <template #joker>{{ jokerConflict?.jokerName }}</template>
       </i18n-t>
@@ -268,4 +268,7 @@ onUnmounted(() => window.clearInterval(timer));
   }
   .save-bar :deep(.p-button) { width: 100%; justify-content: center; }
 }
+
+.pot-check { color: var(--color-success); }
+.team-country { font-size: var(--text-2xs); }
 </style>

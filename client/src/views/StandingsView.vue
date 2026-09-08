@@ -52,7 +52,7 @@ onMounted(async () => {
           <thead>
             <tr>
               <th>#</th>
-              <th style="text-align: left">{{ $t('standings.club') }}</th>
+              <th class="text-start">{{ $t('standings.club') }}</th>
               <th :title="$t('standings.played')">{{ $t('standings.playedShort') }}</th>
               <th :title="$t('standings.won')">{{ $t('standings.wonShort') }}</th>
               <th :title="$t('standings.drawn')">{{ $t('standings.drawnShort') }}</th>
@@ -66,7 +66,7 @@ onMounted(async () => {
           <tbody>
             <tr v-for="r in rows" :key="r.teamId" :class="band(r.rank)">
               <td class="rank">{{ r.rank }}</td>
-              <td style="text-align: left">
+              <td class="text-start">
                 <RouterLink :to="`/takim/${r.teamId}`" class="team-link">{{ r.name }}</RouterLink>
               </td>
               <td>{{ r.played }}</td>

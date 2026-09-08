@@ -113,8 +113,8 @@ onMounted(load);
   <section v-if="show" class="surface-card card-pad">
     <div class="head">
       <div>
-        <div class="section-title" style="margin: 0">{{ $t('transfer.title') }}</div>
-        <p class="text-muted" style="margin: 0.25rem 0 0; font-size: 0.88rem">
+        <div class="section-title flush">{{ $t('transfer.title') }}</div>
+        <p class="transfer-note text-muted">
           {{ $t('transfer.subtitle') }}
         </p>
       </div>
@@ -172,8 +172,7 @@ onMounted(load);
         v-if="committedNames"
         keypath="transfer.committed"
         tag="p"
-        class="text-muted"
-        style="margin: 0.75rem 0 0; font-size: 0.85rem"
+        class="text-muted transfer-hint"
         scope="global"
       >
         <template #clubOut><strong>{{ committedNames.from }}</strong></template>
@@ -185,10 +184,10 @@ onMounted(load);
       :visible="jokerConflict !== null"
       modal
       :header="$t('squad.conflictTitle')"
-      :style="{ width: '400px' }"
+      class="dialog-md"
       @update:visible="jokerConflict = null"
     >
-      <i18n-t keypath="transfer.conflictBody" tag="p" style="margin: 0" scope="global">
+      <i18n-t class="flush" keypath="transfer.conflictBody" tag="p" scope="global">
         <template #club><strong>{{ jokerConflict?.teamName }}</strong></template>
         <template #joker>{{ jokerConflict?.jokerName }}</template>
       </i18n-t>
@@ -205,5 +204,14 @@ onMounted(load);
 .row { display: grid; grid-template-columns: 1fr 1fr auto; gap: 0.9rem; align-items: end; }
 @media (max-width: 700px) {
   .row { grid-template-columns: 1fr; }
+}
+
+.transfer-note {
+  margin: 0.25rem 0 0;
+  font-size: 0.88rem;
+}
+.transfer-hint {
+  margin: 0.75rem 0 0;
+  font-size: 0.85rem;
 }
 </style>

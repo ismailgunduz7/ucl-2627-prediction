@@ -83,7 +83,7 @@ watch(() => route.params.id, (id) => id && load(id as string));
 
 <template>
   <div class="page-stack">
-    <Button :label="$t('common.back')" text style="align-self: flex-start" @click="router.back()">
+    <Button class="self-start" :label="$t('common.back')" text @click="router.back()">
       <template #icon><ArrowLeft :size="16" /></template>
     </Button>
 

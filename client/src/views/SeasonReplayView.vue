@@ -81,7 +81,7 @@ onMounted(async () => {
 
     <div v-else-if="data && !data.finished" class="surface-card card-pad not-yet">
       <TrophyMark :size="42" class="not-yet-mark" />
-      <p style="margin: 0">{{ $t('replay.notYet') }}</p>
+      <p class="flush">{{ $t('replay.notYet') }}</p>
     </div>
 
     <template v-else-if="data">
@@ -159,7 +159,7 @@ onMounted(async () => {
             <small class="text-muted">{{ j.weekLabel }}</small>
           </span>
         </div>
-        <p v-else class="text-muted" style="margin: 0">{{ $t('replay.noJokers') }}</p>
+        <p v-else class="text-muted flush">{{ $t('replay.noJokers') }}</p>
       </section>
 
       <section v-if="data.podium.length" class="surface-card card-pad">
@@ -180,7 +180,7 @@ onMounted(async () => {
             <span class="podium-pts">{{ data.total }}</span>
           </li>
         </ol>
-        <Tag v-if="data.rank === 1" severity="warn" :value="$t('replay.championTag')" style="margin-top: 0.75rem" />
+        <Tag v-if="data.rank === 1" severity="warn" :value="$t('replay.championTag')" class="champion-tag" />
       </section>
     </template>
   </div>
@@ -235,4 +235,6 @@ onMounted(async () => {
 .podium-name { flex: 1; color: var(--color-text); font-weight: 600; text-decoration: none; }
 .podium-name:hover { color: var(--color-primary); }
 .podium-pts { font-weight: 800; }
+
+.champion-tag { margin-top: 0.75rem; }
 </style>

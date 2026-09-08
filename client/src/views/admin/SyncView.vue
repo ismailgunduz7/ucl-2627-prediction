@@ -124,7 +124,7 @@ onBeforeUnmount(() => { if (statusTimer) clearInterval(statusTimer); });
       <div class="controls">
         <div class="form-field">
           <label>{{ $t('admin.sync.provider') }}</label>
-          <Select v-model="provider" :options="providerOptions" option-label="label" option-value="value" style="min-width: 200px" />
+          <Select class="select-filter" v-model="provider" :options="providerOptions" option-label="label" option-value="value" />
         </div>
         <div v-if="provider === 'mock'" class="form-field">
           <label>{{ $t('admin.sync.simulatedClock') }}</label>
@@ -145,8 +145,8 @@ onBeforeUnmount(() => { if (statusTimer) clearInterval(statusTimer); });
       <div class="surface-card card-pad stat"><b>{{ lastSummary.unmapped }}</b><small class="text-muted">{{ $t('admin.sync.unmapped') }}</small></div>
     </div>
 
-    <section class="surface-card" style="overflow: hidden">
-      <div class="card-pad section-title" style="margin: 0; border-bottom: 1px solid var(--color-border)">
+    <section class="surface-card runs-card">
+      <div class="card-pad section-title runs-head">
         {{ $t('admin.sync.recent') }}
       </div>
       <div class="table-scroll">
@@ -208,4 +208,12 @@ onBeforeUnmount(() => { if (statusTimer) clearInterval(statusTimer); });
 .runs th, .runs td { padding: 0.55rem 0.7rem; text-align: center; border-bottom: 1px solid var(--color-border); font-size: 0.88rem; }
 .runs thead th { background: var(--color-bg-subtle); font-weight: 700; color: var(--color-text-secondary); }
 .runs tbody tr:last-child td { border-bottom: none; }
+
+/* The heading sits flush on the list under it: no bottom margin, and the
+   rule between them belongs to the heading. */
+.runs-card { overflow: hidden; }
+.runs-head {
+  margin: 0;
+  border-bottom: 1px solid var(--color-border);
+}
 </style>

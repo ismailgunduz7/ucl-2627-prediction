@@ -413,7 +413,7 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
           option-group-children="items"
           option-label="label"
           option-value="value"
-          style="min-width: 190px"
+        class="select-filter"
         >
           <template #value="{ value }">{{ matchweekTitle(matchweeks, value) || $t('week.pickWeek') }}</template>
         </Select>
@@ -637,7 +637,7 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
       </section>
 
       <section v-if="score" class="surface-card card-pad">
-        <div class="section-title" style="display: flex; justify-content: space-between; align-items: center">
+        <div class="section-title section-title-row">
           <span>{{ isComplete ? $t('week.wrapTitle') : $t('week.liveTitle') }}
             <JokerIcon v-if="score.jokerCode" :code="score.jokerCode" :size="17" />
           </span>
@@ -768,19 +768,19 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
       v-model:visible="swapDialog"
       modal
       :header="$t('week.swapTitle', { club: swapFrom?.name })"
-      :style="{ width: '420px' }"
+      class="dialog-md"
     >
-      <p class="text-muted" style="margin: 0 0 0.75rem">{{ $t('week.swapSubtitle') }}</p>
+      <p class="text-muted dialog-lead">{{ $t('week.swapSubtitle') }}</p>
       <div class="swap-list">
         <button v-for="t in swapOptions()" :key="t.id" class="swap-option" @click="chooseSwap(t.id)">
           <TeamCrest :name="t.name" :crest-url="t.crestUrl" size="sm" />{{ t.name }}
         </button>
-        <p v-if="!swapOptions().length" class="text-muted" style="margin: 0">{{ $t('week.swapEmpty') }}</p>
+        <p v-if="!swapOptions().length" class="text-muted flush">{{ $t('week.swapEmpty') }}</p>
       </div>
     </Dialog>
 
-    <Dialog v-model:visible="benchConflict" modal :header="$t('squad.conflictTitle')" :style="{ width: '380px' }">
-      <p style="margin: 0">{{ $t('week.benchConflictBody') }}</p>
+    <Dialog class="dialog-sm" v-model:visible="benchConflict" modal :header="$t('squad.conflictTitle')">
+      <p class="flush">{{ $t('week.benchConflictBody') }}</p>
       <template #footer>
         <Button :label="$t('common.cancel')" text @click="benchConflict = false" />
         <Button :label="$t('common.continue')" severity="danger" @click="confirmBenchConflict" />
@@ -993,4 +993,10 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
   font: inherit; font-weight: 600; text-align: left; cursor: pointer;
 }
 .swap-option:hover { border-color: var(--color-primary); background: var(--color-primary-soft); }
+
+.section-title-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
 </style>

@@ -195,7 +195,7 @@ const items = computed<MenuItem[]>(() => {
     v-model:visible="addDialog"
     modal
     :header="$t('account.addTitle')"
-    :style="{ width: '380px' }"
+    class="dialog-sm"
   >
     <p class="dialog-lead">{{ $t('account.addBody') }}</p>
     <form class="add-form" @submit.prevent="submitAdd">
@@ -233,9 +233,9 @@ const items = computed<MenuItem[]>(() => {
     v-model:visible="outDialog"
     modal
     :header="$t('account.signOutTitle')"
-    :style="{ width: '380px' }"
+    class="dialog-sm"
   >
-    <p style="margin: 0">{{ $t('account.signOutBody') }}</p>
+    <p class="flush">{{ $t('account.signOutBody') }}</p>
     <template #footer>
       <Button :label="$t('common.cancel')" text @click="outDialog = false" />
       <Button

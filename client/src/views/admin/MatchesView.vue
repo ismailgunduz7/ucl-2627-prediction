@@ -136,7 +136,7 @@ watch(selectedMw, loadMatches);
           option-label="label"
           option-value="value"
           :placeholder="$t('admin.matches.week')"
-          style="min-width: 200px"
+        class="select-filter"
         >
           <template #value="{ value }">{{ matchweekTitle(matchweeks, value) || $t('admin.matches.week') }}</template>
         </Select>
@@ -145,14 +145,14 @@ watch(selectedMw, loadMatches);
 
     <BallLoader v-if="loading" />
 
-    <div v-else class="page-stack" style="gap: 0.75rem">
+    <div v-else class="page-stack match-list">
       <div v-for="m in matches" :key="m.id" class="surface-card match-row">
         <div class="teams">
           <span class="side home">{{ m.home_name }}</span>
           <div class="score">
-            <InputNumber v-model="m.home_score" :min="0" :use-grouping="false" :input-style="{ width: '2.6rem', textAlign: 'center' }" />
+            <InputNumber class="num-input" v-model="m.home_score" :min="0" :use-grouping="false" />
             <span class="text-muted">-</span>
-            <InputNumber v-model="m.away_score" :min="0" :use-grouping="false" :input-style="{ width: '2.6rem', textAlign: 'center' }" />
+            <InputNumber class="num-input" v-model="m.away_score" :min="0" :use-grouping="false" />
           </div>
           <span class="side away">{{ m.away_name }}</span>
         </div>
@@ -197,10 +197,10 @@ watch(selectedMw, loadMatches);
           ? `${auditTarget.home_name} - ${auditTarget.away_name}`
           : $t('admin.matches.auditTitle')
       "
-      :style="{ width: '460px' }"
+      class="dialog-lg"
     >
       <BallLoader v-if="auditLoading" />
-      <p v-else-if="!audits.length" class="text-muted" style="margin: 0">{{ $t('admin.matches.auditEmpty') }}</p>
+      <p v-else-if="!audits.length" class="text-muted flush">{{ $t('admin.matches.auditEmpty') }}</p>
       <ul v-else class="audit-list">
         <li v-for="a in audits" :key="a.id" class="audit-row">
           <div class="audit-head">
@@ -245,4 +245,6 @@ watch(selectedMw, loadMatches);
   .controls { width: 100%; justify-content: space-between; }
   .status-select { min-width: 0; flex: 1; }
 }
+
+.match-list { gap: 0.75rem; }
 </style>

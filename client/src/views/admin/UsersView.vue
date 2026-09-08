@@ -244,7 +244,7 @@ onMounted(load);
         </Column>
         <Column :header="$t('admin.users.actions')">
           <template #body="{ data }">
-            <div style="display: flex; gap: 0.25rem">
+            <div class="row-actions">
               <Button
                 severity="secondary"
                 text
@@ -293,7 +293,7 @@ onMounted(load);
       </DataTable>
     </section>
 
-    <Dialog v-model:visible="editDialog" modal :header="$t('admin.users.editTitle')" :style="{ width: '400px' }">
+    <Dialog class="dialog-md" v-model:visible="editDialog" modal :header="$t('admin.users.editTitle')">
       <div class="edit-fields">
         <div class="form-field">
           <label>{{ $t('admin.users.displayName') }}</label>
@@ -321,8 +321,8 @@ onMounted(load);
         </Button>
       </template>
     </Dialog>
-    <Dialog v-model:visible="pwDialog" modal :header="$t('admin.users.passwordTitle')" :style="{ width: '380px' }">
-      <i18n-t keypath="admin.users.passwordBody" tag="p" class="text-muted" style="margin: 0 0 0.75rem" scope="global">
+    <Dialog class="dialog-sm" v-model:visible="pwDialog" modal :header="$t('admin.users.passwordTitle')">
+      <i18n-t keypath="admin.users.passwordBody" tag="p" class="text-muted dialog-lead" scope="global">
         <template #name><strong>{{ pwTarget?.display_name }}</strong></template>
       </i18n-t>
       <Password
@@ -339,8 +339,8 @@ onMounted(load);
         </Button>
       </template>
     </Dialog>
-    <Dialog v-model:visible="jokerDialog" modal :header="$t('admin.users.jokersTitle')" :style="{ width: '400px' }">
-      <i18n-t keypath="admin.users.jokersBody" tag="p" class="text-muted" style="margin: 0 0 0.9rem" scope="global">
+    <Dialog class="dialog-md" v-model:visible="jokerDialog" modal :header="$t('admin.users.jokersTitle')">
+      <i18n-t keypath="admin.users.jokersBody" tag="p" class="text-muted dialog-lead" scope="global">
         <template #name><strong>{{ jokerTarget?.display_name }}</strong></template>
       </i18n-t>
       <div class="joker-rows">
@@ -353,7 +353,7 @@ onMounted(load);
             :use-grouping="false"
             show-buttons
             button-layout="horizontal"
-            :input-style="{ width: '2.8rem', textAlign: 'center' }"
+            class="num-input"
             decrement-button-class="p-button-secondary"
             increment-button-class="p-button-secondary"
           />
@@ -366,8 +366,8 @@ onMounted(load);
         </Button>
       </template>
     </Dialog>
-    <Dialog v-model:visible="delDialog" modal :header="$t('admin.users.deleteTitle')" :style="{ width: '380px' }">
-      <i18n-t keypath="admin.users.deleteBody" tag="p" style="margin: 0" scope="global">
+    <Dialog class="dialog-sm" v-model:visible="delDialog" modal :header="$t('admin.users.deleteTitle')">
+      <i18n-t class="flush" keypath="admin.users.deleteBody" tag="p" scope="global">
         <template #name><strong>{{ delTarget?.display_name }}</strong></template>
       </i18n-t>
       <template #footer>

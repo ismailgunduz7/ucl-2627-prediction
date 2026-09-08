@@ -111,7 +111,7 @@ onMounted(load);
             :options="providerOptions"
             option-label="label"
             option-value="value"
-            style="min-width: 220px"
+          class="select-filter"
           />
           <i18n-t keypath="admin.config.providerNote" tag="p" class="text-muted note" scope="global">
             <template #token><code>FOOTBALL_DATA_API_TOKEN</code></template>
@@ -121,12 +121,12 @@ onMounted(load);
 
       <section class="surface-card card-pad">
         <div class="section-title">{{ $t('admin.users.jokersTitle') }}</div>
-        <p class="text-muted note" style="margin-bottom: 1rem">{{ $t('admin.config.jokersNote') }}</p>
+        <p class="text-muted note jokers-note">{{ $t('admin.config.jokersNote') }}</p>
         <div class="table-scroll">
           <table class="grants">
             <thead>
               <tr>
-                <th style="text-align: left">{{ $t('admin.config.phase') }}</th>
+                <th class="text-start">{{ $t('admin.config.phase') }}</th>
                 <th v-for="code in JOKER_CODES" :key="code">
                   <span class="joker-head"><JokerIcon :code="code" :size="14" /> {{ $t(`joker.${code}`) }}</span>
                 </th>
@@ -134,7 +134,7 @@ onMounted(load);
             </thead>
             <tbody>
               <tr v-for="act in ACTS" :key="act">
-                <td style="text-align: left"><b>{{ $t(`admin.config.act.${act}`) }}</b></td>
+                <td class="text-start"><b>{{ $t(`admin.config.act.${act}`) }}</b></td>
                 <td v-for="code in JOKER_CODES" :key="code">
                   <InputNumber
                     v-model="config.joker_inventory_defaults[act][code]"
@@ -143,7 +143,7 @@ onMounted(load);
                     :use-grouping="false"
                     show-buttons
                     button-layout="horizontal"
-                    :input-style="{ width: '2.8rem', textAlign: 'center' }"
+                    class="num-input"
                     decrement-button-class="p-button-secondary"
                     increment-button-class="p-button-secondary"
                   />
@@ -164,7 +164,7 @@ onMounted(load);
             :max-fraction-digits="1"
             :suffix="$t('admin.config.hoursSuffix')"
             show-buttons
-            :input-style="{ width: '6rem' }"
+          class="num-input-wide"
           />
           <p class="text-muted note">{{ $t('admin.config.dramaNote') }}</p>
         </div>
@@ -199,4 +199,6 @@ onMounted(load);
 .grants thead th { background: var(--color-bg-subtle); font-size: 0.8rem; font-weight: 700; color: var(--color-text-secondary); }
 .grants tbody tr:last-child td { border-bottom: none; }
 .joker-head { display: inline-flex; align-items: center; gap: 0.35rem; }
+
+.jokers-note { margin-bottom: 1rem; }
 </style>

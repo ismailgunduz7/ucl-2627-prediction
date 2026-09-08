@@ -565,6 +565,23 @@ body.is-dragging {
   align-items: end;
 }
 .w-full { width: 100%; }
+/* ---- Small helpers ----
+   Everything a template kept writing inline. They earn a name here only when
+   the same declaration turned up in three or four places; anything that means
+   something to one component stays in that component's own stylesheet. */
+
+/* A paragraph whose spacing is already handled by the card or dialog holding it. */
+.flush { margin: 0; }
+/* The line that opens a dialog before its form or its question. */
+.dialog-lead { margin: 0 0 0.9rem; }
+/* A column of words in a table that centres its numbers. */
+.text-start { text-align: left; }
+/* The icon buttons at the end of a table row. */
+.row-actions { display: flex; gap: 0.25rem; }
+/* A control that takes the room left over on its line. */
+.grow { flex: 1; }
+/* Pulls a lone button out of a stack's full-width stretch. */
+.self-start { align-self: flex-start; }
 
 .tier-grid {
   display: grid;
@@ -658,6 +675,27 @@ body.is-dragging {
   color: var(--color-text-secondary);
 }
 .p-button { font-weight: 600; }
+
+/* Dialog widths, and none of them wider than the phone they open on. The three
+   sizes are the only ones the app asks for. */
+.p-dialog.dialog-sm { width: 380px; }
+.p-dialog.dialog-md { width: 420px; }
+.p-dialog.dialog-lg { width: 460px; }
+.p-dialog.dialog-sm,
+.p-dialog.dialog-md,
+.p-dialog.dialog-lg { max-width: calc(100vw - 2rem); }
+
+/* A number input holding a score or an allowance: as wide as its digits, and
+   centred, because a right-aligned 2 in a 3rem box looks like a mistake. */
+.num-input input {
+  width: 2.8rem;
+  text-align: center;
+}
+/* The same input when it holds seconds rather than a single digit. */
+.num-input-wide input { width: 6rem; }
+
+/* A filter or picker sitting beside a page title. */
+.select-filter { min-width: 200px; }
 .p-tag { font-weight: 700; }
 
 /* Accordion: panels read as surface cards, text follows the theme. */

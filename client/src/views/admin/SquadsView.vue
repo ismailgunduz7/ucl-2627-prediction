@@ -105,7 +105,7 @@ onMounted(load);
           :options="competitions"
           option-label="label"
           option-value="value"
-          style="min-width: 200px"
+        class="select-filter"
         />
       </template>
     </PageHeader>

@@ -73,7 +73,7 @@ onMounted(load);
   <div class="page-stack">
     <PageHeader :title="$t('admin.rules.title')" :subtitle="$t('admin.rules.subtitle')">
       <template #actions>
-        <div style="display: flex; gap: 0.5rem">
+        <div class="rule-actions">
           <Button
             :label="$t('admin.rules.recalculate')"
             severity="secondary"
@@ -103,7 +103,7 @@ onMounted(load);
         :use-grouping="false"
         show-buttons
         button-layout="horizontal"
-        :input-style="{ width: '3rem', textAlign: 'center' }"
+        class="num-input"
         decrement-button-class="p-button-secondary"
         increment-button-class="p-button-secondary"
       />
@@ -114,21 +114,21 @@ onMounted(load);
       <table class="rules">
         <thead>
           <tr>
-            <th style="text-align: left">{{ $t('rules.ruleColumn') }}</th>
+            <th class="text-start">{{ $t('rules.ruleColumn') }}</th>
             <th v-for="p in [1, 2, 3, 4]" :key="p">{{ $t('common.pot', { number: p }) }}</th>
           </tr>
         </thead>
         <tbody>
           <tr v-for="r in rules" :key="r.code">
-            <td style="text-align: left">
+            <td class="text-start">
               <strong>{{ r.label }}</strong>
-              <span class="text-muted" style="font-size: 0.75rem; display: block">
+              <span class="text-muted rule-code">
                 {{ $t(`rules.category.${r.category}`) }}
               </span>
             </td>
             <td v-for="p in [1, 2, 3, 4]" :key="p">
               <InputNumber v-model="r.points[p]" :use-grouping="false" show-buttons button-layout="horizontal"
-                :input-style="{ width: '3rem', textAlign: 'center' }"
+                class="num-input"
                 decrement-button-class="p-button-secondary" increment-button-class="p-button-secondary" />
             </td>
           </tr>
@@ -145,4 +145,13 @@ onMounted(load);
 .rules th, .rules td { padding: 0.55rem 0.7rem; text-align: center; border-bottom: 1px solid var(--color-border); vertical-align: middle; }
 .rules thead th { background: var(--color-bg-subtle); font-size: 0.82rem; font-weight: 700; color: var(--color-text-secondary); }
 .rules tbody tr:last-child td { border-bottom: none; }
+
+.rule-actions {
+  display: flex;
+  gap: 0.5rem;
+}
+.rule-code {
+  display: block;
+  font-size: var(--text-2xs);
+}
 </style>

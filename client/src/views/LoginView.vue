@@ -47,7 +47,7 @@ async function submit() {
       </div>
       <Card>
         <template #content>
-          <form class="page-stack" style="gap: 1rem" @submit.prevent="submit">
+          <form class="page-stack login-form" @submit.prevent="submit">
             <div class="form-field">
               <label for="username">{{ $t('auth.username') }}</label>
               <InputText id="username" v-model="username" autocomplete="username" required autofocus />
@@ -75,4 +75,6 @@ async function submit() {
 
 <style scoped>
 .login-lang { display: flex; justify-content: center; margin-top: 1rem; }
+
+.login-form { gap: 1rem; }
 </style>

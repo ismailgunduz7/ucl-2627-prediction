@@ -107,11 +107,11 @@ onMounted(load);
     <PageHeader :title="$t('nav.admin.competitions')" :subtitle="$t('admin.competitions.subtitle')" />
 
     <section class="surface-card card-pad">
-      <form style="display: flex; gap: 0.6rem; flex-wrap: wrap" @submit.prevent="create">
+      <form class="new-form" @submit.prevent="create">
         <InputText
           v-model="newName"
+          class="new-form-input"
           :placeholder="$t('admin.competitions.namePlaceholder')"
-          style="flex: 1; min-width: 200px"
         />
         <Button type="submit" :label="$t('common.add')" :loading="saving">
           <template #icon><Plus :size="16" /></template>
@@ -128,7 +128,7 @@ onMounted(load);
         </Column>
         <Column :header="$t('admin.competitions.actions')">
           <template #body="{ data }">
-            <div style="display: flex; gap: 0.25rem">
+            <div class="row-actions">
               <Button
                 severity="secondary"
                 text
@@ -158,7 +158,7 @@ onMounted(load);
       </DataTable>
     </section>
 
-    <Dialog v-model:visible="editDialog" modal :header="$t('admin.competitions.editTitle')" :style="{ width: '380px' }">
+    <Dialog class="dialog-sm" v-model:visible="editDialog" modal :header="$t('admin.competitions.editTitle')">
       <div class="form-field">
         <label>{{ $t('admin.competitions.name') }}</label>
         <InputText v-model="editName" autofocus @keyup.enter="submitEdit" />
@@ -176,8 +176,8 @@ onMounted(load);
       </template>
     </Dialog>
 
-    <Dialog v-model:visible="delDialog" modal :header="$t('admin.competitions.deleteTitle')" :style="{ width: '380px' }">
-      <i18n-t keypath="admin.competitions.deleteBody" tag="p" style="margin: 0" scope="global">
+    <Dialog class="dialog-sm" v-model:visible="delDialog" modal :header="$t('admin.competitions.deleteTitle')">
+      <i18n-t class="flush" keypath="admin.competitions.deleteBody" tag="p" scope="global">
         <template #name><strong>{{ delTarget?.name }}</strong></template>
       </i18n-t>
       <template #footer>
@@ -189,3 +189,15 @@ onMounted(load);
     </Dialog>
   </div>
 </template>
+
+<style scoped>
+.new-form {
+  display: flex;
+  gap: 0.6rem;
+  flex-wrap: wrap;
+}
+.new-form-input {
+  flex: 1;
+  min-width: 200px;
+}
+</style>
