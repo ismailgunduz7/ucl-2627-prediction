@@ -72,6 +72,10 @@
 
   --content-max: 1360px;
   --header-height: 66px;
+  /* How much of the top a scrolled-to target has to clear: the sticky header,
+     plus a little air. Read by `scroll-padding-top` below and cancelled again
+     by anything an overlay has already positioned for itself. */
+  --scroll-clear: calc(var(--header-height) + 1rem);
 }
 
 *,
@@ -85,7 +89,7 @@ html {
      picker, autofill and every other native control. */
   color-scheme: dark;
   /* The header is sticky, so scrolled-to targets must clear it (WCAG 2.2). */
-  scroll-padding-top: calc(var(--header-height) + 1rem);
+  scroll-padding-top: var(--scroll-clear);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   scrollbar-gutter: stable;
@@ -739,6 +743,18 @@ table.freeze-2,
   color: var(--color-text-secondary);
 }
 .p-button { font-weight: 600; }
+
+/* A popup menu is placed against the control that opened it, and PrimeVue
+   focuses its list as it opens so the keyboard lands inside. That focus asks
+   the browser to scroll the list into view, and `scroll-padding-top` says the
+   top of the page belongs to the sticky header, so a menu opened FROM the
+   header shoved the page down a line to clear a header the menu was already
+   clear of. Cancelling the allowance for the list leaves the page where the
+   reader left it. Nothing ends up hidden: the overlay is already exactly where
+   it was put, and it is the list that moves, never the page. */
+.p-menu-overlay .p-menu-list {
+  scroll-margin-top: calc(-1 * var(--scroll-clear));
+}
 
 /* Dialog widths, and none of them wider than the phone they open on. The three
    sizes are the only ones the app asks for. */
