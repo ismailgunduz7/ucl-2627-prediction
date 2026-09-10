@@ -12,6 +12,48 @@ import { participantScoresIn } from './selection-service.ts';
 import { getOrderedMatchweeks } from './matchweek-lifecycle-service.ts';
 
 /**
+ * LIVE provisional club points, drafted in memory from the current score the
+ * same way finished matches are scored (§4.3 Option A). Pass a matchweek to
+ * draft just that week, or null for every match in play across the season.
+ */
+export async function liveTeamPointDrafts(mwId: string | null): Promise<Map<string, number>> {
+  const points = new Map<string, number>();
+  const live = await query<{
+    home_team_id: string;
+    away_team_id: string;
+    home_tier_id: number;
+    away_tier_id: number;
+    home_score: number | null;
+    away_score: number | null;
+  }>(
+    `SELECT m.home_team_id, m.away_team_id, ht.tier_id AS home_tier_id, at.tier_id AS away_tier_id,
+            m.home_score, m.away_score
+     FROM matches m JOIN teams ht ON ht.id = m.home_team_id JOIN teams at ON at.id = m.away_team_id
+     WHERE ($1::text IS NULL OR m.matchweek_id = $1) AND m.status = 'live'
+       AND m.home_score IS NOT NULL AND m.away_score IS NOT NULL`,
+    [mwId],
+  );
+  if (live.rows.length === 0) return points;
+
+  const rules = await getTierRules();
+  for (const m of live.rows) {
+    const lines = scoreMatchDraft(
+      {
+        homeTeamId: m.home_team_id,
+        awayTeamId: m.away_team_id,
+        homeTierId: m.home_tier_id,
+        awayTierId: m.away_tier_id,
+        homeScore: m.home_score!,
+        awayScore: m.away_score!,
+      },
+      rules,
+    );
+    for (const l of lines) points.set(l.teamId, (points.get(l.teamId) ?? 0) + l.points);
+  }
+  return points;
+}
+
+/**
  * Club-layer points for a matchweek, per team id: definitive finished lines plus
  * LIVE provisional drafts computed in memory (§4.3 Option A). Live matches are
  * scored with the same rules as finished ones (treat current score as final).
@@ -26,38 +68,8 @@ export async function getTeamPointsForMatchweek(mwId: string): Promise<Map<strin
   );
   for (const r of finished.rows) points.set(r.team_id, r.points);
 
-  // Live matches: draft points on the fly.
-  const live = await query<{
-    home_team_id: string;
-    away_team_id: string;
-    home_tier_id: number;
-    away_tier_id: number;
-    home_score: number | null;
-    away_score: number | null;
-  }>(
-    `SELECT m.home_team_id, m.away_team_id, ht.tier_id AS home_tier_id, at.tier_id AS away_tier_id,
-            m.home_score, m.away_score
-     FROM matches m JOIN teams ht ON ht.id = m.home_team_id JOIN teams at ON at.id = m.away_team_id
-     WHERE m.matchweek_id = $1 AND m.status = 'live'
-       AND m.home_score IS NOT NULL AND m.away_score IS NOT NULL`,
-    [mwId],
-  );
-  if (live.rows.length > 0) {
-    const rules = await getTierRules();
-    for (const m of live.rows) {
-      const lines = scoreMatchDraft(
-        {
-          homeTeamId: m.home_team_id,
-          awayTeamId: m.away_team_id,
-          homeTierId: m.home_tier_id,
-          awayTierId: m.away_tier_id,
-          homeScore: m.home_score!,
-          awayScore: m.away_score!,
-        },
-        rules,
-      );
-      for (const l of lines) points.set(l.teamId, (points.get(l.teamId) ?? 0) + l.points);
-    }
+  for (const [teamId, drafted] of await liveTeamPointDrafts(mwId)) {
+    points.set(teamId, (points.get(teamId) ?? 0) + drafted);
   }
   return points;
 }

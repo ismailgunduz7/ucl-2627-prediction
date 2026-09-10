@@ -88,4 +88,18 @@ export const AppPreset = definePreset(Aura, {
       },
     },
   },
+  components: {
+    /**
+     * Tabs sit straight on the page with a card under them, so Aura's own
+     * surface behind the strip and its padding around the panel would draw a
+     * second box around the one that is already there. The colours are left to
+     * the semantic tokens above: muted until a tab is chosen, primary once it
+     * is, with the marker riding the same line.
+     */
+    tabs: {
+      tablist: { background: 'transparent' },
+      tab: { padding: '0.7rem 1rem' },
+      tabpanel: { background: 'transparent', padding: '1rem 0 0 0' },
+    },
+  },
 });

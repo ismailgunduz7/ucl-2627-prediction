@@ -24,7 +24,7 @@ import { getConfigValue } from '../services/tournament-config-service.ts';
 import { getRulesMatrix, getTeamDetail } from '../services/scoring-service.ts';
 import { getEffectiveSquad, getLineup, setLineup } from '../services/lineup-service.ts';
 import { getParticipantWeekScore } from '../services/matchweek-scoring-service.ts';
-import { getLeaderboard, getRankMovement } from '../services/leaderboard-service.ts';
+import { getLeaderboard, getRankMovement, getTeamLeaderboard } from '../services/leaderboard-service.ts';
 import { getPlayerPoints } from '../services/player-points-service.ts';
 import { getLeagueStandings } from '../services/standings-service.ts';
 import { isSeasonComplete } from '../services/knockout-service.ts';
@@ -349,6 +349,13 @@ participantRoutes.get('/leaderboard', async (c) => {
   if (!auth.competitionId) return c.json({ leaderboard: [], competitionId: null });
   const leaderboard = await getLeaderboard(auth.competitionId);
   return c.json({ leaderboard, competitionId: auth.competitionId, meId: auth.sub });
+});
+
+// Clubs belong to the tournament, not to a competition, so this one needs no
+// competition and reads the same for everybody.
+participantRoutes.get('/team-leaderboard', async (c) => {
+  const teams = await getTeamLeaderboard();
+  return c.json({ teams });
 });
 
 // --- Permanent squad ------------------------------------------------------

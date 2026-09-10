@@ -216,6 +216,11 @@ export default {
     player: 'Player',
     points: 'Points',
     liveHint: 'The share coming from matches in play. It settles when they finish',
+    tabPlayers: 'Players',
+    tabClubs: 'Clubs',
+    pot: 'Pot',
+    collected: 'Points collected',
+    clubsEmpty: 'No club has collected a point yet.',
   },
   standings: {
     title: 'League table',

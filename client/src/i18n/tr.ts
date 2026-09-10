@@ -217,6 +217,11 @@ export default {
     player: 'Oyuncu',
     points: 'Puan',
     liveHint: 'Oynanan maçlardan gelen pay. Maçlar bitince kesinleşir',
+    tabPlayers: 'Oyuncular',
+    tabClubs: 'Kulüpler',
+    pot: 'Pot',
+    collected: 'Topladığı puan',
+    clubsEmpty: 'Kulüpler henüz puan toplamaya başlamadı.',
   },
   standings: {
     title: 'Lig tablosu',

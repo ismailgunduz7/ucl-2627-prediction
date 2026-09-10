@@ -10,7 +10,7 @@ Working conventions for contributors (commits, git workflow, design language, te
 
 Phases 0-6 are built and running against a Supabase database. What follows is the full specification; this section records where reality currently stands so nobody has to infer it from the code.
 
-**Built and verified:** auth and admin-provisioned accounts, several of them signed in at once on the same browser · pots, clubs, matchweeks, matches, config · permanent squad with one-club-per-pot enforced in the database, late entry included · club-layer scoring with the per-pot rules editor · provider sync behind a swappable interface with manual-override protection and an audit log · weekly bench/captain with the `T0 - 5m` lock and the M+1 gate · the four jokers with one-per-week activation and cancel/refund · provisional scoring on read and finals on completion · leaderboard, league table, per-player and per-club points breakdowns · the admin's read of who picked what and what they have spent · the league→knockout act transition (eliminations, top-8 bonus, joker refresh, act transfer) and the knockout bracket through the final with advancement and medals · the background sync job with adaptive cadence and backoff · Ahtapot Paul, the weekly 1X2 coupon (§18.9) · the fixtures and multi-live page (§18.5) · the live delta feed on the hub (§18.6) · the season replay (§18.8).
+**Built and verified:** auth and admin-provisioned accounts, several of them signed in at once on the same browser · pots, clubs, matchweeks, matches, config · permanent squad with one-club-per-pot enforced in the database, late entry included · club-layer scoring with the per-pot rules editor · provider sync behind a swappable interface with manual-override protection and an audit log · weekly bench/captain with the `T0 - 5m` lock and the M+1 gate · the four jokers with one-per-week activation and cancel/refund · provisional scoring on read and finals on completion · leaderboard, league table, per-player and per-club points breakdowns · the admin's read of who picked what and what they have spent · the league→knockout act transition (eliminations, top-8 bonus, joker refresh, act transfer) and the knockout bracket through the final with advancement and medals · the background sync job with adaptive cadence and backoff · the clubs' own points table beside the participant leaderboard (§4.8) · Ahtapot Paul, the weekly 1X2 coupon (§18.9) · the fixtures and multi-live page (§18.5) · the live delta feed on the hub (§18.6) · the season replay (§18.8).
 
 **Deliberate deviations from the spec, all temporary:**
 
@@ -424,6 +424,10 @@ Incremental path: on match upsert, update that match's club lines (or live draft
 - Display ranks use standard competition ranking (“1224”): everyone level on the primary total shares a rank, and the next distinct total skips the places the tie consumed.
 - Tie-break: higher points in the most recent **completed** matchweek, then alphabetical `display_name`. This decides the order tied rows are **listed** in and never splits a shared rank, so the number on the leaderboard is the number the weekly rank delta reports.
 
+**The clubs have a table of their own**, on a second tab of the same page. It ranks all 36 by the club-layer points they have collected across the season (§4.2), a rank, the club, its pot and the total, so a player can see which clubs are actually paying before they think about their squad. It is the same table for everybody: clubs belong to the tournament and not to a competition, and a club nobody picked is on it like any other. Settled lines come from `team_point_entries`, a match in play is drafted on top the way every other total is (§4.3 Option A) and the drafted share is marked as live, and a knocked-out club stays on the table because the season it played still counted. Ranking is the same "1224" shape. The pot and then the club's name only order tied rows, they never split a shared rank.
+
+The club reads from the left of its column, behind its own crest, because a name centred over a badge looks like a caption rather than the row's subject. The pot beside it is a pill and not another figure, so a row of numbers has only the one number in it. The season's top scorer takes the gold the podium gives first place (§18.8), and a total below zero is marked as one.
+
 ---
 
 ## 5. External match data
@@ -655,7 +659,7 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 - Get permanent squad (put only before selection lock, except the act-transfer endpoint and a first-time late entry, §3.2; the response says which week a late entry would start at)
 - Get/put matchweek lineup before that week's lock
 - Act transfer: get grant / update selection while window open
-- Leaderboard; open picks after `T0(M)` (omit joker field when none)
+- Leaderboard; the clubs' points table, which needs no competition because clubs belong to the tournament; open picks after `T0(M)` (omit joker field when none)
 - Player points + weekly wrap (wrap when `matchweeks.status = complete`)
 - Briefing + difficulty band
 - Fixtures + multi-live bundle, addressed **by round** so a two-legged tie comes back as one payload with a section per leg (§10.1)
@@ -709,7 +713,7 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 | `/kadro` | Permanent squad + crest wall + act-transfer card | built |
 | `/hafta` | Lineup, jokers, briefing, Ahtapot Paul coupon, deadline drama, provisional points, wrap when complete | built |
 | `/lig` | League-phase table with the knockout cut lines | built |
-| `/puan-durumu` | Leaderboard | built |
+| `/puan-durumu` | Leaderboard: players, and the clubs' own points table on a second tab | built |
 | `/kurallar` | The whole game explained: squad and captaincy, locks and visibility, the rules matrix, jokers with their real grant counts, the league→knockout switch, the coupon, pots and their clubs | built |
 | `/oyuncu/:id` | Season breakdown per matchweek, down to the rule lines | built |
 | `/takim/:id` | Club matches and points, expandable to rule lines | built |
@@ -741,7 +745,7 @@ The grouping (the round a week belongs to, its place in the menu, what its leg i
 
 A table too wide for the screen scrolls inside its own card rather than moving the page, and the column that says which row you are looking at is pinned so it cannot scroll away from its own numbers. Most tables pin one column, the one naming the row: the rule on the rules matrices, the phase on the joker grants, the club on a club's weeks, the player on the open picks and on the admin's squads and users, the run's time on the sync log, the competition's name on competitions.
 
-The leaderboard and the league table pin **two**, because a bare `#` identifies nothing and the name beside it has to come with it. Their rank column is sized by `--freeze-lead` so the second column knows where to start, and it narrows on a phone where the cells are tighter anyway.
+The leaderboard, its clubs tab and the league table pin **two**, because a bare `#` identifies nothing and the name beside it has to come with it. Their rank column is sized by `--freeze-lead` so the second column knows where to start, and it narrows on a phone where the cells are tighter anyway.
 
 The weekly score breakdown pins nothing: it fits a phone as it is, and pinning a column that never moves only draws a line across the table for no reason.
 

@@ -8,7 +8,8 @@ real match results. See [PLAN.md](PLAN.md) for the authoritative product spec.
 > accounts, permanent squads, club scoring with the per-pot rules editor,
 > provider sync behind a swappable interface, weekly lineups with the
 > `T0 - 5m` lock, all four jokers, live provisional scoring, the leaderboard
-> with per-player and per-club breakdowns, and the run from the league phase
+> with per-player and per-club breakdowns and a second tab ranking the clubs
+> by what they have collected, and the run from the league phase
 > through the knockouts to the final. Since then it has also grown a
 > background sync job that polls the provider on an adaptive schedule, a
 > fixtures page that shows a whole round at a time and follows several live

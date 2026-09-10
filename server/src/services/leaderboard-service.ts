@@ -3,6 +3,7 @@ import { rankOf } from '../domain/ranking.ts';
 import {
   computeParticipantMatchweek,
   getTeamPointsForMatchweek,
+  liveTeamPointDrafts,
 } from './matchweek-scoring-service.ts';
 
 export interface RankMovement {
@@ -185,6 +186,78 @@ export async function getLeaderboard(competitionId: string): Promise<Leaderboard
 
   // Standard competition ranking. The sort above only decides display order;
   // the number itself comes from the shared helper (§4.8).
+  const totals = entries.map((e) => e.total);
+  return entries.map((e) => ({ ...e, rank: rankOf(e.total, totals) }));
+}
+
+export interface TeamLeaderboardEntry {
+  teamId: string;
+  name: string;
+  shortName: string;
+  crestUrl: string | null;
+  tierId: number;
+  eliminated: boolean;
+  /** Points from matches already settled. */
+  finalPoints: number;
+  /** The share still being played for, which a late goal can take back. */
+  provisionalPoints: number;
+  total: number;
+  rank: number;
+}
+
+/**
+ * What every club has collected this season, club-layer points only (§4.2).
+ * The same numbers the participant leaderboard is built from, read a club at a
+ * time instead of a squad at a time, so a club that nobody picked is on it too.
+ *
+ * Clubs belong to the tournament rather than to a competition, so this table is
+ * the same one for everybody. Settled lines come from `team_point_entries` and
+ * a match in play is drafted on top (§4.3 Option A), which is why the total
+ * carries its provisional share separately.
+ */
+export async function getTeamLeaderboard(): Promise<TeamLeaderboardEntry[]> {
+  const [teams, settled, drafts] = await Promise.all([
+    query<{
+      id: string;
+      name: string;
+      short_name: string;
+      crest_url: string | null;
+      tier_id: number;
+      eliminated_at: Date | null;
+    }>(
+      `SELECT id, name, short_name, crest_url, tier_id, eliminated_at
+       FROM teams WHERE is_active ORDER BY name`,
+    ),
+    query<{ team_id: string; points: number }>(
+      'SELECT team_id, sum(points)::int AS points FROM team_point_entries GROUP BY team_id',
+    ),
+    liveTeamPointDrafts(null),
+  ]);
+
+  const settledByTeam = new Map(settled.rows.map((r) => [r.team_id, r.points]));
+  const entries = teams.rows.map((t) => {
+    const finalPoints = settledByTeam.get(t.id) ?? 0;
+    const provisionalPoints = drafts.get(t.id) ?? 0;
+    return {
+      teamId: t.id,
+      name: t.name,
+      shortName: t.short_name,
+      crestUrl: t.crest_url,
+      tierId: t.tier_id,
+      eliminated: t.eliminated_at !== null,
+      finalPoints,
+      provisionalPoints,
+      total: finalPoints + provisionalPoints,
+    };
+  });
+
+  // Points decide the rank; the pot and then the name only decide the order
+  // tied clubs are listed in, never the number they are given (§4.8).
+  entries.sort((a, b) => {
+    if (b.total !== a.total) return b.total - a.total;
+    if (a.tierId !== b.tierId) return a.tierId - b.tierId;
+    return a.name.localeCompare(b.name);
+  });
   const totals = entries.map((e) => e.total);
   return entries.map((e) => ({ ...e, rank: rankOf(e.total, totals) }));
 }
