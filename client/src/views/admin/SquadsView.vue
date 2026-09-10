@@ -111,7 +111,7 @@ onMounted(load);
     </PageHeader>
 
     <section class="surface-card table-scroll">
-      <DataTable :value="rows" :loading="loading" data-key="userId">
+      <DataTable class="freeze-1" :value="rows" :loading="loading" data-key="userId">
         <Column :header="$t('admin.squads.player')">
           <template #body="{ data }">
             <div class="who">

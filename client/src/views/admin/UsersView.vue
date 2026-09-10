@@ -228,7 +228,7 @@ onMounted(load);
     </section>
 
     <section class="surface-card table-scroll">
-      <DataTable :value="users" :loading="loading" data-key="id">
+      <DataTable class="freeze-1" :value="users" :loading="loading" data-key="id">
         <Column field="display_name" :header="$t('admin.users.displayName')" />
         <Column field="username" :header="$t('auth.username')" />
         <Column :header="$t('admin.users.role')">

@@ -137,7 +137,13 @@ the participant and admin interfaces.
   the window widens past the breakpoint, so a menu is never left open on a
   layout that has no hamburger. A table wider than the screen sits in a
   `.table-scroll` box, and `.app-shell` clips the horizontal axis besides, so
-  the page itself never moves sideways whatever slips through.
+  the page itself never moves sideways whatever slips through. Such a table also
+  pins the column that says which row you are looking at, with `.freeze-1` on
+  the table (or on the `DataTable`). A table led by a bare rank takes
+  `.freeze-2` instead, because a `#` on its own identifies nothing and the name
+  beside it has to come along. Every one of them gives a highlighted row its
+  colour on the `tr` and never on the `td`: a pinned cell borrows its row's
+  background, and one painted on the cell would cover it.
 - **No `style` attributes in templates.** A declaration written where it is used
   cannot be reused, cannot be overridden and cannot be found later. Repeated
   ones earn a helper in `client/src/styles/main.css` (`.flush`, `.dialog-lead`,

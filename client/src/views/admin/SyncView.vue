@@ -150,7 +150,7 @@ onBeforeUnmount(() => { if (statusTimer) clearInterval(statusTimer); });
         {{ $t('admin.sync.recent') }}
       </div>
       <div class="table-scroll">
-        <table class="runs">
+        <table class="runs freeze-1">
           <thead>
             <tr>
               <th>{{ $t('admin.sync.colTime') }}</th>

@@ -123,7 +123,7 @@ onMounted(load);
         <div class="section-title">{{ $t('admin.users.jokersTitle') }}</div>
         <p class="text-muted note jokers-note">{{ $t('admin.config.jokersNote') }}</p>
         <div class="table-scroll">
-          <table class="grants">
+          <table class="grants freeze-1">
             <thead>
               <tr>
                 <th class="text-start">{{ $t('admin.config.phase') }}</th>

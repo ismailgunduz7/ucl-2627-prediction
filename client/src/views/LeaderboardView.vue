@@ -50,7 +50,7 @@ onMounted(async () => {
 
     <template v-else>
       <div class="surface-card table-scroll">
-        <table class="lb">
+        <table class="lb freeze-2">
           <thead>
             <tr>
               <th>#</th>

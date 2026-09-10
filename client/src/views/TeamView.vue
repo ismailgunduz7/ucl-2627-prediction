@@ -75,7 +75,7 @@ watch(() => route.params.id, (id) => id && load(id as string));
       </section>
 
       <section class="surface-card table-scroll">
-        <table class="matches">
+        <table class="matches freeze-1">
           <thead>
             <tr>
               <th class="text-start">{{ $t('team.weekColumn') }}</th>
@@ -137,8 +137,8 @@ watch(() => route.params.id, (id) => id && load(id as string));
 .matches thead th { background: var(--color-bg-subtle); font-size: 0.8rem; font-weight: 700; color: var(--color-text-secondary); }
 .matches tbody tr:last-child td { border-bottom: none; }
 .matches tr.clickable { cursor: pointer; }
-.matches tr.clickable:hover td { background: var(--color-surface-2); }
-.matches tr.open td { background: var(--color-surface-2); }
+.matches tr.clickable:hover { background: var(--color-surface-2); }
+.matches tr.open { background: var(--color-surface-2); }
 .entry-row td { background: var(--color-bg-subtle); padding: 0.6rem 1.1rem; }
 .entries { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; max-width: 360px; }
 .entries li { display: flex; justify-content: space-between; gap: 1rem; font-size: 0.84rem; }

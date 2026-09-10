@@ -737,6 +737,14 @@ The grouping (the round a week belongs to, its place in the menu, what its leg i
 - Users (create accounts, password resets, joker-inventory repair), competitions, squads, rules, matches with overrides and their audit history, sync, recalculate, and the settings page (provider, joker grants, deadline banner window, manual season progression); all built.
 - **Squads** (`/yonetim/kadrolar`) is a read-only table of who picked what: a row per participant, a column per pot, filterable by competition. A participant with no squad is listed all the same and marked, because finding those is half the reason to look, and a late entrant's row says which week their season starts at (§3.2). An eliminated club stays in its pot and is dimmed rather than removed, since it is still on the squad and still scoring nothing. The row also carries the four jokers with what is left of each, marked when one has been played and dimmed when the allowance is gone; the weeks a joker went on are in its tooltip. A cancelled activation was refunded and does not appear, because as far as the season is concerned it never happened (§3.6).
 
+### 10.3 Tables on a phone
+
+A table too wide for the screen scrolls inside its own card rather than moving the page, and the column that says which row you are looking at is pinned so it cannot scroll away from its own numbers. Most tables pin one column, the one naming the row: the rule on the rules matrices, the phase on the joker grants, the club on a club's weeks, the player on the open picks and on the admin's squads and users, the run's time on the sync log, the competition's name on competitions.
+
+The leaderboard and the league table pin **two**, because a bare `#` identifies nothing and the name beside it has to come with it. Their rank column is sized by `--freeze-lead` so the second column knows where to start, and it narrows on a phone where the cells are tighter anyway.
+
+The weekly score breakdown pins nothing: it fits a phone as it is, and pinning a column that never moves only draws a line across the table for no reason.
+
 UI copy is Turkish; code identifiers are English. The interface is dark-only, built on the design tokens and PrimeVue preset described in [AGENTS.md](AGENTS.md).
 
 ---
@@ -833,7 +841,7 @@ Ordered by what blocks a real season most. Shipped from this list already: the l
 The deploy is live and is what the rest of this list is now measured against: the client is a static Netlify site, the API a Node service on Render, `client/public/_redirects` proxies `/api/*` through the Netlify domain so the browser only ever meets one origin and the `SameSite=Lax` refresh cookie survives a reload, `POST /api/cron/tick` behind `CRON_SECRET` is there for a host that sleeps instead, and there is a root `Dockerfile` for anywhere that would rather take a container. README.md carries the operational detail.
 
 1. Remaining edge-case tests from §11: **a provider score correction after a finish** (§11.7) and **a postponed match holding its week open** (§11.17). The top-8 bonus (§11.22) is covered now. Both of the two left are decided in the SQL of `refreshMatchweekLifecycle` rather than in `server/src/domain`, so there is nothing pure to point a unit test at; covering them properly means either a throwaway database the suite can create and drop, or lifting the week's status rule out of that SQL into a pure function the service then applies. The second is the better shape and the riskier change, since that statement is where a completed week is rolled back and its finals deleted. The knockout draw arriving through sync belongs here too: the tie grouping is unit-tested, but no real published draw has landed on it yet, since UEFA makes that draw months after the league phase is seeded.
-2. **Responsive touch-ups.** The first responsive pass covered the shell, the pitch, the fixture rows, the wide tables and the dialogs, and the owner has since found further screens that do not sit right on a phone. Those are still to be named and fixed; the work is layout only, no behaviour changes.
+2. **Responsive touch-ups.** The first responsive pass covered the shell, the pitch, the fixture rows, the wide tables and the dialogs, and the owner has since found further screens that do not sit right on a phone. A wide table no longer scrolls away from its own subject: the column naming the row is pinned, two columns where a bare rank leads, which covers every table in the app (§10.3). Anything else is still to be named and fixed; the work is layout only, no behaviour changes.
 
 ---
 

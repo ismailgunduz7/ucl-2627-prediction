@@ -111,7 +111,7 @@ onMounted(load);
     </section>
 
     <section v-if="!loading" class="surface-card table-scroll">
-      <table class="rules">
+      <table class="rules freeze-1">
         <thead>
           <tr>
             <th class="text-start">{{ $t('rules.ruleColumn') }}</th>

@@ -48,7 +48,7 @@ onMounted(async () => {
       </div>
 
       <div class="surface-card table-scroll">
-        <table class="standings">
+        <table class="standings freeze-2">
           <thead>
             <tr>
               <th>#</th>

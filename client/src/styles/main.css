@@ -637,6 +637,70 @@ body.is-dragging {
   -webkit-overflow-scrolling: touch;
 }
 
+/* ---- Frozen columns ----
+   Scrolling a wide table sideways carries off the column that says which row
+   you are looking at, and what is left is a screenful of numbers belonging to
+   nobody. `.freeze-1` pins the column that names the row. `.freeze-2` pins two,
+   which is what a table led by a bare rank needs: a `#` on its own identifies
+   nothing, so the name beside it comes along.
+
+   A pinned cell has to be opaque or the columns sliding under it show through.
+   Header cells already carry the table header's colour; body cells take their
+   row's, so a highlighted row stays highlighted across the join. Give such a
+   row its colour on the `tr` and never on the `td`, or the pinned cell will
+   paint over it. A cell spanning the table (an expanded detail row) is left
+   where it is.
+
+   Collapsed borders belong to the table rather than to its cells, so a pinned
+   cell paints over the row lines that should run under it and the frozen
+   column loses its separators. Separate borders give each line back to the cell
+   that draws it, and with no spacing the table looks exactly as it did. These
+   selectors name the element so they beat the `border-collapse` each table sets
+   for itself, and the descendant form reaches the table PrimeVue builds inside
+   a DataTable. */
+table.freeze-1,
+table.freeze-2,
+.freeze-1 table,
+.freeze-2 table {
+  border-collapse: separate;
+  border-spacing: 0;
+}
+.freeze-1 tbody tr,
+.freeze-2 tbody tr {
+  background: var(--color-surface);
+}
+.freeze-1 :is(th, td):not([colspan]):first-child,
+.freeze-2 :is(th, td):not([colspan]):nth-child(-n + 2) {
+  position: sticky;
+  left: 0;
+  z-index: 1;
+}
+.freeze-1 tbody td:not([colspan]):first-child,
+.freeze-2 tbody td:not([colspan]):nth-child(-n + 2) {
+  background: inherit;
+}
+
+/* The lead column of a `.freeze-2` table holds a rank, so it is sized here and
+   the second column starts where it ends. Pinning both to `left: 0` would stack
+   them. */
+.freeze-2 {
+  --freeze-lead: 3rem;
+}
+.freeze-2 :is(th, td):first-child {
+  width: var(--freeze-lead);
+  min-width: var(--freeze-lead);
+  max-width: var(--freeze-lead);
+}
+.freeze-2 :is(th, td):not([colspan]):nth-child(2) {
+  left: var(--freeze-lead);
+}
+
+/* Where the pinned block ends, so it reads as an edge rather than a seam. */
+.freeze-1 :is(th, td):not([colspan]):first-child,
+.freeze-2 :is(th, td):not([colspan]):nth-child(2) {
+  box-shadow: 1px 0 0 var(--color-border), 10px 0 12px -10px rgb(0 0 0 / 0.55);
+}
+
 /* ---- PrimeVue overrides ---- */
 /* A dialog sized in pixels still has to fit inside the window. */
 .p-dialog {
@@ -797,6 +861,9 @@ body.is-dragging {
   .page-header-row > :not(:first-child) { width: 100%; }
   .page-header p { font-size: var(--text-sm); }
   .tier-grid { gap: var(--space-3); }
+  /* Cells are tighter here, so the pinned rank column can be too, and the
+     screen keeps more of itself for the columns that scroll. */
+  .freeze-2 { --freeze-lead: 2.2rem; }
   .brand { font-size: 0.94rem; }
   .brand-badge { width: 24px; height: 24px; }
 }

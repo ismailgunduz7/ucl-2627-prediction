@@ -120,7 +120,7 @@ onMounted(load);
     </section>
 
     <section class="surface-card table-scroll">
-      <DataTable :value="competitions" :loading="loading" data-key="id">
+      <DataTable class="freeze-1" :value="competitions" :loading="loading" data-key="id">
         <Column field="name" :header="$t('admin.competitions.name')" />
         <Column field="participant_count" :header="$t('admin.competitions.participants')" />
         <Column :header="$t('admin.competitions.createdAt')">

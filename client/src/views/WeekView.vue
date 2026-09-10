@@ -876,7 +876,7 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
       <section v-if="openPicks.available" class="surface-card card-pad">
         <div class="section-title">{{ $t('week.openPicksTitle') }}</div>
         <div class="table-scroll">
-          <table class="lines picks-table">
+          <table class="lines picks-table freeze-1">
             <thead>
               <tr>
                 <th>{{ $t('leaderboard.player') }}</th>
@@ -1166,7 +1166,8 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
 .lines tr.muted td { color: var(--color-text-muted); }
 /* Every column reads left, headers over their values. */
 .picks-table th, .picks-table td { text-align: left; padding-left: 0.5rem; }
-.picks-table tr.me td { background: var(--color-primary-soft); }
+.picks-table thead th { background: var(--color-bg-subtle); }
+.picks-table tr.me { background: var(--color-primary-soft); }
 .picks-table .you { color: var(--color-primary); font-size: var(--text-2xs); font-weight: 700; }
 .pick-joker { display: inline-flex; align-items: center; gap: 0.45rem; }
 .pick-joker .text-muted { font-size: var(--text-xs); }
