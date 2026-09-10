@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
+import { onBeforeRouteLeave, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import Select from 'primevue/select';
 import Message from 'primevue/message';
@@ -63,6 +64,7 @@ const PICK_OPTIONS: { value: Pick; label: string }[] = [
 ];
 
 const { t } = useI18n();
+const router = useRouter();
 const toast = useToast();
 const auth = useAuthStore();
 
@@ -80,6 +82,12 @@ const clubWeeks = ref<Map<string, ClubWeek>>(new Map());
 const openPicks = ref<{ available: boolean; picks: OpenPick[] }>({ available: false, picks: [] });
 const pots = ref<Pot[]>([]);
 const predictions = ref<WeekPredictions | null>(null);
+/** The coupon as it is being filled in, before the save button sends it. */
+const draft = ref(new Map<string, Pick | null>());
+/** Which week the draft belongs to, so switching weeks starts a clean coupon. */
+const draftMw = ref<string | null>(null);
+/** Where the player was heading when an unsaved coupon stopped them. */
+const leaveTo = ref<{ week: string } | { path: string } | null>(null);
 const deltas = ref<WeekDeltas | null>(null);
 const rankMove = ref<RankMove | null>(null);
 const loading = ref(true);
@@ -348,11 +356,15 @@ async function loadWeek() {
     api.get<WeekDeltas>(`/api/matchweeks/${id}/deltas`),
   ]);
   const [lu, sc, jk, br, op, pr, dl] = results;
+  // A live week re-reads itself once a minute; that must not wipe a coupon the
+  // player is still filling in.
+  const keepDraft = draftMw.value === id && couponDirty.value;
   lineup.value = lu.lineup; squad.value = lu.squad; score.value = sc.score;
   rankMove.value = sc.rankMove;
   inventory.value = jk.inventory; activeJoker.value = jk.active;
   briefing.value = br.briefing;
   clubWeeks.value = new Map(br.clubs.map((c) => [c.teamId, c])); openPicks.value = op; predictions.value = pr;
+  if (!keepDraft) seedDraft(id, pr);
   deltas.value = dl;
   benchId.value = lu.lineup?.benchTeamId ?? null;
   captainId.value = lu.lineup?.captainTeamId ?? null;
@@ -373,36 +385,133 @@ function scheduleLivePoll() {
   }, 60_000);
 }
 
-/** Clicking the live pick again takes it back. */
-async function pickOutcome(m: PredictionMatch, value: Pick) {
+/** Fill the coupon from what is stored, dropping anything unsaved. */
+function seedDraft(mwId: string, pr: WeekPredictions) {
+  draftMw.value = mwId;
+  draft.value = new Map(pr.matches.map((m) => [m.matchId, m.pick]));
+}
+
+/** The call standing on this match right now, saved or not. */
+function draftPick(m: PredictionMatch): Pick | null {
+  const held = draft.value.get(m.matchId);
+  return held === undefined ? m.pick : held;
+}
+
+/** Nothing travels on a click. Pressing the standing call again takes it back. */
+function togglePick(m: PredictionMatch, value: Pick) {
+  // Locked out mid-save too: the reply reseeds the coupon and would eat the tap.
   if (!predictions.value?.editable || busy.value) return;
-  const next = m.pick === value ? null : value;
-  const previous = m.pick;
-  m.pick = next; // optimistic, so the coupon answers the click at once
+  draft.value.set(m.matchId, draftPick(m) === value ? null : value);
+}
+
+/** The calls the coupon would write, the ones taken back included. */
+const couponChanges = computed(() =>
+  (predictions.value?.matches ?? [])
+    .filter((m) => draftPick(m) !== m.pick)
+    .map((m) => ({ matchId: m.matchId, pick: draftPick(m) })),
+);
+const couponDirty = computed(() => couponChanges.value.length > 0);
+/** How much of the coupon is filled in. A blank match is a match left uncalled. */
+const couponCalled = computed(
+  () => (predictions.value?.matches ?? []).filter((m) => draftPick(m) !== null).length,
+);
+/** Something to save, a week still open to save it in, and no request in flight. */
+const canSaveCoupon = computed(
+  () => (predictions.value?.editable ?? false) && couponDirty.value && !busy.value,
+);
+
+async function saveCoupon() {
+  const id = selectedMw.value;
+  if (!id || !canSaveCoupon.value) return;
+  const picks = couponChanges.value;
   busy.value = true;
   try {
-    predictions.value = await api.put<WeekPredictions>(
-      `/api/matchweeks/${selectedMw.value}/predictions`,
-      { matchId: m.matchId, pick: next },
-    );
+    const saved = await api.put<WeekPredictions>(`/api/matchweeks/${id}/predictions`, { picks });
+    predictions.value = saved;
+    seedDraft(id, saved);
+    toast.add({ severity: 'success', summary: t('week.couponSaved'), life: 2500 });
   } catch (e) {
-    m.pick = previous;
-    toast.add({ severity: 'error', summary: t('week.predictionFailed'), detail: msg(e), life: 4000 });
+    toast.add({ severity: 'error', summary: t('week.couponFailed'), detail: msg(e), life: 4000 });
   } finally {
     busy.value = false;
   }
 }
 
+/**
+ * Nothing on the coupon is written until the save button, so leaving with an
+ * unsent call would quietly throw it away. Both ways out of the page ask first:
+ * changing the week in the picker, and navigating off it.
+ */
+function chooseWeek(next: string) {
+  if (next === selectedMw.value) return;
+  if (couponDirty.value) {
+    leaveTo.value = { week: next };
+    return;
+  }
+  selectedMw.value = next;
+}
+
+onBeforeRouteLeave((to) => {
+  if (!couponDirty.value) return true;
+  leaveTo.value = { path: to.fullPath };
+  return false;
+});
+
+/**
+ * Closing the tab or reloading is the browser's own dialog, and its wording is
+ * the browser's too: a page has not been able to supply that text since 2016,
+ * when scam sites made it worth taking away. All we decide is whether it opens.
+ * Safari and older Chrome still gate that on `returnValue` rather than
+ * `preventDefault`, so both are set.
+ */
+function warnOnUnload(e: BeforeUnloadEvent) {
+  if (!couponDirty.value) return;
+  e.preventDefault();
+  e.returnValue = '';
+}
+
+/** Go where they were headed, coupon and all. */
+function leaveAnyway() {
+  const target = leaveTo.value;
+  leaveTo.value = null;
+  if (!target) return;
+  if ('week' in target) {
+    // Drop the unsent calls first, or the re-read would carry them over.
+    const current = selectedMw.value;
+    if (current && predictions.value) seedDraft(current, predictions.value);
+    selectedMw.value = target.week;
+  } else {
+    draft.value = new Map();
+    draftMw.value = null;
+    router.push(target.path);
+  }
+}
+
+async function saveAndLeave() {
+  await saveCoupon();
+  if (!couponDirty.value) leaveAnyway();
+}
+
 function pickState(m: PredictionMatch, value: Pick) {
-  if (m.pick !== value) return '';
-  if (!m.result) return 'on';
-  return m.result === value ? 'hit' : 'miss';
+  const held = draftPick(m);
+  if (held !== value) return '';
+  if (m.result) return m.result === value ? 'hit' : 'miss';
+  // Marked until it is sent, so a call still on the page cannot pass for a saved one.
+  return held === m.pick ? 'on' : 'on unsaved';
 }
 
 function msg(e: unknown) { return e instanceof ApiRequestError ? e.message : t('common.unexpectedError'); }
 
-onMounted(() => { loadAll(); timer = window.setInterval(() => (now.value = Date.now()), 1000); });
-onUnmounted(() => { window.clearInterval(timer); window.clearInterval(livePoller); });
+onMounted(() => {
+  loadAll();
+  timer = window.setInterval(() => (now.value = Date.now()), 1000);
+  window.addEventListener('beforeunload', warnOnUnload);
+});
+onUnmounted(() => {
+  window.clearInterval(timer);
+  window.clearInterval(livePoller);
+  window.removeEventListener('beforeunload', warnOnUnload);
+});
 watch(selectedMw, () => { if (!loading.value) loadWeek(); });
 watch(() => deltas.value?.live ?? false, scheduleLivePoll);
 </script>
@@ -412,13 +521,14 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
     <PageHeader :title="$t('week.title')" :subtitle="$t('week.subtitle')">
       <template #actions>
         <Select
-          v-model="selectedMw"
+          :model-value="selectedMw"
           :options="weekGroups"
           option-group-label="label"
           option-group-children="items"
           option-label="label"
           option-value="value"
         class="select-filter"
+          @update:model-value="chooseWeek"
         >
           <template #value="{ value }">{{ matchweekTitle(matchweeks, value) || $t('week.pickWeek') }}</template>
         </Select>
@@ -652,15 +762,27 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
                 type="button"
                 class="pick-btn press"
                 :class="pickState(m, opt.value)"
-                :disabled="!predictions.editable"
-                :aria-pressed="m.pick === opt.value"
+                :disabled="!predictions.editable || busy"
+                :aria-pressed="draftPick(m) === opt.value"
                 :aria-label="`${m.homeName} - ${m.awayName}: ${opt.label}`"
-                @click="pickOutcome(m, opt.value)"
+                @click="togglePick(m, opt.value)"
               >
                 {{ opt.label }}
               </button>
             </div>
           </div>
+        </div>
+
+        <div v-if="predictions.editable" class="paul-actions">
+          <span class="paul-count">
+            {{ $t('week.couponCalled', { called: couponCalled, total: predictions.matches.length }) }}
+          </span>
+          <Button
+            :label="$t('week.couponSave')"
+            :disabled="!canSaveCoupon"
+            :loading="busy"
+            @click="saveCoupon"
+          />
         </div>
       </section>
 
@@ -826,6 +948,20 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
       </div>
     </Dialog>
 
+    <Dialog
+      class="dialog-sm"
+      :visible="leaveTo !== null"
+      modal
+      :header="$t('week.unsavedTitle')"
+      @update:visible="leaveTo = null"
+    >
+      <p class="flush">{{ $t('week.unsavedBody') }}</p>
+      <template #footer>
+        <Button :label="$t('week.leaveAnyway')" text severity="danger" @click="leaveAnyway" />
+        <Button :label="$t('week.saveAndLeave')" :loading="busy" @click="saveAndLeave" />
+      </template>
+    </Dialog>
+
     <Dialog class="dialog-sm" v-model:visible="benchConflict" modal :header="$t('squad.conflictTitle')">
       <p class="flush">{{ $t('week.benchConflictBody') }}</p>
       <template #footer>
@@ -937,6 +1073,7 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
   .paul-row { align-items: flex-start; gap: var(--space-2); }
   .paul-picks { width: 100%; margin-left: 0; }
   .pick-btn { flex: 1; min-width: 0; }
+  .paul-actions { flex-direction: column; align-items: stretch; }
   .picks-table { min-width: 440px; }
   .delta-club { min-width: 0; }
 }
@@ -1019,11 +1156,19 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
 .pick-btn:hover:not(:disabled) { color: var(--color-text); border-color: var(--color-primary); }
 .pick-btn:disabled { cursor: default; }
 .pick-btn.on { background: var(--color-primary-soft); border-color: var(--color-primary); color: #fff; }
+/* Still on the page: this call has not reached the coupon yet. */
+.pick-btn.unsaved { border-style: dashed; }
 .pick-btn.hit { background: var(--color-success-soft); border-color: var(--color-success); color: var(--color-success); }
 .pick-btn.miss { background: var(--color-danger-soft); border-color: var(--color-danger); color: var(--color-danger); }
 @media (pointer: coarse) {
   .pick-btn { height: 44px; min-width: 60px; }
 }
+.paul-actions {
+  display: flex; align-items: center; justify-content: space-between; gap: var(--space-3);
+  margin-top: var(--space-4); padding-top: var(--space-4);
+  border-top: 1px solid var(--color-border);
+}
+.paul-count { font-size: var(--text-sm); color: var(--color-text-muted); }
 .lines tr:last-child td { border-bottom: none; }
 .lines tr.muted td { color: var(--color-text-muted); }
 /* Every column reads left, headers over their values. */

@@ -120,7 +120,14 @@ the participant and admin interfaces.
   the Champions League marks in `client/src/assets`. Prefer direct manipulation
   (drag a club to the bench) over forms and buttons.
 - Interactions save on their own. Do not add a separate "save" button for a
-  choice the user already made.
+  choice the user already made. The Ahtapot Paul coupon is the one exception,
+  and it earns it: a coupon is a dozen or so calls made in one sitting, so it
+  is filled in on the page and sent with a single button rather than firing a
+  request per tap (§18.9). A button like that stays disabled until there is
+  actually something unsent to send, and when the choice it saves closes for
+  good it leaves the page rather than sitting there greyed out. Anything held
+  back from the server that way asks before it is thrown away: leaving the page
+  with unsent changes has to stop on a dialog.
 - A person is listed the same way everywhere, in forms and in tables alike:
   **display name first, then username.** The name others know them by leads;
   the one they sign in with follows.

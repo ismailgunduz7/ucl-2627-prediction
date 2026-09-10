@@ -69,3 +69,21 @@ export function normalizeTally(stored: Partial<PredictionTally> | null | undefin
     provisional: stored?.provisional ?? 0,
   };
 }
+
+/** One line of a coupon on its way in. A `null` pick takes a call back. */
+export interface CouponEntry {
+  matchId: string;
+  pick: Outcome | null;
+}
+
+/**
+ * The coupon as it will be written. A coupon is saved whole, so the same match
+ * can arrive twice from a client that queued two taps; the last word wins. A
+ * line whose pick is `null` stays in the list rather than being dropped,
+ * because clearing a call is a save like any other.
+ */
+export function normalizeCoupon(entries: CouponEntry[]): CouponEntry[] {
+  const byMatch = new Map<string, Outcome | null>();
+  for (const entry of entries) byMatch.set(entry.matchId, entry.pick);
+  return [...byMatch].map(([matchId, pick]) => ({ matchId, pick }));
+}

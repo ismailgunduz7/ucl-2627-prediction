@@ -660,7 +660,7 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 - Briefing + difficulty band
 - Fixtures + multi-live bundle, addressed **by round** so a two-legged tie comes back as one payload with a section per leg (§10.1)
 - League phase standings
-- Ahtapot Paul: the week's matches with the participant's calls; save or clear one call before the lock (§18.9)
+- Ahtapot Paul: the week's matches with the participant's calls; save the coupon before the lock, one request carrying every call that changed and every call taken back (§18.9)
 - Live delta feed: the week's point events for the participant's scoring clubs (§18.6)
 - Scoring rules matrix (plus what a correct prediction is worth)
 - Jokers: inventory, activate, cancel (refund) before lock
@@ -849,7 +849,7 @@ The deploy is live and is what the rest of this list is now measured against: th
 8. League → knockout: mark league eliminations; jokers refresh; optional same-pot permanent transfer committed immediately, locked at first KO week lock; swap/act-transfer interaction per §3.6-3.7.
 9. Full path in scope; one-time `league_top8_bonus` for clubs finishing league positions 1-8 (idle play-off weeks score 0, no per-week bye award); no qualifying; no betting; no random mode.
 10. Crest wall + boosted chip; season replay; selection lock = MW1 lineup lock.
-11. Ahtapot Paul: one MS1/MS0/MS2 call per match of the week, locked with the lineup, each correct call worth the configured points inside that week's total.
+11. Ahtapot Paul: at most one MS1/MS0/MS2 call per match of the week, saved as a whole coupon and locked with the lineup, each correct call worth the configured points inside that week's total. An uncalled match scores nothing, and a call taken back is deleted by the next save.
 12. `/fikstur` shows a whole round at once (both legs of a tie, first legs above the returns) with live matches marked, the participant's own clubs picked out, and a figure beside a club only when its points actually reach that participant.
 
 ---
@@ -955,11 +955,14 @@ Final rank/total; best/worst week; joker usage; captain hit rate; act transfer c
 
 ### 18.9 Ahtapot Paul (1X2 predictions)
 
-A side game on top of the squad: for **every match of the matchweek** (not only the ones a participant's clubs play) they call the outcome as **MS1 / MS0 / MS2** (home / draw / away). Each correct call is worth `prediction_points_per_correct` (seeded 3, admin-editable), and those points join that week's participant total, so there is one score and one leaderboard.
+A side game on top of the squad: **any match of the matchweek** (not only the ones a participant's clubs play) can be called as **MS1 / MS0 / MS2** (home / draw / away), and a coupon is free to leave the rest blank. Each correct call is worth `prediction_points_per_correct` (seeded 3, admin-editable), and those points join that week's participant total, so there is one score and one leaderboard.
 
 - **One deadline.** The coupon locks with the lineup, at `T0 - 5 minutes` of the week's first kickoff (§3.4). Weeks open for editing under the M+1 rule are open for predictions too.
 - **Picks are stored per match**, as the outcome seen from the home side, so a provider reschedule cannot silently flip a call.
 - **Settlement follows the club layer** (§4.3 Option A): a finished match settles definitively, a live match counts on its current score, and a postponed or cancelled match counts for nobody. The week's tally therefore climbs live and is frozen by `finalizeMatchweek` along with the rest of the week.
 - Because a live match can turn, the tally carries a **`provisional` count** of how many of its settled picks sit on a match still being played, and the coupon header marks itself live whenever that is above zero. A tally the player sees without that marker is one that cannot move.
-- **Clicking the live pick again clears it**; there is no separate save.
+- **The coupon is saved in one go.** Tapping a pick only fills the coupon in on the page. A save button under the list sends every call that changed. It is disabled while there is nothing unsent to send or a save is already in flight, and once the week locks the whole footer **goes away** rather than sitting there greyed out: a locked coupon is a record, not a form. A pick still waiting to be sent is drawn with a dashed outline, so an unsent call never passes for a saved one, and the footer says how many of the week's matches are called.
+- **An unsent coupon is not lost silently.** Changing the week in the picker or navigating off the page stops on a dialog that offers to save first or to leave without saving. Closing the tab or reloading raises the browser's own warning, whose wording belongs to the browser and cannot be written by the page. Leaving without saving drops the unsent calls and keeps what is stored.
+- **Pressing the standing call again takes it back**, and the save writes that too: an entry with a `null` pick deletes the stored call rather than leaving it behind. The whole coupon lands in one transaction, so it is never half written.
+- **A coupon does not have to be complete.** A match nobody called simply scores nothing, which is why the request carries only the calls that changed and never the matches left alone.
 - Named for Paul the octopus. Lucide has no octopus, so the mark is drawn in `OctopusMark.vue` on the same grid and stroke as the rest of the icon set.

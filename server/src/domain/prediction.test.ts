@@ -1,6 +1,13 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { isOutcome, normalizeTally, outcomeOf, tallyPredictions, type Outcome } from './prediction.ts';
+import {
+  isOutcome,
+  normalizeCoupon,
+  normalizeTally,
+  outcomeOf,
+  tallyPredictions,
+  type Outcome,
+} from './prediction.ts';
 
 test('a score reads as an outcome from the home side', () => {
   assert.equal(outcomeOf(2, 1), 'home');
@@ -91,4 +98,35 @@ test('a breakdown written before the provisional count reads back as zero', () =
     provisional: 0,
   });
   assert.deepEqual(normalizeTally(null), { settled: 0, correct: 0, points: 0, provisional: 0 });
+});
+
+test('a coupon keeps the last word on a match called twice', () => {
+  assert.deepEqual(
+    normalizeCoupon([
+      { matchId: 'm1', pick: 'home' },
+      { matchId: 'm2', pick: 'draw' },
+      { matchId: 'm1', pick: 'away' },
+    ]),
+    [
+      { matchId: 'm1', pick: 'away' },
+      { matchId: 'm2', pick: 'draw' },
+    ],
+  );
+});
+
+test('a call taken back stays on the coupon, because clearing it is a save too', () => {
+  assert.deepEqual(
+    normalizeCoupon([
+      { matchId: 'm1', pick: null },
+      { matchId: 'm2', pick: 'home' },
+    ]),
+    [
+      { matchId: 'm1', pick: null },
+      { matchId: 'm2', pick: 'home' },
+    ],
+  );
+});
+
+test('a coupon that changed nothing carries nothing', () => {
+  assert.deepEqual(normalizeCoupon([]), []);
 });

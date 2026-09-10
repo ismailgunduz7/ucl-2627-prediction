@@ -1,9 +1,10 @@
-import { query } from '../db/pool.ts';
+import { query, withTransaction } from '../db/pool.ts';
 import { ApiError } from '../lib/errors.ts';
 import {
-  isOutcome,
+  normalizeCoupon,
   outcomeOf,
   tallyPredictions,
+  type CouponEntry,
   type Outcome,
   type PredictionTally,
 } from '../domain/prediction.ts';
@@ -11,9 +12,11 @@ import { getConfigValue } from './tournament-config-service.ts';
 import { getOrderedMatchweeks, lineupEditability } from './matchweek-lifecycle-service.ts';
 
 /**
- * Ahtapot Paul (§18.9): a 1X2 call on every match of the matchweek. Picks share
+ * Ahtapot Paul (§18.9): a 1X2 call on any match of the matchweek. Picks share
  * the lineup's deadline, one for the whole week, and pay out as part of that
- * week's participant score.
+ * week's participant score. The coupon is written in one go: a save carries
+ * every call the participant changed, the ones they took back included, and
+ * the matches they left alone stay blank.
  */
 
 export interface PredictionMatch {
@@ -126,12 +129,16 @@ export async function getWeekPredictions(userId: string, mwId: string): Promise<
   };
 }
 
-/** Save (or clear) one call. Rejected once the week's deadline has passed. */
-export async function savePrediction(
+/**
+ * Save a coupon. Each entry either writes a call or, with a `null` pick, takes
+ * one back, so the same request covers both. Nothing forces the coupon to be
+ * complete: a match with no entry and no stored pick simply goes uncalled.
+ * Rejected once the week's deadline has passed.
+ */
+export async function savePredictions(
   userId: string,
   mwId: string,
-  matchId: string,
-  pick: string | null,
+  entries: CouponEntry[],
 ): Promise<WeekPredictions> {
   const ordered = await getOrderedMatchweeks();
   const editability = lineupEditability(ordered, mwId);
@@ -139,25 +146,36 @@ export async function savePrediction(
     throw ApiError.badRequest('predictions_locked');
   }
 
-  const belongs = await query<{ id: string }>(
-    'SELECT id FROM matches WHERE id = $1 AND matchweek_id = $2',
-    [matchId, mwId],
-  );
-  if (!belongs.rows[0]) throw ApiError.badRequest('match_not_in_week');
-
-  if (pick === null) {
-    await query('DELETE FROM match_predictions WHERE user_id = $1 AND match_id = $2', [
-      userId,
-      matchId,
-    ]);
-  } else {
-    if (!isOutcome(pick)) throw ApiError.badRequest('invalid_pick');
-    await query(
-      `INSERT INTO match_predictions (user_id, match_id, pick) VALUES ($1, $2, $3)
-       ON CONFLICT (user_id, match_id)
-       DO UPDATE SET pick = EXCLUDED.pick, updated_at = now()`,
-      [userId, matchId, pick],
+  const coupon = normalizeCoupon(entries);
+  if (coupon.length > 0) {
+    const matchIds = coupon.map((e) => e.matchId);
+    const belong = await query<{ id: string }>(
+      'SELECT id FROM matches WHERE matchweek_id = $1 AND id = ANY($2::uuid[])',
+      [mwId, matchIds],
     );
+    if (belong.rows.length !== matchIds.length) throw ApiError.badRequest('match_not_in_week');
+
+    const cleared = coupon.filter((e) => e.pick === null).map((e) => e.matchId);
+    const called = coupon.filter((e) => e.pick !== null);
+    // One transaction, so a coupon never lands half written.
+    await withTransaction(async (client) => {
+      if (cleared.length > 0) {
+        await client.query(
+          'DELETE FROM match_predictions WHERE user_id = $1 AND match_id = ANY($2::uuid[])',
+          [userId, cleared],
+        );
+      }
+      if (called.length > 0) {
+        await client.query(
+          `INSERT INTO match_predictions (user_id, match_id, pick)
+           SELECT $1, c.match_id, c.pick
+           FROM UNNEST($2::uuid[], $3::text[]) AS c(match_id, pick)
+           ON CONFLICT (user_id, match_id)
+           DO UPDATE SET pick = EXCLUDED.pick, updated_at = now()`,
+          [userId, called.map((e) => e.matchId), called.map((e) => e.pick)],
+        );
+      }
+    });
   }
 
   return getWeekPredictions(userId, mwId);

@@ -36,7 +36,7 @@ import {
   getInventory,
 } from '../services/joker-service.ts';
 import { getBriefing, getClubWeeks, getOpenPicks } from '../services/briefing-service.ts';
-import { getWeekPredictions, savePrediction } from '../services/prediction-service.ts';
+import { getWeekPredictions, savePredictions } from '../services/prediction-service.ts';
 import { getRoundFixtures } from '../services/fixture-service.ts';
 import { getWeekDeltas } from '../services/delta-service.ts';
 import { getSeasonReplay } from '../services/season-replay-service.ts';
@@ -233,22 +233,24 @@ participantRoutes.get('/matchweeks/:id/predictions', async (c) => {
   return c.json(predictions);
 });
 
-const PredictionSchema = z.object({
-  matchId: z.string().uuid(),
-  // null clears a call the participant no longer wants to make.
-  pick: z.enum(['home', 'draw', 'away']).nullable(),
+// The coupon is saved whole, so one request carries every call that changed.
+const CouponSchema = z.object({
+  picks: z
+    .array(
+      z.object({
+        matchId: z.string().uuid(),
+        // null clears a call the participant no longer wants to make.
+        pick: z.enum(['home', 'draw', 'away']).nullable(),
+      }),
+    )
+    .max(64),
 });
 
 participantRoutes.put('/matchweeks/:id/predictions', async (c) => {
   const auth = c.get('auth');
-  const body = PredictionSchema.safeParse(await c.req.json().catch(() => null));
+  const body = CouponSchema.safeParse(await c.req.json().catch(() => null));
   if (!body.success) throw ApiError.badRequest('invalid_prediction_request');
-  const predictions = await savePrediction(
-    auth.sub,
-    c.req.param('id'),
-    body.data.matchId,
-    body.data.pick,
-  );
+  const predictions = await savePredictions(auth.sub, c.req.param('id'), body.data.picks);
   return c.json(predictions);
 });
 
