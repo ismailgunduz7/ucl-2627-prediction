@@ -285,7 +285,7 @@ Details in §10 and §18.
 | Weekly wrap card | Personal end-of-week summary (in-app; share export not required) |
 | Open picks after kickoff | Bench, captain, and joker (if any) visible to peers from `T0(M)` |
 | Multi-live tracker | Concurrent live matches, own clubs pinned |
-| Ahtapot Paul | MS1/MS0/MS2 on every match of the week, points into the weekly total |
+| Ahtapot Paul | A 1X2 call on every match of the week, points into the weekly total |
 | Live delta | Point deltas as live/finished scores update |
 | Crest wall | Four crests; mute bench unless bench boost (+ optional boosted chip) |
 | Season replay | End-of-season retrospective |
@@ -849,7 +849,7 @@ The deploy is live and is what the rest of this list is now measured against: th
 8. League → knockout: mark league eliminations; jokers refresh; optional same-pot permanent transfer committed immediately, locked at first KO week lock; swap/act-transfer interaction per §3.6-3.7.
 9. Full path in scope; one-time `league_top8_bonus` for clubs finishing league positions 1-8 (idle play-off weeks score 0, no per-week bye award); no qualifying; no betting; no random mode.
 10. Crest wall + boosted chip; season replay; selection lock = MW1 lineup lock.
-11. Ahtapot Paul: at most one MS1/MS0/MS2 call per match of the week, saved as a whole coupon and locked with the lineup, each correct call worth the configured points inside that week's total. An uncalled match scores nothing, and a call taken back is deleted by the next save.
+11. Ahtapot Paul: at most one 1X2 call per match of the week, saved as a whole coupon and locked with the lineup, each correct call worth the configured points inside that week's total. An uncalled match scores nothing, and a call taken back is deleted by the next save.
 12. `/fikstur` shows a whole round at once (both legs of a tie, first legs above the returns) with live matches marked, the participant's own clubs picked out, and a figure beside a club only when its points actually reach that participant.
 
 ---
@@ -955,7 +955,7 @@ Final rank/total; best/worst week; joker usage; captain hit rate; act transfer c
 
 ### 18.9 Ahtapot Paul (1X2 predictions)
 
-A side game on top of the squad: **any match of the matchweek** (not only the ones a participant's clubs play) can be called as **MS1 / MS0 / MS2** (home / draw / away), and a coupon is free to leave the rest blank. Each correct call is worth `prediction_points_per_correct` (seeded 3, admin-editable), and those points join that week's participant total, so there is one score and one leaderboard.
+A side game on top of the squad: **any match of the matchweek** (not only the ones a participant's clubs play) can be called as home / draw / away, and a coupon is free to leave the rest blank. Each language marks the three the way its own coupons do, so a Turkish coupon reads **MS1 / MS0 / MS2** and an English one the 1X2 market's **1 / X / 2**. The mark is catalogue copy in `paul.pick.*`, never a constant in a component. Each correct call is worth `prediction_points_per_correct` (seeded 3, admin-editable), and those points join that week's participant total, so there is one score and one leaderboard.
 
 - **One deadline.** The coupon locks with the lineup, at `T0 - 5 minutes` of the week's first kickoff (§3.4). Weeks open for editing under the M+1 rule are open for predictions too.
 - **Picks are stored per match**, as the outcome seen from the home side, so a provider reschedule cannot silently flip a call.

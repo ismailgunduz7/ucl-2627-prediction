@@ -205,6 +205,11 @@ export default {
     name: 'Ahtapot Paul',
     correctOf: '{correct}/{settled} doğru',
     correctCount: '{correct} doğru',
+    pick: {
+      home: 'MS1',
+      draw: 'MS0',
+      away: 'MS2',
+    },
   },
   leaderboard: {
     title: 'Puan durumu',

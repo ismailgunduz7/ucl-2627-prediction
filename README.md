@@ -12,7 +12,7 @@ real match results. See [PLAN.md](PLAN.md) for the authoritative product spec.
 > through the knockouts to the final. Since then it has also grown a
 > background sync job that polls the provider on an adaptive schedule, a
 > fixtures page that shows a whole round at a time and follows several live
-> matches at once, **Ahtapot Paul** (a weekly MS1/MS0/MS2 coupon on every
+> matches at once, **Ahtapot Paul** (a weekly 1X2 coupon on every
 > match), a live feed on the weekly hub that itemises each point as it lands,
 > and a season replay that unlocks once the final is played. A player who
 > missed the squad deadline is no longer stuck outside the season either: they

@@ -204,6 +204,11 @@ export default {
     name: 'Paul the Octopus',
     correctOf: '{correct}/{settled} right',
     correctCount: '{correct} right',
+    pick: {
+      home: '1',
+      draw: 'X',
+      away: '2',
+    },
   },
   leaderboard: {
     title: 'Leaderboard',
@@ -264,7 +269,7 @@ export default {
     permanently: 'for good',
     knockoutBody2: 'Jokers are dealt again for the knockouts, and one transfer is granted: a club in the squad may be replaced {permanently} by another from the same pot. The window stays open until the first knockout week locks, and the choice can be changed as often as you like inside it. An unused transfer expires.',
     knockoutBody3: 'Every leg of a knockout round is its own week. Lineup, joker and coupon lock leg by leg.',
-    paulBody: 'Every match of the week takes a prediction: a home win (MS1), a draw (MS0) or an away win (MS2). The match need not involve any of your own clubs. Each one you get right is worth {points} points and goes onto your weekly total. The coupon locks with the lineup. Picks are sent together when the save button is pressed. No match has to be called. Tapping a pick again takes it back, and the next save clears it.',
+    paulBody: 'Every match of the week takes a prediction: a home win (1), a draw (X) or an away win (2). The match need not involve any of your own clubs. Each one you get right is worth {points} points and goes onto your weekly total. The coupon locks with the lineup. Picks are sent together when the save button is pressed. No match has to be called. Tapping a pick again takes it back, and the next save clears it.',
     potsTitle: 'Pots and clubs',
   },
   replay: {

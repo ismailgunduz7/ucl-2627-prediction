@@ -19,6 +19,7 @@ import FixtureLine from '@/components/FixtureLine.vue';
 import OctopusMark from '@/components/OctopusMark.vue';
 import TeamCrest from '@/components/TeamCrest.vue';
 import { JOKER_CODES, JOKER_ICONS, jokerName } from '@/lib/jokers';
+import { PICK_VALUES, pickLabel, type Pick } from '@/lib/predictions';
 import { groupMatchweeks, matchweekTitle, type MatchweekMenu } from '@/lib/matchweeks';
 import { usePointerDrag } from '@/composables/usePointerDrag';
 import { lower, ordinal } from '@/lib/format';
@@ -42,7 +43,6 @@ interface Pot {
   tierId: number;
   teams: { id: string; name: string; crestUrl: string | null; eliminated: boolean; isActive: boolean }[];
 }
-type Pick = 'home' | 'draw' | 'away';
 interface PredictionMatch {
   matchId: string; homeName: string; awayName: string; kickoffAt: string | null; status: string;
   homeScore: number | null; awayScore: number | null; pick: Pick | null; result: Pick | null;
@@ -55,13 +55,6 @@ interface DeltaEvent { ruleCode: string; label: string; points: number; provisio
 interface ClubDeltas { teamId: string; name: string; shortName: string; captain: boolean; events: DeltaEvent[] }
 interface WeekDeltas { matchweekId: string; live: boolean; clubs: ClubDeltas[] }
 interface RankMove { rank: number; prevRank: number | null }
-
-/** MS1 / MS0 / MS2, written the way a coupon writes them. */
-const PICK_OPTIONS: { value: Pick; label: string }[] = [
-  { value: 'home', label: 'MS1' },
-  { value: 'draw', label: 'MS0' },
-  { value: 'away', label: 'MS2' },
-];
 
 const { t } = useI18n();
 const router = useRouter();
@@ -757,17 +750,17 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
             />
             <div class="paul-picks">
               <button
-                v-for="opt in PICK_OPTIONS"
-                :key="opt.value"
+                v-for="opt in PICK_VALUES"
+                :key="opt"
                 type="button"
                 class="pick-btn press"
-                :class="pickState(m, opt.value)"
+                :class="pickState(m, opt)"
                 :disabled="!predictions.editable || busy"
-                :aria-pressed="draftPick(m) === opt.value"
-                :aria-label="`${m.homeName} - ${m.awayName}: ${opt.label}`"
-                @click="togglePick(m, opt.value)"
+                :aria-pressed="draftPick(m) === opt"
+                :aria-label="`${m.homeName} - ${m.awayName}: ${pickLabel(opt)}`"
+                @click="togglePick(m, opt)"
               >
-                {{ opt.label }}
+                {{ pickLabel(opt) }}
               </button>
             </div>
           </div>

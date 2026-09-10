@@ -8,16 +8,16 @@ import CaptainBadge from '@/components/CaptainBadge.vue';
 import { api } from '@/lib/api';
 import { roundKeyOf, type MatchweekMenu, type RoundOption } from '@/lib/matchweeks';
 import { formatDayLong, formatTime } from '@/lib/format';
+import { pickLabel, type Pick } from '@/lib/predictions';
 
 interface Mw { id: string; label: string; status: string; opened: boolean; menu: MatchweekMenu }
-type Outcome = 'home' | 'draw' | 'away';
 interface Side {
   teamId: string; name: string; shortName: string; tierId: number; score: number | null;
   mine: boolean; benched: boolean; captain: boolean; counts: boolean; points: number | null;
 }
 interface Fixture {
   matchId: string; kickoffAt: string | null; status: string; stage: string;
-  result: Outcome | null; pick: Outcome | null; home: Side; away: Side;
+  result: Pick | null; pick: Pick | null; home: Side; away: Side;
 }
 interface Section {
   matchweekId: string; legLabel: string | null; fixtures: Fixture[];
@@ -34,8 +34,6 @@ const selectedRound = ref<string | null>(null);
 const data = ref<RoundFixtures | null>(null);
 const loading = ref(true);
 let poller: number | undefined;
-
-const PICK_LABEL: Record<Outcome, string> = { home: 'MS1', draw: 'MS0', away: 'MS2' };
 
 const sections = computed(() => data.value?.sections ?? []);
 const fixtures = computed(() => sections.value.flatMap((s) => s.fixtures));
@@ -189,7 +187,7 @@ watch(liveOnes, schedulePoll);
                 v-if="f.pick"
                 class="pick-chip"
                 :class="f.result ? (f.result === f.pick ? 'hit' : 'miss') : ''"
-              >{{ PICK_LABEL[f.pick] }}</span>
+              >{{ pickLabel(f.pick) }}</span>
             </span>
           </div>
         </section>
