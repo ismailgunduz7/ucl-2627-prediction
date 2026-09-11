@@ -24,7 +24,10 @@ import { groupMatchweeks, matchweekTitle, type MatchweekMenu } from '@/lib/match
 import { usePointerDrag } from '@/composables/usePointerDrag';
 import { lower, ordinal } from '@/lib/format';
 
-interface Mw { id: string; label: string; status: string; editable: boolean; opened: boolean; locked: boolean; menu: MatchweekMenu }
+interface Mw {
+  id: string; label: string; status: string; firstKickoffAt: string | null;
+  editable: boolean; opened: boolean; locked: boolean; menu: MatchweekMenu;
+}
 interface SquadClub {
   teamId: string; tierId: number; name: string; shortName: string;
   crestUrl: string | null; eliminated: boolean;
@@ -129,6 +132,18 @@ const pickableMatchweeks = computed(() => {
 const weekGroups = computed(() => groupMatchweeks(pickableMatchweeks.value));
 const editable = computed(() => lineup.value?.editable ?? false);
 const isComplete = computed(() => currentMw.value?.status === 'complete');
+/**
+ * Whether a ball has actually been kicked this week. `opened` only says the
+ * week is open for edits under the M+1 rule, which can be a month before
+ * anybody plays, so it says nothing about points. Read from the status once the
+ * season has moved the week on, and from the clock until it has.
+ */
+const weekStarted = computed(() => {
+  const mw = currentMw.value;
+  if (!mw) return false;
+  if (mw.status === 'in_progress' || mw.status === 'complete') return true;
+  return mw.firstKickoffAt !== null && now.value >= new Date(mw.firstKickoffAt).getTime();
+});
 
 // A player who built their squad late sat this week out, so there is nothing to
 // show for it: no lineup was ever theirs and no points were ever scored.
@@ -645,7 +660,7 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
               </span>
             </div>
 
-            <div class="club-foot">
+            <div v-if="weekStarted" class="club-foot">
               <span v-if="lineFor(club.teamId)" class="pts" :class="lineFor(club.teamId)!.contributed >= 0 ? 'text-positive' : 'text-negative'">
                 {{ lineFor(club.teamId)!.contributed >= 0 ? '+' : '' }}{{ lineFor(club.teamId)!.contributed }}
               </span>
