@@ -1,10 +1,10 @@
 <script setup lang="ts">
 import { ref, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { Zap, Shield, Repeat, Armchair } from '@lucide/vue';
 import { api } from '@/lib/api';
 import PageHeader from '@/components/PageHeader.vue';
 import BallLoader from '@/components/BallLoader.vue';
+import { JOKER_ICONS } from '@/lib/jokers';
 
 interface RuleRow { code: string; category: string; label: string; points: Record<number, number> }
 interface Pot { tierId: number; tierName: string; teams: { id: string; name: string }[] }
@@ -18,12 +18,11 @@ const predictionPoints = ref(3);
 const grants = ref<JokerGrants | null>(null);
 const loading = ref(true);
 
-const jokers = [
-  { code: 'triple_boost', icon: Zap },
-  { code: 'bench_boost', icon: Armchair },
-  { code: 'clean_sheet_shield', icon: Shield },
-  { code: 'weekly_swap', icon: Repeat },
-];
+// The marks come from the one place that defines them, so the rules page can
+// never explain a joker with an icon the pitch no longer uses.
+const jokers = ['triple_boost', 'bench_boost', 'clean_sheet_shield', 'weekly_swap'].map(
+  (code) => ({ code, icon: JOKER_ICONS[code] }),
+);
 
 function grantLine(code: string): string | null {
   const g = grants.value;
