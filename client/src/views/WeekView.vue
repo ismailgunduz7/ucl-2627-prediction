@@ -84,6 +84,17 @@ const leaveTo = ref<{ week: string } | { path: string } | null>(null);
 const deltas = ref<WeekDeltas | null>(null);
 const rankMove = ref<RankMove | null>(null);
 const loading = ref(true);
+/**
+ * A different week is on its way in. The page used to keep the last week's
+ * numbers on screen until the new ones landed, and worse, the banners above the
+ * pitch answered straight away from whatever was already loaded: the week's own
+ * status is known the moment it is picked, but whether the lineup is still open
+ * comes from the lineup, which is still the previous week's. So picking a
+ * finished week said "week over" before the pitch had caught up, and coming
+ * back said "locked" about a week with a month left on it. Nothing week-specific
+ * is shown while this is true; the pitch carries the wait instead.
+ */
+const switching = ref(false);
 const busy = ref(false);
 const now = ref(Date.now());
 let timer: number | undefined;
@@ -361,6 +372,9 @@ async function loadWeek() {
     api.get<WeekPredictions>(`/api/matchweeks/${id}/predictions`),
     api.get<WeekDeltas>(`/api/matchweeks/${id}/deltas`),
   ]);
+  // Two quick switches race, and the slower reply must not be the one that
+  // lands. Whatever week is on screen now is the only one worth writing.
+  if (selectedMw.value !== id) return;
   const [lu, sc, jk, br, op, pr, dl] = results;
   // A live week re-reads itself once a minute; that must not wipe a coupon the
   // player is still filling in.
@@ -518,7 +532,18 @@ onUnmounted(() => {
   window.clearInterval(livePoller);
   window.removeEventListener('beforeunload', warnOnUnload);
 });
-watch(selectedMw, () => { if (!loading.value) loadWeek(); });
+watch(selectedMw, async () => {
+  if (loading.value) return;
+  const id = selectedMw.value;
+  switching.value = true;
+  try {
+    await loadWeek();
+  } finally {
+    // A third week picked while this one was loading owns the wait now, so
+    // only the switch still on screen is allowed to end it.
+    if (selectedMw.value === id) switching.value = false;
+  }
+});
 watch(() => deltas.value?.live ?? false, scheduleLivePoll);
 </script>
 
@@ -550,19 +575,23 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
     </Message>
 
     <template v-else>
-      <Message v-if="isComplete" severity="success" :closable="false">{{ $t('week.complete') }}</Message>
-      <Message v-else-if="!currentMw?.opened" severity="secondary" :closable="false">
-        {{ $t('week.notOpen') }}
-      </Message>
-      <Message v-else-if="drama" severity="warn" :closable="false">
-        {{ $t('week.drama', { countdown }) }}
-      </Message>
-      <Message v-else-if="editable && countdown" severity="info" :closable="false">
-        {{ $t('week.untilLock', { countdown }) }}
-      </Message>
-      <Message v-else-if="!editable" severity="warn" :closable="false">{{ $t('week.locked') }}</Message>
+      <template v-if="!switching">
+        <Message v-if="isComplete" severity="success" :closable="false">{{ $t('week.complete') }}</Message>
+        <Message v-else-if="!currentMw?.opened" severity="secondary" :closable="false">
+          {{ $t('week.notOpen') }}
+        </Message>
+        <Message v-else-if="drama" severity="warn" :closable="false">
+          {{ $t('week.drama', { countdown }) }}
+        </Message>
+        <Message v-else-if="editable && countdown" severity="info" :closable="false">
+          {{ $t('week.untilLock', { countdown }) }}
+        </Message>
+        <Message v-else-if="!editable" severity="warn" :closable="false">{{ $t('week.locked') }}</Message>
+      </template>
 
       <section class="pitch surface-card">
+        <BallLoader v-if="switching" class="pitch-wait" />
+        <template v-else>
         <div class="zone-label">{{ $t('week.onPitch') }}</div>
         <div class="pitch-grid stagger">
           <div
@@ -786,9 +815,10 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
           <span class="hint-fine">{{ $t('week.dragHintFine') }}</span>
           <span class="hint-coarse">{{ $t('week.dragHintCoarse') }}</span>
         </p>
+        </template>
       </section>
 
-      <section v-if="predictions?.matches.length" class="surface-card card-pad">
+      <section v-if="!switching && predictions?.matches.length" class="surface-card card-pad">
         <div class="section-title paul-head">
           <span class="paul-name"><OctopusMark :size="20" /> {{ $t('paul.name') }}</span>
           <span v-if="predictions.tally.settled" class="paul-tally">
@@ -843,7 +873,7 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
         </div>
       </section>
 
-      <section v-if="score" class="surface-card card-pad">
+      <section v-if="!switching && score" class="surface-card card-pad">
         <div class="section-title section-title-row">
           <span>{{ isComplete ? $t('week.wrapTitle') : $t('week.liveTitle') }}
             <JokerIcon v-if="score.jokerCode" :code="score.jokerCode" :size="17" />
@@ -910,7 +940,7 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
         </div>
       </section>
 
-      <section v-if="deltas?.clubs.length && !isComplete" class="surface-card card-pad">
+      <section v-if="!switching && deltas?.clubs.length && !isComplete" class="surface-card card-pad">
         <div class="section-title delta-head">
           <span>{{ $t('week.deltaTitle') }}</span>
           <span v-if="deltas.live" class="live-chip"><span class="dot" />{{ $t('common.live') }}</span>
@@ -937,7 +967,7 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
         </div>
       </section>
 
-      <section v-if="openPicks.available" class="surface-card card-pad">
+      <section v-if="!switching && openPicks.available" class="surface-card card-pad">
         <div class="section-title">{{ $t('week.openPicksTitle') }}</div>
         <div class="table-scroll">
           <table class="lines picks-table freeze-1">
@@ -1132,6 +1162,10 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
   border-color: var(--color-primary); color: #fff;
   box-shadow: 0 0 16px rgba(99, 102, 241, 0.5);
 }
+/* The loader stands where the lineup would be, at roughly its height, so
+   switching weeks does not collapse the page and bounce it back. */
+.pitch-wait { min-height: 340px; display: grid; place-items: center; }
+
 /* Under the pitch, on the pitch's own three columns: the bench takes one of
    them so a benched club is the same size as a club that plays, and the jokers
    take the other two as a two-by-two block. The bench used to be a narrow box
