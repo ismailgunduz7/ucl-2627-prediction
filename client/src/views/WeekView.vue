@@ -626,6 +626,9 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
               <TeamCrest :name="club.name" :crest-url="club.crestUrl" size="lg" />
             </RouterLink>
             <div class="club-title">
+              <span class="pot-badge" :title="$t('common.pot', { number: club.tierId })">
+                {{ $t('common.potShort', { number: club.tierId }) }}
+              </span>
               <span class="club-name">{{ club.name }}</span>
               <CaptainBadge
                 v-if="club.teamId === captainId"
@@ -648,6 +651,9 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
                     :aria-label="f.home ? $t('week.atHome') : $t('week.away')"
                   />
                   <span class="club-opp">{{ f.opponentName }}</span>
+                  <span class="pot-badge" :title="$t('common.pot', { number: f.opponentTierId })">
+                    {{ $t('common.potShort', { number: f.opponentTierId }) }}
+                  </span>
                 </span>
                 <span
                   v-if="i === 0 && weekOf(club.teamId)!.difficulty"
@@ -733,6 +739,9 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
               />
             </RouterLink>
             <div class="club-title">
+              <span class="pot-badge" :title="$t('common.pot', { number: benchClub.tierId })">
+                {{ $t('common.potShort', { number: benchClub.tierId }) }}
+              </span>
               <span class="club-name">{{ benchClub.name }}</span>
               <CaptainBadge
                 v-if="benchClub.teamId === captainId"
@@ -754,6 +763,9 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
                     :aria-label="f.home ? $t('week.atHome') : $t('week.away')"
                   />
                   <span class="club-opp">{{ f.opponentName }}</span>
+                  <span class="pot-badge" :title="$t('common.pot', { number: f.opponentTierId })">
+                    {{ $t('common.potShort', { number: f.opponentTierId }) }}
+                  </span>
                 </span>
                 <span
                   v-if="i === 0 && weekOf(benchClub.teamId)!.difficulty"
@@ -1114,14 +1126,29 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
 .club-card.is-captain { border-color: var(--color-warning); box-shadow: 0 0 0 1px var(--color-warning), 0 0 22px rgba(251, 191, 36, 0.18); }
 .crest-link { text-decoration: none; }
 .crest.dim { filter: grayscale(0.7); opacity: 0.75; }
+/* Which pot a club came out of, beside its name and beside every opponent's.
+   It decides what the club is worth (rules are per pot, §4.2) and what it may
+   be swapped for, so it belongs next to the name rather than a page away. Short
+   on the card because the card is 154px wide on a phone; the full words are in
+   the title. */
+.pot-badge {
+  flex-shrink: 0; padding: 0.05rem 0.35rem;
+  border-radius: var(--radius-pill);
+  border: 1px solid var(--color-border);
+  background: var(--color-bg-subtle); color: var(--color-text-muted);
+  font-size: var(--text-2xs); font-weight: 800;
+  font-variant-numeric: tabular-nums; cursor: help;
+}
+.club-fixture .pot-badge { border-color: transparent; padding: 0 0.2rem; }
+
 /* The armband sits beside the name rather than under it. On its own line it
    made the tallest card in a row, and a grid row is as tall as its tallest
    card, so one captain used to stretch every club on the pitch. */
 .club-title {
   display: flex; align-items: center; justify-content: center;
-  gap: 0.4rem; min-width: 0;
+  gap: 0.4rem; min-width: 0; max-width: 100%;
 }
-.club-name { font-size: 0.88rem; font-weight: 700; text-align: center; line-height: 1.25; }
+.club-name { min-width: 0; font-size: 0.88rem; font-weight: 700; text-align: center; line-height: 1.25; overflow-wrap: anywhere; }
 /* The week the club is walking into, on the card itself. It used to sit in a
    panel below the pitch, which meant scrolling away from the lineup to find out
    who any of these clubs actually play. The band rides on the first fixture's
@@ -1136,9 +1163,9 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
   max-width: 100%; min-width: 0;
   color: var(--color-text-muted); font-size: var(--text-2xs);
 }
-.club-opp-line { display: inline-flex; align-items: center; gap: 0.3rem; min-width: 0; }
+.club-opp-line { display: inline-flex; align-items: center; gap: 0.3rem; min-width: 0; max-width: 100%; }
 .club-fixture svg { flex-shrink: 0; }
-.club-opp { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.club-opp { min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 .club-bye { color: var(--color-text-muted); font-size: var(--text-2xs); font-style: italic; }
 /* A band, not a badge: it says how hard the week is without shouting a colour
    louder than the club it belongs to. */

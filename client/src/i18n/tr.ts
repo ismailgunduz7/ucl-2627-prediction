@@ -29,6 +29,7 @@ export default {
     eliminated: 'Elendi',
     you: 'sen',
     pot: 'Pot {number}',
+    potShort: 'P{number}',
     versus: 'vs',
     countdownDays: '{d} gün {h} saat',
     countdownHours: '{h} saat {m} dk',

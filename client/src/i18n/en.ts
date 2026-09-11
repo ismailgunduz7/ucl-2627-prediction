@@ -28,6 +28,7 @@ export default {
     eliminated: 'Knocked out',
     you: 'you',
     pot: 'Pot {number}',
+    potShort: 'P{number}',
     versus: 'vs',
     countdownDays: '{d} days {h} hours',
     countdownHours: '{h} hours {m} min',
