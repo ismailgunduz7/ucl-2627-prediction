@@ -748,6 +748,8 @@ The grouping (the round a week belongs to, its place in the menu, what its leg i
 
 **A club shows no points before a ball is kicked.** A week opens for edits under the M+1 rule, which can be a month before anybody plays, so a week being open says nothing about points: a row of `+0` across the pitch reads as four clubs that played and scored nothing rather than four clubs whose matches have not started. The line appears when the first match of the week kicks off, read from the week's status once the season has moved it on and from the clock until then, and stays through to the wrap.
 
+**A club's buttons come in two groups, with a rule between them.** Captain and bench arrange the week and cost nothing; a joker spends something that does not come back. They sat in one undifferentiated row, so the two kinds of decision looked alike. A thin rule separates them, and it appears only when the club has a joker left to play, because a divider with nothing on one side of it divides nothing. A phone gives each group a line of its own instead, where the rule would be redundant, and the buttons come down a few pixels so three jokers still hold one line.
+
 **The armband rides beside the club's name, never under it.** A grid row is as tall as its tallest card, so an armband on a line of its own made one captain stretch every club on the pitch. The bench slot shows it the same way, which is also the only place a bench-boosted captain was visible at all before.
 
 ### 10.2 Admin

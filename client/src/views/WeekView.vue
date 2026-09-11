@@ -673,25 +673,29 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
             </div>
 
             <div v-if="editable" class="slot-actions">
-              <button
-                class="slot-btn press"
-                :class="{ on: club.teamId === captainId }"
-                :aria-pressed="club.teamId === captainId"
-                :aria-label="$t('week.makeCaptainAria', { club: club.name })"
-                :title="$t('week.makeCaptain')"
-                @click="setCaptain(club.teamId)"
-              >
-                <Crown :size="16" aria-hidden="true" />
-              </button>
-              <button
-                v-if="canBench(club)"
-                class="slot-btn press"
-                :aria-label="$t('week.benchAria', { club: club.name })"
-                :title="$t('week.benchAction')"
-                @click="setBench(club.teamId)"
-              >
-                <Armchair :size="16" aria-hidden="true" />
-              </button>
+              <span class="slot-group">
+                <button
+                  class="slot-btn press"
+                  :class="{ on: club.teamId === captainId }"
+                  :aria-pressed="club.teamId === captainId"
+                  :aria-label="$t('week.makeCaptainAria', { club: club.name })"
+                  :title="$t('week.makeCaptain')"
+                  @click="setCaptain(club.teamId)"
+                >
+                  <Crown :size="16" aria-hidden="true" />
+                </button>
+                <button
+                  v-if="canBench(club)"
+                  class="slot-btn press"
+                  :aria-label="$t('week.benchAria', { club: club.name })"
+                  :title="$t('week.benchAction')"
+                  @click="setBench(club.teamId)"
+                >
+                  <Armchair :size="16" aria-hidden="true" />
+                </button>
+              </span>
+              <span v-if="jokersFor(club, false).length" class="slot-sep" aria-hidden="true" />
+              <span v-if="jokersFor(club, false).length" class="slot-group">
               <button
                 v-for="j in jokersFor(club, false)"
                 :key="j.code"
@@ -708,6 +712,7 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
               >
                 <component :is="JOKER_ICONS[j.code]" :size="16" aria-hidden="true" />
               </button>
+              </span>
             </div>
           </div>
         </div>
@@ -779,17 +784,24 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
             </div>
 
             <div v-if="editable" class="slot-actions">
-              <button
-                v-if="benchBoost"
-                class="slot-btn press"
-                :class="{ on: benchClub.teamId === captainId }"
-                :aria-pressed="benchClub.teamId === captainId"
-                :aria-label="$t('week.makeCaptainAria', { club: benchClub.name })"
-                :title="$t('week.makeCaptain')"
-                @click="setCaptain(benchClub.teamId)"
-              >
-                <Crown :size="16" aria-hidden="true" />
-              </button>
+              <span v-if="benchBoost" class="slot-group">
+                <button
+                  class="slot-btn press"
+                  :class="{ on: benchClub.teamId === captainId }"
+                  :aria-pressed="benchClub.teamId === captainId"
+                  :aria-label="$t('week.makeCaptainAria', { club: benchClub.name })"
+                  :title="$t('week.makeCaptain')"
+                  @click="setCaptain(benchClub.teamId)"
+                >
+                  <Crown :size="16" aria-hidden="true" />
+                </button>
+              </span>
+              <span
+                v-if="benchBoost && jokersFor(benchClub, true).length"
+                class="slot-sep"
+                aria-hidden="true"
+              />
+              <span v-if="jokersFor(benchClub, true).length" class="slot-group">
               <button
                 v-for="j in jokersFor(benchClub, true)"
                 :key="j.code"
@@ -806,6 +818,7 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
               >
                 <component :is="JOKER_ICONS[j.code]" :size="16" aria-hidden="true" />
               </button>
+              </span>
             </div>
           </div>
                   <span v-else class="text-muted bench-empty">{{ $t('week.dropHere') }}</span>
@@ -1180,7 +1193,20 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
 
 .club-foot { display: flex; align-items: center; justify-content: center; min-height: 1.2rem; }
 .pts { font-weight: 800; font-size: 0.92rem; }
-.slot-actions { display: flex; gap: 0.35rem; margin-top: 0.2rem; flex-wrap: wrap; justify-content: center; }
+/* Two kinds of button live here and they are not the same kind of decision:
+   captain and bench arrange the week, a joker spends something that does not
+   come back. A rule between them says so. It only appears when there is a
+   joker left to play, because a divider with nothing on one side of it divides
+   nothing. */
+.slot-actions {
+  display: flex; align-items: center; gap: 0.35rem; margin-top: 0.2rem;
+  flex-wrap: wrap; justify-content: center;
+}
+.slot-group { display: inline-flex; align-items: center; gap: 0.35rem; flex-wrap: wrap; justify-content: center; }
+.slot-sep {
+  width: 1px; height: 1.5rem; flex-shrink: 0; margin: 0 0.2rem;
+  background: var(--color-text-muted); opacity: 0.45;
+}
 .slot-btn {
   width: 34px; height: 34px; display: grid; place-items: center;
   border-radius: 50%; border: 1.5px solid var(--color-border-control);
@@ -1290,7 +1316,17 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
   /* The card fills the frame rather than floating in it, so the bench reads as
    one slot the size of a club rather than a small card in a big box. */
 .bench-slot .club-card { width: 100%; justify-content: center; }
-  .slot-actions { gap: 0.3rem; }
+  /* Not enough width for a rule and both kinds of button on one line, so the
+     two groups take a line each and the rule between them is redundant. */
+  .slot-actions { flex-direction: column; gap: 0.3rem; }
+  .slot-group { gap: 0.3rem; }
+  .slot-sep { display: none; }
+  /* Three jokers at the touch size do not fit across a card this narrow, and
+     wrapping them to a second line of their own defeats the point of giving
+     them a line. Four pixels smaller and the row holds, still a comfortable
+     target. The group is named because the coarse-pointer rule below sets the
+     same property and would otherwise win on source order. */
+  .slot-group .slot-btn { width: 40px; height: 40px; }
   /* The coupon gets its own line, three equal buttons wide. */
   .paul-row { align-items: flex-start; gap: var(--space-2); }
   .paul-picks { width: 100%; margin-left: 0; }
