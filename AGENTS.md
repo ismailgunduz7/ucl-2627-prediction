@@ -222,6 +222,17 @@ the participant and admin interfaces.
 - Scoring is integers only, and rule values are per pot.
 - Keep the score provider behind the interface in
   `server/src/services/score-provider.ts` so the data source stays swappable.
+- **The client may import `server/src/domain`, and only that.** The what-if
+  calculator on the fixtures page needs club-layer scoring in the browser, and a
+  second copy of that arithmetic would drift from the one the season is actually
+  scored with. It imports the real thing instead, through the `@domain` alias in
+  `client/vite.config.ts` and the matching path in `client/tsconfig.json`. The
+  price is that anything the client imports from there has to stay pure: no
+  database, no clock, no node builtin, no `../lib` or `../services`. Two domain
+  modules already reach for `node:crypto` and so are not importable; the client
+  tsconfig deliberately does not list the folder, so it typechecks exactly the
+  files it actually imports and a bad import fails the client build rather than
+  passing quietly. Nothing else crosses between the two packages.
 
 ## Feedback loop
 

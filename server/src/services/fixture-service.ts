@@ -17,6 +17,8 @@ export interface FixtureSide {
   teamId: string;
   name: string;
   shortName: string;
+  /** The club's badge, so a fixture row is scannable by crest (§18.5). */
+  crestUrl: string | null;
   tierId: number;
   score: number | null;
   /** In the participant's effective squad for this week. */
@@ -77,10 +79,12 @@ interface MatchRow {
   home_team_id: string;
   home_name: string;
   home_short: string;
+  home_crest: string | null;
   home_tier: number;
   away_team_id: string;
   away_name: string;
   away_short: string;
+  away_crest: string | null;
   away_tier: number;
 }
 
@@ -99,8 +103,10 @@ export async function getWeekFixtures(userId: string, mwId: string): Promise<Wee
   const [matchRes, lineup, points, rules, joker, legRow] = await Promise.all([
     query<MatchRow>(
       `SELECT m.id, m.kickoff_at, m.status, m.stage, m.home_score, m.away_score,
-              m.home_team_id, ht.name AS home_name, ht.short_name AS home_short, ht.tier_id AS home_tier,
-              m.away_team_id, at.name AS away_name, at.short_name AS away_short, at.tier_id AS away_tier
+              m.home_team_id, ht.name AS home_name, ht.short_name AS home_short,
+              ht.crest_url AS home_crest, ht.tier_id AS home_tier,
+              m.away_team_id, at.name AS away_name, at.short_name AS away_short,
+              at.crest_url AS away_crest, at.tier_id AS away_tier
        FROM matches m
        JOIN teams ht ON ht.id = m.home_team_id
        JOIN teams at ON at.id = m.away_team_id
@@ -154,6 +160,7 @@ export async function getWeekFixtures(userId: string, mwId: string): Promise<Wee
         teamId,
         name: which === 'home' ? m.home_name : m.away_name,
         shortName: which === 'home' ? m.home_short : m.away_short,
+        crestUrl: which === 'home' ? m.home_crest : m.away_crest,
         tierId: which === 'home' ? m.home_tier : m.away_tier,
         score: which === 'home' ? m.home_score : m.away_score,
         mine: squadClub !== undefined,

@@ -101,5 +101,17 @@ export const AppPreset = definePreset(Aura, {
       tab: { padding: '0.7rem 1rem' },
       tabpanel: { background: 'transparent', padding: '1rem 0 0 0' },
     },
+    /*
+     * The fixtures page carries an icon in the switch thumb, saying which of
+     * the two views it is on, so the thumb has to be big enough to hold one.
+     * Aura's own handle is 1rem and a 12px mark fills it edge to edge. The
+     * colours are left alone: the dark scheme already gives the thumb a
+     * contrasting mark on both sides of the switch.
+     */
+    toggleswitch: {
+      width: '2.9rem',
+      height: '1.65rem',
+      handle: { size: '1.2rem' },
+    },
   },
 });

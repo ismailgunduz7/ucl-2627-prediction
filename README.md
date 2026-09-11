@@ -12,13 +12,13 @@ real match results. See [PLAN.md](PLAN.md) for the authoritative product spec.
 > by what they have collected, and the run from the league phase
 > through the knockouts to the final. Since then it has also grown a
 > background sync job that polls the provider on an adaptive schedule, a
-> fixtures page that shows a whole round at a time and follows several live
-> matches at once, **Ahtapot Paul** (a weekly 1X2 coupon on every
-> match), a live feed on the weekly hub that itemises each point as it lands,
-> and a season replay that unlocks once the final is played. A player who
-> missed the squad deadline is no longer stuck outside the season either: they
-> can still pick their four, and they start scoring from the first matchweek
-> that has not locked yet.
+> fixtures page that shows a whole round at a time, follows several live
+> matches at once and hides a what-if calculator behind a switch,
+> **Ahtapot Paul** (a weekly 1X2 coupon on every match), a live feed on the
+> weekly hub that itemises each point as it lands, and a season replay that
+> unlocks once the final is played. A player who missed the squad deadline is
+> no longer stuck outside the season either: they can still pick their four,
+> and they start scoring from the first matchweek that has not locked yet.
 >
 > The season now runs on **real data**: all 36 clubs carry their
 > football-data.org ids and crests, the badges on screen are those crests
