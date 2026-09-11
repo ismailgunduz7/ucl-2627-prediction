@@ -271,6 +271,8 @@ export default {
     tableBody: 'The same result is worth more to a club from a weaker pot. A bad result from a strong club is punished harder. A club playing twice in a week scores for both matches.',
     ruleColumn: 'Rule',
     category: { match: 'Match', league: 'League', knockout: 'Knockout' },
+    difficultyTitle: 'Match difficulty',
+    difficultyBody: 'On the week page each club\'s match is marked easy, medium or hard. The label takes no part in scoring. It reads from two things: the gap between the two clubs\' pots, and whether the match is at home or away. A trip away counts for a little more than one step of that gap. The same fixture reads differently from each side, so a match that is easy for a Pot 1 host is hard for its Pot 3 visitor.',
     jokersTitle: 'Jokers',
     jokersBody: 'At most one joker per week. Take it back before the lock and it is returned. Jokers are granted at the start of the league phase and dealt again for the knockouts.',
     jokerGrant: '{league} in the league phase, {knockout} in the knockouts',

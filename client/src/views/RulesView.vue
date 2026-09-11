@@ -126,6 +126,11 @@ onMounted(async () => {
       </section>
 
       <section class="surface-card card-pad">
+        <div class="section-title">{{ $t('rules.difficultyTitle') }}</div>
+        <p>{{ $t('rules.difficultyBody') }}</p>
+      </section>
+
+      <section class="surface-card card-pad">
         <div class="section-title">{{ $t('rules.potsTitle') }}</div>
         <div class="pot-grid">
           <div v-for="p in pots" :key="p.tierId" class="pot-box">

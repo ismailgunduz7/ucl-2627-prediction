@@ -272,6 +272,8 @@ export default {
     tableBody: 'Aynı sonuç, zayıf pottaki bir kulüp için daha değerlidir. Güçlü bir kulübün kötü sonucu ise daha ağır cezalandırılır. Bir kulüp aynı hafta iki maç oynarsa ikisinin puanı da yazılır.',
     ruleColumn: 'Kural',
     category: { match: 'Maç', league: 'Lig', knockout: 'Eleme' },
+    difficultyTitle: 'Maç zorluğu',
+    difficultyBody: 'Hafta sayfasında her kulübün maçı kolay, orta ya da zor diye işaretlenir. Bu etiketin puanla doğrudan bir ilgisi yoktur, sadece haftanın nasıl göründüğünü söyler. Hesabında iki şey vardır: iki kulübün potları arasındaki fark ve maçın evde mi deplasmanda mı oynandığı. Deplasman, potlar arasındaki bir basamaktan biraz daha ağır sayılır. Aynı maç iki taraf için farklı okunur. Pot 1\'in evinde kolay olan maç, Pot 3\'ün deplasmanında zordur.',
     jokersTitle: 'Jokerler',
     jokersBody: 'Haftada en fazla bir joker oynanabilir. Kilitten önce vazgeçilirse hak iade edilir. Haklar lig aşamasının başında verilir, lig bitince eleme turları için yeniden dağıtılır.',
     jokerGrant: 'Lig aşamasında {league}, eleme turlarında {knockout} hak',
