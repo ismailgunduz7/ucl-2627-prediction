@@ -133,9 +133,16 @@ function skipToContent() {
     </nav>
 
     <main id="main-content" class="app-main" tabindex="-1">
+      <!--
+        Keyed on the account, so switching to another one rebuilds the page
+        rather than leaving it showing the last account's season. Switching
+        pushes the new account's home route, and a push to the route you are
+        already on changes nothing: the view stays mounted, never re-reads, and
+        goes on showing a competition that is no longer yours.
+      -->
       <RouterView v-slot="{ Component }">
         <transition name="page" mode="out-in">
-          <component :is="Component" />
+          <component :is="Component" :key="auth.user?.id" />
         </transition>
       </RouterView>
     </main>

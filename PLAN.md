@@ -723,6 +723,8 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 
 **The account chip is a menu.** Clicking the name in the header opens the other accounts signed in on this browser, each labelled with its competition, then **Hesap ekle**, **Hesap ayarları** and **Çıkış yap**. Picking another account puts it on screen without anybody signing out; adding one opens a sign-in dialog that leaves the current session alone (§9.1). Signing out warns that it takes every account with it, and only then goes. On a phone the chip is not in the header at all, so the same options sit in the drawer under the name of the account on screen.
 
+**Picking another account rebuilds the page.** Switching pushes the new account's home route, and a push to the route you are already on changes nothing, so the view stayed mounted, never re-read, and went on showing the competition that had just stopped being yours. The page is keyed on the account id instead, which is one rule at the root rather than a reload every page has to remember to do for itself.
+
 **Opening it does not move the page.** The header is sticky, so `scroll-padding-top` reserves the top of the window for it and a scrolled-to target lands below it rather than under it. A popup focuses itself as it opens, which counts as a scroll-to, so a menu hanging off the header used to push the page down a line to clear a header it was already clear of, taking the menu with it and leaving it detached from the chip. Overlays cancel that allowance for themselves: they are positioned against their own trigger and have nothing to clear.
 
 Open picks were folded into `/hafta` rather than the standings page, since that is where the picks themselves are made.
