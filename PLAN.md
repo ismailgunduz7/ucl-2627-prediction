@@ -738,6 +738,8 @@ The grouping (the round a week belongs to, its place in the menu, what its leg i
 
 **Hub must show:** crest wall (bench muted unless boosted + chip), lock countdown, briefing with a difficulty band, bench/captain, joker controls with confirm-on-bench-conflict, the joker wallet (all four with what is left of each, the one in play this week marked and a spent one dimmed rather than dropped), the Ahtapot Paul coupon, provisional points, the live delta feed, wrap card when complete. Multi-live lives on `/fikstur` (§18.5).
 
+**The armband rides beside the club's name, never under it.** A grid row is as tall as its tallest card, so an armband on a line of its own made one captain stretch every club on the pitch. The bench slot shows it the same way, which is also the only place a bench-boosted captain was visible at all before.
+
 ### 10.2 Admin
 
 - Users (create accounts, password resets, joker-inventory repair), competitions, squads, rules, matches with overrides and their audit history, sync, recalculate, and the settings page (provider, joker grants, deadline banner window, manual season progression); all built.

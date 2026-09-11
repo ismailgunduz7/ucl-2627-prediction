@@ -568,10 +568,17 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
             <RouterLink :to="`/takim/${club.teamId}`" class="crest-link" draggable="false">
               <TeamCrest :name="club.name" :crest-url="club.crestUrl" size="lg" />
             </RouterLink>
-            <div class="club-name">{{ club.name }}</div>
+            <div class="club-title">
+              <span class="club-name">{{ club.name }}</span>
+              <CaptainBadge
+                v-if="club.teamId === captainId"
+                :multiplier="capMult"
+                :joker-code="activeJoker?.code"
+                :size="19"
+              />
+            </div>
 
             <div class="club-foot">
-              <CaptainBadge v-if="club.teamId === captainId" :multiplier="capMult" :joker-code="activeJoker?.code" :size="24" />
               <span v-if="lineFor(club.teamId)" class="pts" :class="lineFor(club.teamId)!.contributed >= 0 ? 'text-positive' : 'text-negative'">
                 {{ lineFor(club.teamId)!.contributed >= 0 ? '+' : '' }}{{ lineFor(club.teamId)!.contributed }}
               </span>
@@ -641,7 +648,15 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
                 :class="{ dim: !benchBoost }"
               />
             </RouterLink>
-            <div class="club-name">{{ benchClub.name }}</div>
+            <div class="club-title">
+              <span class="club-name">{{ benchClub.name }}</span>
+              <CaptainBadge
+                v-if="benchClub.teamId === captainId"
+                :multiplier="capMult"
+                :joker-code="activeJoker?.code"
+                :size="19"
+              />
+            </div>
             <div v-if="editable" class="slot-actions">
               <button
                 v-if="benchBoost"
@@ -1006,8 +1021,15 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
 .club-card.is-captain { border-color: var(--color-warning); box-shadow: 0 0 0 1px var(--color-warning), 0 0 22px rgba(251, 191, 36, 0.18); }
 .crest-link { text-decoration: none; }
 .crest.dim { filter: grayscale(0.7); opacity: 0.75; }
+/* The armband sits beside the name rather than under it. On its own line it
+   made the tallest card in a row, and a grid row is as tall as its tallest
+   card, so one captain used to stretch every club on the pitch. */
+.club-title {
+  display: flex; align-items: center; justify-content: center;
+  gap: 0.4rem; min-width: 0;
+}
 .club-name { font-size: 0.88rem; font-weight: 700; text-align: center; line-height: 1.25; }
-.club-foot { display: flex; flex-direction: column; align-items: center; gap: 0.3rem; min-height: 1.2rem; }
+.club-foot { display: flex; align-items: center; justify-content: center; min-height: 1.2rem; }
 .pts { font-weight: 800; font-size: 0.92rem; }
 .slot-actions { display: flex; gap: 0.35rem; margin-top: 0.2rem; flex-wrap: wrap; justify-content: center; }
 .slot-btn {
