@@ -667,7 +667,7 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 - Ahtapot Paul: the week's matches with the participant's calls; save the coupon before the lock, one request carrying every call that changed and every call taken back (§18.9)
 - Live delta feed: the week's point events for the participant's scoring clubs (§18.6)
 - Scoring rules matrix (plus what a correct prediction is worth)
-- Jokers: inventory, activate, cancel (refund) before lock
+- Jokers: inventory with the weeks each one was played in (cancelled activations left out, since a refunded joker never happened, §3.6), activate, cancel (refund) before lock
 - Season replay when the tournament is finished (§18.8)
 
 ### 9.3 Admin APIs
@@ -736,7 +736,11 @@ How a two-legged round is offered depends on what the page does with it:
 
 The grouping (the round a week belongs to, its place in the menu, what its leg is called, and the ready-made round list a round picker shows) is all derived from the matchweek id on the server, beside the code that mints those ids, and travels with the tournament status. A round is named once when it holds several matchweeks and names itself when it holds one, which is why the league weeks keep their own names rather than repeating their heading.
 
-**Hub must show:** crest wall (bench muted unless boosted + chip), lock countdown, each club's fixtures and difficulty band on its own card (§18.1), bench/captain, joker controls with confirm-on-bench-conflict, the joker wallet (all four with what is left of each, the one in play this week marked and a spent one dimmed rather than dropped), the Ahtapot Paul coupon, provisional points, the live delta feed, wrap card when complete. Multi-live lives on `/fikstur` (§18.5).
+**Hub must show:** crest wall (bench muted unless boosted + chip), lock countdown, each club's fixtures and difficulty band on its own card (§18.1), bench/captain, joker controls with confirm-on-bench-conflict, the joker wallet on the pitch itself (all four with where each has been and what is left of it, the one in play this week marked and a spent one dimmed rather than dropped), the Ahtapot Paul coupon, provisional points, the live delta feed, wrap card when complete. Multi-live lives on `/fikstur` (§18.5).
+
+**The pitch is three columns, and everything on it keeps to them.** The three playing clubs fill the first row. The bench takes one column of the second, so a benched club is drawn the same size as a club that plays rather than crammed into a narrow box, and the jokers take the other two as a two-by-two block: each one a club wide and half a club tall. Previously the bench was a small card in a full-width dashed frame and the wallet sat in a panel further down, so neither the clubs nor the jokers landed where the eye looked for them.
+
+**A joker says where it has been, not just how many are left.** Two lines under its name: the weeks it was played in, or that it has not been used yet, and then what remains of it. A bare number answers neither question a player actually has. A phone has no room for three columns, so the bench and the jokers stack and each joker takes the full width.
 
 **The armband rides beside the club's name, never under it.** A grid row is as tall as its tallest card, so an armband on a line of its own made one captain stretch every club on the pitch. The bench slot shows it the same way, which is also the only place a bench-boosted captain was visible at all before.
 

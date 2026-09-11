@@ -1,5 +1,6 @@
 import { query, withTransaction } from '../db/pool.ts';
 import { ApiError } from '../lib/errors.ts';
+import { matchweekLabel } from '../lib/labels.ts';
 import type { JokerCode } from '../domain/joker.ts';
 import {
   getOrderedMatchweeks,
@@ -12,6 +13,13 @@ export interface InventoryItem {
   code: JokerCode;
   name: string;
   remaining: number;
+  /**
+   * The weeks this joker was played in, in play order, cancelled ones left out
+   * because a refunded activation never happened as far as the season is
+   * concerned (§3.6). The hub says what is left of a joker next to where it
+   * went, which a bare count cannot do.
+   */
+  playedWeeks: string[];
 }
 
 export interface ActiveJoker {
@@ -20,14 +28,31 @@ export interface ActiveJoker {
 }
 
 export async function getInventory(userId: string): Promise<InventoryItem[]> {
-  const { rows } = await query<{ code: JokerCode; name: string; remaining: number }>(
-    `SELECT jt.code, jt.name, COALESCE(ji.remaining_count, 0) AS remaining
-     FROM joker_types jt
-     LEFT JOIN joker_inventory ji ON ji.joker_type_code = jt.code AND ji.user_id = $1
-     ORDER BY jt.sort_order`,
-    [userId],
-  );
-  return rows;
+  const [types, played] = await Promise.all([
+    query<{ code: JokerCode; name: string; remaining: number }>(
+      `SELECT jt.code, jt.name, COALESCE(ji.remaining_count, 0) AS remaining
+       FROM joker_types jt
+       LEFT JOIN joker_inventory ji ON ji.joker_type_code = jt.code AND ji.user_id = $1
+       ORDER BY jt.sort_order`,
+      [userId],
+    ),
+    query<{ code: JokerCode; id: string; label: string }>(
+      `SELECT ja.joker_type_code AS code, mw.id, mw.label
+       FROM joker_activations ja
+       JOIN matchweeks mw ON mw.id = ja.matchweek_id
+       WHERE ja.user_id = $1 AND ja.cancelled_at IS NULL
+       ORDER BY CASE mw.act WHEN 'league_phase' THEN 0 ELSE 1 END, mw.sort_order`,
+      [userId],
+    ),
+  ]);
+
+  const weeksByCode = new Map<string, string[]>();
+  for (const row of played.rows) {
+    const list = weeksByCode.get(row.code) ?? [];
+    list.push(matchweekLabel(row));
+    weeksByCode.set(row.code, list);
+  }
+  return types.rows.map((t) => ({ ...t, playedWeeks: weeksByCode.get(t.code) ?? [] }));
 }
 
 export async function getActiveJoker(userId: string, mwId: string): Promise<ActiveJoker | null> {

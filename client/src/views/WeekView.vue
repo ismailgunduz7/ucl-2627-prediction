@@ -33,7 +33,7 @@ interface Lineup { benchTeamId: string; captainTeamId: string; saved: boolean; l
 interface ScoreLine { teamId: string; name: string; basePoints: number; benched: boolean; captain: boolean; multiplier: number; contributed: number }
 interface PredictionTally { settled: number; correct: number; points: number; provisional: number }
 interface WeekScore { total: number; final: boolean; lines: ScoreLine[]; jokerCode: string | null; predictions: PredictionTally }
-interface Inventory { code: string; name: string; remaining: number }
+interface Inventory { code: string; name: string; remaining: number; playedWeeks: string[] }
 interface ActiveJoker { code: string; payload: Record<string, unknown> }
 interface ClubFixture { opponentName: string; opponentTierId: number; home: boolean }
 interface ClubWeek { teamId: string; fixtures: ClubFixture[]; difficulty: string | null }
@@ -157,6 +157,17 @@ function lineFor(teamId: string) { return score.value?.lines.find((l) => l.teamI
 /** Benched and not boosted: the club played, but none of it counted. */
 function sittingOut(l: ScoreLine) { return l.benched && score.value?.jokerCode !== 'bench_boost'; }
 function remaining(code: string) { return inventory.value.find((i) => i.code === code)?.remaining ?? 0; }
+function playedWeeks(code: string) { return inventory.value.find((i) => i.code === code)?.playedWeeks ?? []; }
+/** Where a joker went, in words. A bare count says nothing about the season. */
+function jokerHistory(code: string): string {
+  const weeks = playedWeeks(code);
+  // The labels already carry the word "hafta", so the sentence around them
+  // names no week of its own. Turkish cannot agree a suffix with "Final" and
+  // "Hafta 7" in the same phrase anyway.
+  return weeks.length === 0
+    ? t('week.walletNever')
+    : t('week.walletPlayed', { weeks: weeks.join(', ') });
+}
 /** Clubs with no fixture this week, so the wrap can explain their zero (§18.3). */
 const byeIds = computed(() => new Set(briefing.value.filter((b) => !b.fixtures.length).map((b) => b.teamId)));
 function wrapEventsFor(teamId: string) {
@@ -651,9 +662,11 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
           </div>
         </div>
 
-        <div class="zone-label bench-label">{{ $t('week.bench') }}</div>
-        <div
-          class="bench-slot"
+        <div class="pitch-foot">
+          <div class="bench-zone">
+            <div class="zone-label bench-label">{{ $t('week.bench') }}</div>
+            <div
+              class="bench-slot"
           :class="{ over: dragOverBench, boosted: benchBoost }"
           data-drop-zone="bench"
         >
@@ -739,31 +752,40 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
               </button>
             </div>
           </div>
-          <span v-else class="text-muted">{{ $t('week.dropHere') }}</span>
+                  <span v-else class="text-muted bench-empty">{{ $t('week.dropHere') }}</span>
+            </div>
+          </div>
+
+          <div class="joker-legend">
+            <div class="zone-label">{{ $t('week.walletTitle') }}</div>
+            <ul class="legend-list">
+              <li
+                v-for="code in JOKER_CODES"
+                :key="code"
+                class="legend-item"
+                :class="{ live: activeJoker?.code === code, spent: remaining(code) === 0 && activeJoker?.code !== code }"
+              >
+                <span class="legend-mark"><component :is="JOKER_ICONS[code]" :size="17" aria-hidden="true" /></span>
+                <span class="legend-text">
+                  <span class="legend-name">{{ $t(`joker.${code}`) }}</span>
+                  <span class="legend-history">{{ jokerHistory(code) }}</span>
+                  <span class="legend-left">
+                    {{
+                      activeJoker?.code === code
+                        ? $t('week.walletLive')
+                        : $t('week.walletLeft', { count: remaining(code) }, remaining(code))
+                    }}
+                  </span>
+                </span>
+              </li>
+            </ul>
+          </div>
         </div>
+
         <p v-if="editable" class="text-muted drag-hint">
           <span class="hint-fine">{{ $t('week.dragHintFine') }}</span>
           <span class="hint-coarse">{{ $t('week.dragHintCoarse') }}</span>
         </p>
-      </section>
-
-      <section class="surface-card card-pad">
-        <div class="section-title">{{ $t('week.walletTitle') }}</div>
-        <div class="wallet">
-          <div
-            v-for="code in JOKER_CODES"
-            :key="code"
-            class="wallet-card"
-            :class="{ live: activeJoker?.code === code, spent: remaining(code) === 0 && activeJoker?.code !== code }"
-          >
-            <span class="wallet-mark"><component :is="JOKER_ICONS[code]" :size="18" aria-hidden="true" /></span>
-            <span class="wallet-text">
-              <span class="wallet-name">{{ $t(`joker.${code}`) }}</span>
-              <span class="wallet-left">{{ $t('week.walletLeft', { count: remaining(code) }, remaining(code)) }}</span>
-            </span>
-            <Tag v-if="activeJoker?.code === code" severity="info" :value="$t('week.walletLive')" />
-          </div>
-        </div>
       </section>
 
       <section v-if="predictions?.matches.length" class="surface-card card-pad">
@@ -1019,7 +1041,6 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
   font-weight: 800; font-size: 0.76rem; letter-spacing: 0.1em;
   text-transform: uppercase; color: var(--color-text-muted); margin-bottom: 0.9rem;
 }
-.bench-label { margin-top: 1.6rem; }
 .pitch-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(158px, 1fr)); gap: var(--space-4); }
 .club-card {
   position: relative;
@@ -1111,14 +1132,57 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
   border-color: var(--color-primary); color: #fff;
   box-shadow: 0 0 16px rgba(99, 102, 241, 0.5);
 }
+/* Under the pitch, on the pitch's own three columns: the bench takes one of
+   them so a benched club is the same size as a club that plays, and the jokers
+   take the other two as a two-by-two block. The bench used to be a narrow box
+   in a full-width dashed frame with the wallet in a panel further down, so
+   neither the clubs nor the jokers were where the eye expected them. */
+.pitch-foot {
+  display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: var(--space-4); margin-top: var(--space-5); align-items: stretch;
+}
+.bench-zone { display: flex; flex-direction: column; min-width: 0; }
+.joker-legend { grid-column: span 2; display: flex; flex-direction: column; min-width: 0; }
+/* Two across and two down, so a joker is a club wide and half a club tall. */
+.legend-list {
+  list-style: none; margin: 0; padding: 0; flex: 1;
+  display: grid; grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-auto-rows: 1fr; gap: var(--space-4);
+}
+.legend-item {
+  display: flex; align-items: center; gap: 0.7rem; min-width: 0;
+  padding: 0.7rem 0.85rem; border-radius: var(--radius-md);
+  border: 1.5px solid var(--color-border);
+  background: linear-gradient(180deg, var(--color-surface-2), var(--color-surface));
+}
+.legend-item.live { border-color: var(--color-primary); box-shadow: 0 0 0 1px var(--color-primary); }
+/* Spent, not gone: knowing a joker is used up is worth as much as knowing it is there. */
+.legend-item.spent { opacity: 0.5; }
+.legend-mark {
+  display: grid; place-items: center; width: 2.2rem; height: 2.2rem; flex-shrink: 0;
+  border-radius: 50%; background: var(--color-bg-subtle); color: var(--color-primary);
+}
+.legend-item.live .legend-mark { background: var(--color-primary); color: #fff; }
+.legend-text { display: flex; flex-direction: column; gap: 0.1rem; min-width: 0; line-height: 1.3; }
+.legend-name {
+  font-size: var(--text-sm); font-weight: 700;
+  overflow: hidden; text-overflow: ellipsis; white-space: nowrap;
+}
+.legend-history { font-size: var(--text-2xs); color: var(--color-text-muted); }
+.legend-left { font-size: var(--text-2xs); font-weight: 700; color: var(--color-text-secondary); }
+.legend-item.live .legend-left { color: var(--color-primary-hover); }
+
 .bench-slot {
   border: 2px dashed var(--color-border-strong); border-radius: var(--radius-md);
-  padding: 1rem; display: grid; place-items: center; min-height: 150px;
+  padding: 0.9rem; display: grid; place-items: stretch; flex: 1; min-height: 0;
   transition: border-color 0.15s, background 0.15s;
 }
 .bench-slot.over { border-color: var(--color-primary); background: rgba(99, 102, 241, 0.1); }
+.bench-empty { display: grid; place-items: center; text-align: center; }
 .bench-slot.boosted { border-style: solid; border-color: var(--color-warning); }
-.bench-slot .club-card { min-width: 180px; }
+/* The card fills the frame rather than floating in it, so the bench reads as
+   one slot the size of a club rather than a small card in a big box. */
+.bench-slot .club-card { width: 100%; justify-content: center; }
 .drag-hint { margin: 0.7rem 0 0; font-size: 0.8rem; }
 /* A finger has to hold the card first, so it gets told something else. */
 .hint-coarse { display: none; }
@@ -1141,8 +1205,15 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
      under it. A column rather than a wrap, or the band would stretch the full
      width of the card and read as a stripe instead of a label. */
   .club-fixture { flex-direction: column; gap: 0.15rem; }
-  .bench-slot { padding: 0.75rem; min-height: 0; }
-  .bench-slot .club-card { min-width: 0; width: 100%; max-width: 220px; }
+  /* No room for three columns, so the bench and the jokers stack, and a joker
+     gets the full width rather than half of a half. */
+  .pitch-foot { grid-template-columns: minmax(0, 1fr); gap: var(--space-4); }
+  .joker-legend { grid-column: auto; }
+  .legend-list { grid-template-columns: minmax(0, 1fr); grid-auto-rows: auto; gap: var(--space-3); }
+  .bench-slot { padding: 0.75rem; }
+  /* The card fills the frame rather than floating in it, so the bench reads as
+   one slot the size of a club rather than a small card in a big box. */
+.bench-slot .club-card { width: 100%; justify-content: center; }
   .slot-actions { gap: 0.3rem; }
   /* The coupon gets its own line, three equal buttons wide. */
   .paul-row { align-items: flex-start; gap: var(--space-2); }
@@ -1275,53 +1346,7 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
 }
 
 /* The joker wallet: what is left of each one, and which one is out this week. */
-.wallet {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
-  gap: 0.6rem;
-}
-.wallet-card {
-  display: flex;
-  align-items: center;
-  gap: 0.7rem;
-  padding: 0.6rem 0.75rem;
-  border: 1px solid var(--color-border);
-  border-radius: var(--radius-md);
-  background: var(--color-bg-subtle);
-}
-.wallet-card.live {
-  border-color: var(--color-primary);
-  box-shadow: inset 0 0 0 1px var(--color-primary);
-}
 /* Nothing left to play. Still listed, because a missing row reads as a bug. */
-.wallet-card.spent {
-  opacity: 0.5;
-}
-.wallet-mark {
-  display: grid;
-  place-items: center;
-  width: 2.1rem;
-  height: 2.1rem;
-  flex-shrink: 0;
-  border-radius: 50%;
-  background: var(--color-primary-soft);
-  color: var(--color-primary);
-}
-.wallet-text {
-  display: flex;
-  flex-direction: column;
-  line-height: 1.25;
-  min-width: 0;
-}
-.wallet-name {
-  font-weight: 700;
-  font-size: var(--text-sm);
-}
-.wallet-left {
-  color: var(--color-text-muted);
-  font-size: var(--text-2xs);
-  font-weight: 600;
-}
 .section-title-row {
   display: flex;
   justify-content: space-between;
