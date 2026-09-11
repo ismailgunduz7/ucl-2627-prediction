@@ -151,6 +151,8 @@ const drama = computed(() => countdownMs.value !== null && countdownMs.value > 0
 
 function signed(n: number) { return n > 0 ? `+${n}` : `${n}`; }
 function difficultySeverity(d: string | null) { return d === 'hard' ? 'danger' : d === 'medium' ? 'warn' : 'success'; }
+/** The week a club is walking into: who it meets, where, and how hard (§18.1). */
+function weekOf(teamId: string): ClubWeek | null { return clubWeeks.value.get(teamId) ?? null; }
 function lineFor(teamId: string) { return score.value?.lines.find((l) => l.teamId === teamId); }
 /** Benched and not boosted: the club played, but none of it counted. */
 function sittingOut(l: ScoreLine) { return l.benched && score.value?.jokerCode !== 'bench_boost'; }
@@ -578,6 +580,31 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
               />
             </div>
 
+            <div v-if="weekOf(club.teamId)" class="club-week">
+              <span
+                v-for="(f, i) in weekOf(club.teamId)!.fixtures"
+                :key="i"
+                class="club-fixture"
+              >
+                <span class="club-opp-line">
+                  <component
+                    :is="f.home ? House : Plane"
+                    :size="12"
+                    :aria-label="f.home ? $t('week.atHome') : $t('week.away')"
+                  />
+                  <span class="club-opp">{{ f.opponentName }}</span>
+                </span>
+                <span
+                  v-if="i === 0 && weekOf(club.teamId)!.difficulty"
+                  class="club-diff"
+                  :class="weekOf(club.teamId)!.difficulty!"
+                >{{ $t(`difficulty.${weekOf(club.teamId)!.difficulty}`) }}</span>
+              </span>
+              <span v-if="!weekOf(club.teamId)!.fixtures.length" class="club-bye">
+                {{ $t('week.noFixture') }}
+              </span>
+            </div>
+
             <div class="club-foot">
               <span v-if="lineFor(club.teamId)" class="pts" :class="lineFor(club.teamId)!.contributed >= 0 ? 'text-positive' : 'text-negative'">
                 {{ lineFor(club.teamId)!.contributed >= 0 ? '+' : '' }}{{ lineFor(club.teamId)!.contributed }}
@@ -657,6 +684,31 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
                 :size="19"
               />
             </div>
+            <div v-if="weekOf(benchClub.teamId)" class="club-week">
+              <span
+                v-for="(f, i) in weekOf(benchClub.teamId)!.fixtures"
+                :key="i"
+                class="club-fixture"
+              >
+                <span class="club-opp-line">
+                  <component
+                    :is="f.home ? House : Plane"
+                    :size="12"
+                    :aria-label="f.home ? $t('week.atHome') : $t('week.away')"
+                  />
+                  <span class="club-opp">{{ f.opponentName }}</span>
+                </span>
+                <span
+                  v-if="i === 0 && weekOf(benchClub.teamId)!.difficulty"
+                  class="club-diff"
+                  :class="weekOf(benchClub.teamId)!.difficulty!"
+                >{{ $t(`difficulty.${weekOf(benchClub.teamId)!.difficulty}`) }}</span>
+              </span>
+              <span v-if="!weekOf(benchClub.teamId)!.fixtures.length" class="club-bye">
+                {{ $t('week.noFixture') }}
+              </span>
+            </div>
+
             <div v-if="editable" class="slot-actions">
               <button
                 v-if="benchBoost"
@@ -710,31 +762,6 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
               <span class="wallet-left">{{ $t('week.walletLeft', { count: remaining(code) }, remaining(code)) }}</span>
             </span>
             <Tag v-if="activeJoker?.code === code" severity="info" :value="$t('week.walletLive')" />
-          </div>
-        </div>
-      </section>
-
-      <section v-if="briefing.length" class="surface-card card-pad">
-        <div class="section-title">{{ $t('week.briefingTitle') }}</div>
-        <div class="brief-grid">
-          <div v-for="b in briefing" :key="b.teamId" class="brief-card">
-            <div class="brief-head">
-              <b>{{ b.name }}</b>
-              <Tag
-                v-if="b.difficulty"
-                :severity="difficultySeverity(b.difficulty)"
-                :value="$t(`difficulty.${b.difficulty}`)"
-              />
-            </div>
-            <div v-for="(f, i) in b.fixtures" :key="i" class="brief-fixture text-muted">
-              <component
-                :is="f.home ? House : Plane"
-                :size="13"
-                :aria-label="f.home ? $t('week.atHome') : $t('week.away')"
-              />
-              <span>{{ $t('common.pot', { number: f.opponentTierId }) }} · {{ f.opponentName }}</span>
-            </div>
-            <div v-if="!b.fixtures.length" class="text-muted brief-bye">{{ $t('week.noFixture') }}</div>
           </div>
         </div>
       </section>
@@ -1029,6 +1056,35 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
   gap: 0.4rem; min-width: 0;
 }
 .club-name { font-size: 0.88rem; font-weight: 700; text-align: center; line-height: 1.25; }
+/* The week the club is walking into, on the card itself. It used to sit in a
+   panel below the pitch, which meant scrolling away from the lineup to find out
+   who any of these clubs actually play. The band rides on the first fixture's
+   line rather than a line of its own: on its own it simply gave back the height
+   the armband had just stopped costing. */
+.club-week {
+  display: flex; flex-direction: column; align-items: center; gap: 0.2rem;
+  width: 100%; min-width: 0;
+}
+.club-fixture {
+  display: flex; align-items: center; justify-content: center; gap: 0.35rem;
+  max-width: 100%; min-width: 0;
+  color: var(--color-text-muted); font-size: var(--text-2xs);
+}
+.club-opp-line { display: inline-flex; align-items: center; gap: 0.3rem; min-width: 0; }
+.club-fixture svg { flex-shrink: 0; }
+.club-opp { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.club-bye { color: var(--color-text-muted); font-size: var(--text-2xs); font-style: italic; }
+/* A band, not a badge: it says how hard the week is without shouting a colour
+   louder than the club it belongs to. */
+.club-diff {
+  flex-shrink: 0; padding: 0.05rem 0.4rem;
+  border-radius: var(--radius-pill);
+  font-size: var(--text-2xs); font-weight: 700; white-space: nowrap;
+}
+.club-diff.easy { background: var(--color-success-soft); color: var(--color-success); }
+.club-diff.medium { background: var(--color-warning-soft); color: var(--color-warning); }
+.club-diff.hard { background: var(--color-danger-soft); color: var(--color-danger); }
+
 .club-foot { display: flex; align-items: center; justify-content: center; min-height: 1.2rem; }
 .pts { font-weight: 800; font-size: 0.92rem; }
 .slot-actions { display: flex; gap: 0.35rem; margin-top: 0.2rem; flex-wrap: wrap; justify-content: center; }
@@ -1081,6 +1137,10 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
   }
   .club-card { padding: 0.8rem 0.5rem 0.7rem; }
   .club-name { font-size: 0.82rem; }
+  /* Too narrow for the opponent and the band side by side, so the band drops
+     under it. A column rather than a wrap, or the band would stretch the full
+     width of the card and read as a stripe instead of a label. */
+  .club-fixture { flex-direction: column; gap: 0.15rem; }
   .bench-slot { padding: 0.75rem; min-height: 0; }
   .bench-slot .club-card { min-width: 0; width: 100%; max-width: 220px; }
   .slot-actions { gap: 0.3rem; }
@@ -1092,11 +1152,6 @@ watch(() => deltas.value?.live ?? false, scheduleLivePoll);
   .picks-table { min-width: 440px; }
   .delta-club { min-width: 0; }
 }
-.brief-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: var(--space-3); }
-.brief-head { display: flex; justify-content: space-between; align-items: center; gap: 0.5rem; }
-.brief-bye { font-size: var(--text-xs); }
-.brief-fixture { display: flex; align-items: center; gap: 0.35rem; font-size: 0.82rem; }
-.brief-card { background: var(--color-surface-2); border: 1px solid var(--color-border); border-radius: var(--radius-md); padding: 0.8rem 0.9rem; display: flex; flex-direction: column; gap: 0.35rem; }
 .total-side { display: inline-flex; align-items: center; gap: 0.7rem; }
 .rank-move {
   display: inline-flex; align-items: center; gap: 0.25rem;

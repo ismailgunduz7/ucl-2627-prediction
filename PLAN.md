@@ -711,7 +711,7 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 |-------|---------|--------|
 | `/` | Squad summary, current week points, mini standings | built |
 | `/kadro` | Permanent squad + crest wall + act-transfer card | built |
-| `/hafta` | Lineup, jokers, briefing, Ahtapot Paul coupon, deadline drama, provisional points, wrap when complete | built |
+| `/hafta` | Lineup with each club's week on its card, jokers, Ahtapot Paul coupon, deadline drama, provisional points, wrap when complete | built |
 | `/lig` | League-phase table with the knockout cut lines | built |
 | `/puan-durumu` | Leaderboard: players, and the clubs' own points table on a second tab | built |
 | `/kurallar` | The whole game explained: squad and captaincy, locks and visibility, the rules matrix, jokers with their real grant counts, the league→knockout switch, the coupon, pots and their clubs | built |
@@ -736,7 +736,7 @@ How a two-legged round is offered depends on what the page does with it:
 
 The grouping (the round a week belongs to, its place in the menu, what its leg is called, and the ready-made round list a round picker shows) is all derived from the matchweek id on the server, beside the code that mints those ids, and travels with the tournament status. A round is named once when it holds several matchweeks and names itself when it holds one, which is why the league weeks keep their own names rather than repeating their heading.
 
-**Hub must show:** crest wall (bench muted unless boosted + chip), lock countdown, briefing with a difficulty band, bench/captain, joker controls with confirm-on-bench-conflict, the joker wallet (all four with what is left of each, the one in play this week marked and a spent one dimmed rather than dropped), the Ahtapot Paul coupon, provisional points, the live delta feed, wrap card when complete. Multi-live lives on `/fikstur` (§18.5).
+**Hub must show:** crest wall (bench muted unless boosted + chip), lock countdown, each club's fixtures and difficulty band on its own card (§18.1), bench/captain, joker controls with confirm-on-bench-conflict, the joker wallet (all four with what is left of each, the one in play this week marked and a spent one dimmed rather than dropped), the Ahtapot Paul coupon, provisional points, the live delta feed, wrap card when complete. Multi-live lives on `/fikstur` (§18.5).
 
 **The armband rides beside the club's name, never under it.** A grid row is as tall as its tallest card, so an armband on a line of its own made one captain stretch every club on the pitch. The bench slot shows it the same way, which is also the only place a bench-boosted captain was visible at all before.
 
@@ -923,7 +923,7 @@ Knockout `round_advance` / medal values: tune after league-phase feel is good.
 
 ### 18.1 Matchweek briefing + difficulty
 
-Before lock on the hub: list the user's four clubs' fixtures (opponent, home/away, kickoff).
+Before lock on the hub: each club's fixtures (opponent, home/away) and its difficulty band, **on the club's own card on the pitch**. The briefing used to be a panel of its own below the lineup, which meant scrolling away from the clubs to find out who any of them play, then scrolling back to act on it. The answer belongs where the decision is made. The band rides on the first fixture's line rather than a line of its own, since a line of its own gives straight back the height the armband stopped costing; a phone has no room for the two side by side and drops the band under the opponent instead. A club with no match says so. The bench slot reads the same, because a benched club is exactly the one being reconsidered.
 
 The **weekly-swap picker reads the same lines**. Choosing which club to borrow for a week is the same judgement the briefing supports, and a name on its own does not support it, so every option in that dialog carries its opponent, whether it is home or away and its difficulty band. The clubs on offer are not the viewer's, so the briefing endpoint answers with the whole week beside it: one query for every fixture in the matchweek, grouped per club. A club with no fixture that week says so, since a bye is the one swap nobody wants.
 
