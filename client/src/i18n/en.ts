@@ -94,6 +94,10 @@ export default {
     signOutBody: 'This signs you out of every account open in this browser.',
     others: 'Other accounts in this browser',
   },
+  releases: {
+    title: 'What\'s new',
+    done: 'Got it',
+  },
   home: {
     greeting: 'Hey {name} 👋',
     replayTitle: '🏆 The season is over, your reel is ready',

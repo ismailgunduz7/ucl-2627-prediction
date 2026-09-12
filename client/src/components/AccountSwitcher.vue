@@ -9,10 +9,11 @@ import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
 import Message from 'primevue/message';
-import { ChevronDown, LogOut, Settings, UserPlus } from '@lucide/vue';
+import { ChevronDown, LogOut, Settings, Sparkles, UserPlus } from '@lucide/vue';
 import type { MenuItem } from 'primevue/menuitem';
 import { ApiRequestError } from '@/lib/api';
 import { useAuthStore, type AuthUser } from '@/stores/auth';
+import { useReleaseStore } from '@/stores/releases';
 
 /**
  * The account on screen, and the way to reach the others.
@@ -28,6 +29,7 @@ const { t } = useI18n();
 const router = useRouter();
 const toast = useToast();
 const auth = useAuthStore();
+const releases = useReleaseStore();
 
 const menu = ref<InstanceType<typeof Menu> | null>(null);
 
@@ -112,6 +114,12 @@ function openSettings() {
   void router.push('/hesap');
 }
 
+/** What changed, whenever the player wants to know (§18.12). */
+function openReleases() {
+  emit('navigate');
+  releases.show();
+}
+
 function msg(e: unknown) {
   return e instanceof ApiRequestError ? e.message : t('common.unexpectedError');
 }
@@ -127,6 +135,7 @@ const items = computed<MenuItem[]>(() => {
     ...(others.length > 0 ? [{ separator: true }] : []),
     { key: 'add', label: t('account.add'), mark: UserPlus, command: openAdd },
     { key: 'settings', label: t('account.settings'), mark: Settings, command: openSettings },
+    { key: 'releases', label: t('releases.title'), mark: Sparkles, command: openReleases },
     { key: 'out', label: t('common.signOut'), mark: LogOut, danger: true, command: openSignOut },
   ];
 });
@@ -184,6 +193,10 @@ const items = computed<MenuItem[]>(() => {
     <button type="button" class="mobile-nav-link" @click="openSettings">
       <Settings :size="18" aria-hidden="true" />
       <span>{{ $t('account.settings') }}</span>
+    </button>
+    <button type="button" class="mobile-nav-link" @click="openReleases">
+      <Sparkles :size="18" aria-hidden="true" />
+      <span>{{ $t('releases.title') }}</span>
     </button>
     <button type="button" class="mobile-nav-link danger" @click="openSignOut">
       <LogOut :size="18" aria-hidden="true" />

@@ -57,6 +57,35 @@ A piece of work is finished when all of these are true, and not before:
 4. The interface copy exists in both `tr` and `en`, and the API copy in both,
    with the same keys.
 5. It is one commit, in the format below, covering that one piece of work.
+6. If a player could notice the change, `client/src/releases.ts` carries a
+   note for it, in both languages (see Releases below).
+
+## Releases
+
+The game carries a version, and a **Yenilikler** dialog tells a player what
+changed the first time they sign in after a release that has something to show
+(PLAN.md §18.12). Both live in `client/src/releases.ts`: one entry per release,
+newest first, with the version, the day, whether it is worth interrupting for,
+and the notes in both languages.
+
+- **A change a player could notice gets a release note, in the same commit as
+  the change.** Add it to the entry being cut, creating the entry at the top of
+  the list when this is the first such change since the last release shipped.
+  Bump the minor number and set `announce: true`.
+- **A release of nothing but fixes bumps the patch number with
+  `announce: false`.** It is listed when somebody opens the dialog from the
+  account menu and never opens it by itself.
+- **A change nobody could notice adds nothing.** A refactor is not a release.
+- **A note may carry a picture.** Put the file under
+  `client/src/assets/releases/<version>/`, import it at the top of the
+  catalogue rather than typing a path, and give the note an alt text in its
+  own language. Crop to the part that changed; the dialog is 460 pixels wide.
+- The notes are interface copy: to the player, as `sen`, plainly in English,
+  each language written rather than translated. What changed for them, never
+  what changed in the code, so no commit subjects, file names or section
+  symbols.
+- The version is the catalogue's newest entry. Nothing else is bumped,
+  `package.json` included.
 
 ## Commits
 

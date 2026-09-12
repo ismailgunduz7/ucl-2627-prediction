@@ -204,6 +204,25 @@ The rate limiter and the background jobs live in the process, so run **one**
 instance. Two would each keep their own login counter and each poll the
 provider.
 
+## Releases
+
+The game has a version and a **Yenilikler** dialog that tells a player what
+changed the first time they sign in after a release, once per account rather
+than once per browser. Both come from `client/src/releases.ts`: one entry per
+release, newest first, with the version, the day, whether the release is worth
+interrupting for, and the notes in Turkish and English.
+
+To cut a release, add an entry at the top of that file in the commit that
+ships the change. Bump the minor number and set `announce: true` when a player
+could notice something; bump the patch number with `announce: false` for a
+release of nothing but fixes, which is listed but never opens the dialog by
+itself. A note can carry a screenshot: a file under
+`client/src/assets/releases/<version>/`, imported into the catalogue, with an
+alt text in the note's language. Nothing else carries the version,
+`package.json` included. The
+account's mark is a column on `users`, so the deploy that introduces the
+dialog needs `npm run migrate` like any other schema change.
+
 ## Languages
 
 The interface is Turkish and English. Nothing a person reads is written where
@@ -251,6 +270,7 @@ in `client/src/i18n/index.ts` and `server/src/i18n/messages.ts`, plus the
   Dockerfile              # API image, built from the repo root
   netlify.toml            # client build for Netlify
   client/                 # participant + admin SPA (Vue 3)
+  client/src/releases.ts  # the version and the release notes, newest first (see Releases)
   server/                 # HTTP API, auth, scoring, provider sync, migrations
   supabase/migrations/    # forward-only SQL migrations
 ```

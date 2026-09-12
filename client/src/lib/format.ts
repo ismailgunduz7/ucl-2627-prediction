@@ -53,6 +53,15 @@ export function formatDateOnly(iso: string | null | undefined): string {
   return formatDate(iso, { dateStyle: 'short' });
 }
 
+/**
+ * "12 Eylül 2026" / "September 12, 2026", for a calendar day rather than an
+ * instant: a bare `YYYY-MM-DD` parses as midnight UTC, and read in a local
+ * zone west of it would land on the day before.
+ */
+export function formatDateFull(day: string | null | undefined): string {
+  return formatDate(day, { day: 'numeric', month: 'long', year: 'numeric', timeZone: 'UTC' });
+}
+
 /** Lower-cased the way the language does it, not the way ASCII does. */
 export function lower(text: string): string {
   return text.toLocaleLowerCase(activeLocale());

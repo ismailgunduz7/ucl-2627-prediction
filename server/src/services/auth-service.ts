@@ -9,6 +9,7 @@ import {
   type AccessTokenClaims,
 } from '../lib/tokens.ts';
 import { grantInitialInventory } from './joker-service.ts';
+import { isNewer } from '../domain/releases.ts';
 import type { Locale } from '../lib/i18n.ts';
 
 export interface UserRow {
@@ -20,6 +21,7 @@ export interface UserRow {
   competition_id: string | null;
   competition_name: string | null;
   language: Locale;
+  last_seen_release: string | null;
 }
 
 /**
@@ -28,7 +30,7 @@ export interface UserRow {
  * would mean the client fetching a list it has no business reading.
  */
 const USER_SELECT = `SELECT u.id, u.username, u.password_hash, u.display_name, u.is_admin,
-          u.competition_id, u.language, c.name AS competition_name
+          u.competition_id, u.language, u.last_seen_release, c.name AS competition_name
      FROM users u LEFT JOIN competitions c ON c.id = u.competition_id`;
 
 export interface PublicUser {
@@ -41,6 +43,8 @@ export interface PublicUser {
   competitionName: string | null;
   /** The language this account reads the game in, on any device (§3.1). */
   language: Locale;
+  /** The newest release notes this account has read, so they open once per account (§18.12). */
+  lastSeenRelease: string | null;
 }
 
 export interface SessionResult {
@@ -64,6 +68,7 @@ function toPublicUser(row: UserRow): PublicUser {
     competitionId: row.competition_id,
     competitionName: row.competition_name ?? null,
     language: row.language,
+    lastSeenRelease: row.last_seen_release,
   };
 }
 
@@ -126,7 +131,8 @@ export async function refresh(rawToken: string, meta: RequestMeta = {}): Promise
     const { rows } = await client.query(
       `SELECT rt.id, rt.user_id, rt.expires_at, rt.rotated_at, rt.revoked_at,
               u.id AS u_id, u.username, u.password_hash, u.display_name,
-              u.is_admin, u.competition_id, u.language, c.name AS competition_name
+              u.is_admin, u.competition_id, u.language, u.last_seen_release,
+              c.name AS competition_name
        FROM refresh_tokens rt
        JOIN users u ON u.id = rt.user_id
        LEFT JOIN competitions c ON c.id = u.competition_id
@@ -154,6 +160,7 @@ export async function refresh(rawToken: string, meta: RequestMeta = {}): Promise
       competition_id: row.competition_id,
       competition_name: row.competition_name,
       language: row.language,
+      last_seen_release: row.last_seen_release,
     };
     // Issue the replacement refresh token within the same transaction.
     const { REFRESH_TOKEN_TTL_SECONDS } = getEnv();
@@ -188,7 +195,8 @@ export async function refresh(rawToken: string, meta: RequestMeta = {}): Promise
 export async function sessionOwner(rawToken: string): Promise<PublicUser | null> {
   const { rows } = await query<UserRow & { expires_at: Date }>(
     `SELECT u.id, u.username, u.password_hash, u.display_name, u.is_admin,
-            u.competition_id, u.language, c.name AS competition_name, rt.expires_at
+            u.competition_id, u.language, u.last_seen_release, c.name AS competition_name,
+            rt.expires_at
        FROM refresh_tokens rt
        JOIN users u ON u.id = rt.user_id
        LEFT JOIN competitions c ON c.id = u.competition_id
@@ -381,5 +389,21 @@ export async function setLanguage(userId: string, language: Locale): Promise<Pub
     [userId, language],
   );
   if (!rows[0]) throw ApiError.badRequest('user_not_found');
+  return (await getUserById(userId))!;
+}
+
+/**
+ * Remembers the newest release notes this account has read, on every device
+ * (§18.12). The mark only ever moves forward: a tab still running an older
+ * build reports an older version, and that must not take a later reading back.
+ */
+export async function setLastSeenRelease(userId: string, version: string): Promise<PublicUser> {
+  const user = await getUserById(userId);
+  if (!user) throw ApiError.badRequest('user_not_found');
+  if (!isNewer(version, user.lastSeenRelease)) return user;
+  await query(`UPDATE users SET last_seen_release = $2, updated_at = now() WHERE id = $1`, [
+    userId,
+    version,
+  ]);
   return (await getUserById(userId))!;
 }

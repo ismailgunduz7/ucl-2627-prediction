@@ -20,3 +20,6 @@ nobody follows.
    checks this and refuses commits that skip it.
 4. **`.claude/notes.md` is the owner's running list of complaints.** Read it,
    work through it, one focused commit per item.
+5. **A change a player could notice gets a release note** in
+   `client/src/releases.ts`, in the same commit, in both languages. A release
+   of nothing but fixes is listed but never announced.

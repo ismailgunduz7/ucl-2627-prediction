@@ -8,10 +8,13 @@ import { useAuthStore } from '@/stores/auth';
 import AppCursor from '@/components/AppCursor.vue';
 import StarBall from '@/components/StarBall.vue';
 import AccountSwitcher from '@/components/AccountSwitcher.vue';
+import ReleaseNotesDialog from '@/components/ReleaseNotesDialog.vue';
 import TrophyMark from '@/components/TrophyMark.vue';
+import { useReleaseStore } from '@/stores/releases';
 
 const auth = useAuthStore();
 const route = useRoute();
+const releases = useReleaseStore();
 
 const mobileNavOpen = ref(false);
 const isLoginRoute = computed(() => route.name === 'login');
@@ -41,6 +44,17 @@ const navItems = computed(() => (auth.isAdmin ? adminNav : participantNav));
 const homeHref = computed(() => (auth.isAdmin ? '/yonetim' : '/'));
 
 watch(() => route.fullPath, () => (mobileNavOpen.value = false));
+
+// What changed since this account last looked, the moment the account is on
+// screen (§18.12). Keyed on the account too, so switching to one that has not
+// read the notes yet gets its own turn.
+watch(
+  () => [auth.user?.id, releases.pending] as const,
+  ([id, pending]) => {
+    if (id && pending) releases.announce();
+  },
+  { immediate: true },
+);
 
 /**
  * The drawer belongs to the hamburger, so it cannot outlive it. Widen the
@@ -146,6 +160,7 @@ function skipToContent() {
         </transition>
       </RouterView>
     </main>
+    <ReleaseNotesDialog />
   </div>
 
   <main v-else-if="auth.ready" class="app-main app-main--bare">

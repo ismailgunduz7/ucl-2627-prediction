@@ -95,6 +95,10 @@ export default {
     signOutBody: 'Bu tarayıcıda açık olan bütün hesaplardan çıkılır.',
     others: 'Bu tarayıcıdaki diğer hesaplar',
   },
+  releases: {
+    title: 'Yenilikler',
+    done: 'Tamam',
+  },
   home: {
     greeting: 'Selam {name} 👋',
     replayTitle: '🏆 Sezon bitti, filmin hazır',

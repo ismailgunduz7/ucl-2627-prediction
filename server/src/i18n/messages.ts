@@ -33,6 +33,7 @@ const tr: Catalog = {
   'errors.credentials_required': 'Kullanıcı adı ve şifre gerekli',
   'errors.current_password_wrong': 'Mevcut şifren yanlış',
   'errors.invalid_language': 'Desteklenmeyen dil',
+  'errors.invalid_release': 'Geçersiz sürüm',
 
   'errors.cron_disabled': 'CRON_SECRET tanımlı değil',
   'errors.invalid_cron_secret': 'Geçersiz cron anahtarı',
@@ -168,6 +169,7 @@ const en: Catalog = {
   'errors.credentials_required': 'Username and password are required',
   'errors.current_password_wrong': 'That is not your current password',
   'errors.invalid_language': 'That language is not supported',
+  'errors.invalid_release': 'That is not a version',
 
   'errors.cron_disabled': 'CRON_SECRET is not set',
   'errors.invalid_cron_secret': 'Wrong cron key',

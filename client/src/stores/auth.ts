@@ -13,6 +13,8 @@ export interface AuthUser {
   competitionName: string | null;
   /** The language this account reads the game in, on any device. */
   language: string;
+  /** The newest release notes this account has read, so they show once per account. */
+  lastSeenRelease: string | null;
 }
 
 interface SessionResponse {
@@ -114,6 +116,24 @@ export const useAuthStore = defineStore('auth', () => {
     applySession(session);
   }
 
+  /**
+   * The account has read the release notes up to `version`. Marked here first
+   * so the dialog stays closed for the rest of this visit even if the server
+   * cannot be told; the next visit simply asks again.
+   */
+  async function markReleaseSeen(version: string): Promise<void> {
+    if (!user.value) return;
+    user.value = { ...user.value, lastSeenRelease: version };
+    upsert(user.value);
+    try {
+      const res = await api.put<{ user: AuthUser }>('/api/auth/me/release', { version });
+      user.value = res.user;
+      upsert(res.user);
+    } catch {
+      // Kept locally for this visit; the server will be asked again next time.
+    }
+  }
+
   /** Signs every account out of this browser, which is what the API does too. */
   async function logout(): Promise<void> {
     try {
@@ -165,6 +185,7 @@ export const useAuthStore = defineStore('auth', () => {
     login,
     switchTo,
     changePassword,
+    markReleaseSeen,
     logout,
     bootstrap,
   };

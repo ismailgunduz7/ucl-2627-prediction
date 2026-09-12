@@ -2,6 +2,7 @@ import { Hono } from 'hono';
 import { z } from 'zod';
 import { ApiError } from '../lib/errors.ts';
 import { LOCALES } from '../lib/i18n.ts';
+import { isVersion } from '../domain/releases.ts';
 import {
   MAX_BROWSER_ACCOUNTS,
   clearAllRefreshCookies,
@@ -197,5 +198,21 @@ authRoutes.put('/me/language', requireAuth, async (c) => {
   if (!body.success) throw ApiError.badRequest('invalid_language');
   const auth = c.get('auth');
   const user = await authService.setLanguage(auth.sub, body.data.language);
+  return c.json({ user });
+});
+
+const ReleaseSchema = z.object({ version: z.string().refine(isVersion) });
+
+/**
+ * The newest release notes this account has read (§18.12).
+ *
+ * Closing the Yenilikler dialog on one device is meant to close it everywhere,
+ * so the mark is on the account. It never moves backwards.
+ */
+authRoutes.put('/me/release', requireAuth, async (c) => {
+  const body = ReleaseSchema.safeParse(await c.req.json().catch(() => null));
+  if (!body.success) throw ApiError.badRequest('invalid_release');
+  const auth = c.get('auth');
+  const user = await authService.setLastSeenRelease(auth.sub, body.data.version);
   return c.json({ user });
 });
