@@ -119,6 +119,13 @@ export interface ParticipantWeekScore {
   final: boolean;
   /** active joker code for the week, if any. */
   jokerCode: string | null;
+  /**
+   * What the joker was worth: this week's total minus the same week scored
+   * without it. Null when nothing was played, and null for `weekly_swap`,
+   * whose worth is the difference between two clubs rather than a switch that
+   * can simply be turned off, so there is no honest number to quote (§3.6).
+   */
+  jokerDelta: number | null;
   /** Ahtapot Paul's haul for the week, already included in `total` (§18.9). */
   predictions: PredictionTally;
 }
@@ -158,6 +165,8 @@ export async function computeParticipantMatchweek(
   if (!lineup) return null;
 
   const teamPoints = new Map(clubPoints ?? (await getTeamPointsForMatchweek(mwId)));
+  // The shield edits club points in place below, so keep what they were.
+  const basePoints = new Map(teamPoints);
   const joker = await getActiveJoker(userId, mwId);
   const predictions = await getPredictionTally(userId, mwId);
 
@@ -170,14 +179,32 @@ export async function computeParticipantMatchweek(
     }
   }
 
+  const squad = lineup.squad.map((s) => ({ teamId: s.teamId, tierId: s.tierId }));
   const result = computeMatchweekScore({
-    squad: lineup.squad.map((s) => ({ teamId: s.teamId, tierId: s.tierId })),
+    squad,
     benchTeamId: lineup.benchTeamId,
     captainTeamId: lineup.captainTeamId,
     teamPoints,
     benchBoost: joker?.code === 'bench_boost',
     captainMultiplier: joker?.code === 'triple_boost' ? 3 : 2,
   });
+
+  // What the joker was worth: score the same week again with its effect
+  // switched off and take the difference. A swap is not a switch, though: it
+  // put a different club in the squad, so scoring "the same week without it"
+  // would need the club it replaced, and quoting zero there would be a lie.
+  let jokerDelta: number | null = null;
+  if (joker && joker.code !== 'weekly_swap') {
+    const plain = computeMatchweekScore({
+      squad,
+      benchTeamId: lineup.benchTeamId,
+      captainTeamId: lineup.captainTeamId,
+      teamPoints: basePoints,
+      benchBoost: false,
+      captainMultiplier: 2,
+    });
+    jokerDelta = result.total - plain.total;
+  }
 
   return {
     matchweekId: mwId,
@@ -187,6 +214,7 @@ export async function computeParticipantMatchweek(
     lines: decorateLines(result.lines, lineup.squad),
     final: false,
     jokerCode: joker?.code ?? null,
+    jokerDelta,
     predictions,
   };
 }
@@ -214,6 +242,8 @@ export async function getParticipantWeekScore(
       total: finalRow.rows[0].points,
       final: true,
       jokerCode: b.jokerCode ?? null,
+      // Weeks finalised before this was recorded say nothing rather than zero.
+      jokerDelta: b.jokerDelta ?? null,
       // Weeks finalised before Ahtapot Paul existed carry no tally at all, and
       // ones finalised before the provisional count existed carry a partial one.
       predictions: normalizeTally(b.predictions),

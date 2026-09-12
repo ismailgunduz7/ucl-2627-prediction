@@ -10,7 +10,7 @@ Working conventions for contributors (commits, git workflow, design language, te
 
 Phases 0-6 are built and running against a Supabase database. What follows is the full specification; this section records where reality currently stands so nobody has to infer it from the code.
 
-**Built and verified:** auth and admin-provisioned accounts, several of them signed in at once on the same browser · pots, clubs, matchweeks, matches, config · permanent squad with one-club-per-pot enforced in the database, late entry included · club-layer scoring with the per-pot rules editor · provider sync behind a swappable interface with manual-override protection and an audit log · weekly bench/captain with the `T0 - 5m` lock and the M+1 gate · the four jokers with one-per-week activation and cancel/refund · provisional scoring on read and finals on completion · leaderboard, league table, per-player and per-club points breakdowns · the admin's read of who picked what and what they have spent · the league→knockout act transition (eliminations, top-8 bonus, joker refresh, act transfer) and the knockout bracket through the final with advancement and medals · the background sync job with adaptive cadence and backoff · the clubs' own points table beside the participant leaderboard (§4.8) · Ahtapot Paul, the weekly 1X2 coupon (§18.9) · the fixtures and multi-live page (§18.5) with its what-if calculator (§18.10) · the live delta feed on the hub (§18.6) · the season replay (§18.8).
+**Built and verified:** auth and admin-provisioned accounts, several of them signed in at once on the same browser · pots, clubs, matchweeks, matches, config · permanent squad with one-club-per-pot enforced in the database, late entry included · club-layer scoring with the per-pot rules editor · provider sync behind a swappable interface with manual-override protection and an audit log · weekly bench/captain with the `T0 - 5m` lock and the M+1 gate · the four jokers with one-per-week activation and cancel/refund · provisional scoring on read and finals on completion · leaderboard, league table, per-player and per-club points breakdowns · the admin's read of who picked what and what they have spent · the league→knockout act transition (eliminations, top-8 bonus, joker refresh, act transfer) and the knockout bracket through the final with advancement and medals · the background sync job with adaptive cadence and backoff · the clubs' own points table beside the participant leaderboard (§4.8) · Ahtapot Paul, the weekly 1X2 coupon (§18.9) · the fixtures and multi-live page (§18.5) with its what-if calculator (§18.10) · a home page that hands the player the rest of the game (§18.11) · the live delta feed on the hub (§18.6) · the season replay (§18.8).
 
 **Deliberate deviations from the spec, all temporary:**
 
@@ -668,6 +668,7 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 - Live delta feed: the week's point events for the participant's scoring clubs (§18.6)
 - Scoring rules matrix (plus what a correct prediction is worth)
 - Jokers: inventory with the weeks each one was played in (cancelled activations left out, since a refunded joker never happened, §3.6), activate, cancel (refund) before lock
+- A week's score carries what the joker on it was worth: the same week scored again with the joker switched off, subtracted. Null for `weekly_swap`, which put a different club in the squad rather than flipping a switch, so there is nothing honest to subtract (§18.11)
 - Season replay when the tournament is finished (§18.8)
 
 ### 9.3 Admin APIs
@@ -709,9 +710,9 @@ Append-only; written on every manual match edit or flag clear (§5.3).
 
 | Route | Purpose | Status |
 |-------|---------|--------|
-| `/` | Squad summary, current week points, mini standings | built |
+| `/` | The cards that carry a player into the rest of the game, in the order they matter: this week while it is being played, next week's fixtures, the coupon still to fill in, last week's recap, the standings, and the squad, which leads before the lock and trails after it (§18.11) | built |
 | `/kadro` | Permanent squad + crest wall + act-transfer card | built |
-| `/hafta` | Lineup with each club's week on its card, jokers, Ahtapot Paul coupon, deadline drama, provisional points, wrap when complete | built |
+| `/hafta`, `/hafta/:id` | Lineup with each club's week on its card, jokers, Ahtapot Paul coupon, deadline drama, provisional points, wrap when complete. Opens on the current week, or on the week the address names, and the picker keeps the address in step (§18.11) | built |
 | `/lig` | League-phase table with the knockout cut lines | built |
 | `/puan-durumu` | Leaderboard: players, and the clubs' own points table on a second tab | built |
 | `/kurallar` | The whole game explained: squad and captaincy, locks and visibility, the rules matrix, jokers with their real grant counts, the league→knockout switch, the coupon, pots and their clubs | built |
@@ -1006,3 +1007,21 @@ A club can be handed the armband, and only the club already wearing it offers th
 The rules matrix is the only input the calculator does not compute, which is also its one limit. It works a match at a time, so it covers the extras that change what a club in a match is worth (captain, triple captain, shield) and not the ones that are shaped like a squad (bench boost, weekly swap). Those belong to `/hafta`, where the squad actually is.
 
 **On a phone the row rearranges rather than shrinks.** The kickoff time and the coupon's call take a line of their own, the two clubs face the score under it behind their short names, and the sides dissolve (`display: contents`) so that everything hanging off a club becomes a cell of the row itself and drops to a third line against that club's own edge. Three role buttons and a figure a side will not fit beside a score at 375 pixels, and shrinking them under a fingertip would be the wrong answer.
+
+### 18.11 What the home page is for
+
+The home page opened on a squad, a number and three names, which told a player how they were doing and nothing about what to do next. It is the first screen after signing in, so it hands them the rest of the game instead: cards in the order they matter, and a card with nothing to say is not drawn at all.
+
+**The squad leads before the lock and trails after it.** Until the selection lock it is the one thing a player can still get wrong, so it comes first; from the lock on it is a fact, and the least useful thing on the page, so it goes last. Its four crests read as one row or as two by two, never three and a stray: the wall measures its own width rather than the window's, since how wide a card is depends on how many share the grid.
+
+**This week**, from the first kickoff to the last whistle: the points so far, one line saying where the squad's matches stand (played, in play, still to come, and postponed or called off when it comes to that), then those matches themselves with their scores, and a way to the week page to follow it. A week is under way once its status says so or its first kickoff has passed, whichever the sync gets to first, and when a postponed match holds an older week open it is the latest week under way that takes the card. Before kickoff the card does not exist: a week that has not started has no points to show, and next week's card already opens the same page.
+
+**Next week**: every match the squad walks into, written as a match ("Galatasaray vs Barcelona") rather than as a club and an opponent, grouped under the moment it kicks off so two matches at the same hour share one heading, in kickoff order, with the squad's own side marked the way the fixtures page marks it. A club with no match that week says so. The week is the one opened under the M+1 rule that has not kicked off, which is still the right week to be looking at during its last five minutes of lock. This is the question a player actually opens the app with, and until now it took two pages to answer.
+
+**The coupon**, while it can still be written: how much of it is filled in, and a way straight to it. Ahtapot Paul locks with the lineup and is the one thing on the hub a player can simply forget, since nothing else reminds them and an empty coupon scores nothing. Once the coupon locks the card goes, because a reminder about something that can no longer be done is only noise.
+
+**Last week**, once a week has finished: "27 puan topladın", or "3 puan kaybettin" when the week went the other way, then the line that produced it. Each club with what it contributed, the captain and the bench marked, then the joker and the coupon on their own rows underneath. A total says how a week went and never why, and the why is what a player argues about. It links to that week on the week page, where the wrap card holds the full account.
+
+**What the joker was worth** is the week scored again with the joker switched off, subtracted from the week as played. That covers the armband, the shield and the bench boost exactly. It does not cover `weekly_swap`, which did not flip a switch but put a different club in the squad, so scoring "the same week without it" would need the club it replaced; that one says it was played and quotes no figure, because a wrong number is worse than no number.
+
+**The week page is addressable.** `/hafta/:id` opens on the week named, which is what lets the cards above link to a week that is not the current one; `/hafta` on its own still means the current week and is sent on to that week's address. The picker keeps the address in step with a replace rather than a push, so flicking through the weeks leaves one entry in the history rather than a trail, and a change of address under the page, the back button included, goes through the same door the picker uses: an unsent coupon still gets its dialog, and the address stays with the week that owns the coupon until it is answered.

@@ -32,6 +32,17 @@ export function formatShortDateTime(iso: string | null | undefined): string {
   return formatDate(iso, { day: 'numeric', month: 'short', hour: '2-digit', minute: '2-digit' });
 }
 
+/** "14 Nisan Salı 21:00": a kickoff as a heading over the matches played at it. */
+export function formatLongDateTime(iso: string | null | undefined): string {
+  return formatDate(iso, {
+    weekday: 'long',
+    day: 'numeric',
+    month: 'long',
+    hour: '2-digit',
+    minute: '2-digit',
+  });
+}
+
 /** Full date and time, the way the reader's locale writes it. */
 export function formatDateTime(iso: string | null | undefined): string {
   return formatDate(iso, { dateStyle: 'short', timeStyle: 'medium' });

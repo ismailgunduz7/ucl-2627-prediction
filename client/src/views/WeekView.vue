@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { ref, computed, onMounted, onUnmounted, watch } from 'vue';
-import { onBeforeRouteLeave, useRouter } from 'vue-router';
+import { onBeforeRouteLeave, onBeforeRouteUpdate, useRoute, useRouter } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import Select from 'primevue/select';
 import Message from 'primevue/message';
@@ -61,11 +61,14 @@ interface RankMove { rank: number; prevRank: number | null }
 
 const { t } = useI18n();
 const router = useRouter();
+const route = useRoute();
 const toast = useToast();
 const auth = useAuthStore();
 
 const matchweeks = ref<Mw[]>([]);
 const entryMatchweekId = ref<string | null>(null);
+/** The week the page opens on when the address names none. */
+const currentMatchweekId = ref<string | null>(null);
 const selectedMw = ref<string | null>(null);
 const squad = ref<SquadClub[]>([]);
 const lineup = ref<Lineup | null>(null);
@@ -366,8 +369,15 @@ async function loadAll() {
     ]);
     matchweeks.value = status.matchweeks;
     entryMatchweekId.value = status.entryMatchweekId;
+    currentMatchweekId.value = status.currentMatchweekId;
     pots.value = teams.pots;
-    if (!selectedMw.value) selectedMw.value = status.currentMatchweekId ?? status.matchweeks[0]?.id ?? null;
+    // The address names the week when a link brought the player here for
+    // one in particular; otherwise the page opens on the current week.
+    if (!selectedMw.value) {
+      selectedMw.value =
+        weekFromUrl(route.params.id) ?? status.currentMatchweekId ?? status.matchweeks[0]?.id ?? null;
+    }
+    syncUrl(selectedMw.value);
     await loadWeek();
   } catch (e) {
     toast.add({ severity: 'error', summary: t('common.loadFailed'), detail: msg(e), life: 4000 });
@@ -484,12 +494,48 @@ function chooseWeek(next: string) {
     return;
   }
   selectedMw.value = next;
+  syncUrl(next);
 }
 
 onBeforeRouteLeave((to) => {
   if (!couponDirty.value) return true;
   leaveTo.value = { path: to.fullPath };
   return false;
+});
+
+/** The week an address names, when it is one we know of. */
+function weekFromUrl(raw: unknown): string | null {
+  return typeof raw === 'string' && matchweeks.value.some((m) => m.id === raw) ? raw : null;
+}
+
+/**
+ * The address carries the selected week, so a link from elsewhere can open the
+ * page on a given week and the back button returns to the one before. The
+ * picker writes it with a replace rather than a push: flicking through the
+ * weeks is not a journey worth retracing a step at a time.
+ */
+function syncUrl(id: string | null) {
+  if (id && route.params.id !== id) void router.replace({ name: 'hafta', params: { id } });
+}
+
+/**
+ * The address changed under the page: the back button, or the menu's own link,
+ * which names no week and means the current one. It goes through the same door
+ * the picker uses, so an unsent coupon still gets its dialog; the navigation is
+ * refused then and the address stays with the week that owns the coupon.
+ */
+onBeforeRouteUpdate((to) => {
+  const target = weekFromUrl(to.params.id) ?? currentMatchweekId.value;
+  if (!target) return true;
+  if (target !== selectedMw.value && couponDirty.value) {
+    leaveTo.value = { week: target };
+    return false;
+  }
+  // An address that names no week is sent on to the one it means, so the
+  // entry it leaves in the history is one the back button can return to.
+  if (to.params.id !== target) return { name: 'hafta', params: { id: target } };
+  selectedMw.value = target;
+  return true;
 });
 
 /**
@@ -515,6 +561,7 @@ function leaveAnyway() {
     const current = selectedMw.value;
     if (current && predictions.value) seedDraft(current, predictions.value);
     selectedMw.value = target.week;
+    syncUrl(target.week);
   } else {
     draft.value = new Map();
     draftMw.value = null;

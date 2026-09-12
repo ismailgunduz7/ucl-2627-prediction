@@ -15,7 +15,9 @@ const routes: RouteRecordRaw[] = [
   // Participant area
   { path: '/', name: 'home', component: () => import('@/views/HomeView.vue'), meta: { requiresAuth: true, participant: true } },
   { path: '/kadro', name: 'kadro', component: () => import('@/views/SquadView.vue'), meta: { requiresAuth: true, participant: true } },
-  { path: '/hafta', name: 'hafta', component: () => import('@/views/WeekView.vue'), meta: { requiresAuth: true, participant: true } },
+  // The week is in the address, so a link can open the page on a given week
+  // and the back button returns to the one before; without it the current week.
+  { path: '/hafta/:id?', name: 'hafta', component: () => import('@/views/WeekView.vue'), meta: { requiresAuth: true, participant: true } },
   { path: '/fikstur', name: 'fikstur', component: () => import('@/views/FixturesView.vue'), meta: { requiresAuth: true, participant: true } },
   { path: '/lig', name: 'lig', component: () => import('@/views/StandingsView.vue'), meta: { requiresAuth: true, participant: true } },
   { path: '/puan-durumu', name: 'puan-durumu', component: () => import('@/views/LeaderboardView.vue'), meta: { requiresAuth: true, participant: true } },
